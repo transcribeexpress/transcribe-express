@@ -59,6 +59,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Start the transcription worker
+    import("./startWorker").catch(console.error);
   });
 }
 

@@ -25,4 +25,28 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Transcriptions table for storing user transcription jobs
+ */
+export const transcriptions = mysqlTable("transcriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  status: mysqlEnum("status", ["pending", "processing", "completed", "error"]).default("pending").notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  duration: int("duration"), // in seconds
+  
+  resultUrl: text("resultUrl"),
+  resultSrt: text("resultSrt"),
+  resultVtt: text("resultVtt"),
+  resultTxt: text("resultTxt"),
+  
+  errorMessage: text("errorMessage"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Transcription = typeof transcriptions.$inferSelect;
+export type InsertTranscription = typeof transcriptions.$inferInsert;
