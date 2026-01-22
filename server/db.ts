@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, transcriptions, InsertTranscription } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,57 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Récupérer toutes les transcriptions d'un utilisateur
+ * Triées par date de création décroissante (plus récentes en premier)
+ */
+export async function getUserTranscriptions(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get transcriptions: database not available");
+    return [];
+  }
+
+  return await db
+    .select()
+    .from(transcriptions)
+    .where(eq(transcriptions.userId, userId))
+    .orderBy(desc(transcriptions.createdAt));
+}
+
+/**
+ * Créer une nouvelle transcription
+ */
+export async function createTranscription(transcription: InsertTranscription) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db.insert(transcriptions).values(transcription);
+  return result;
+}
+
+/**
+ * Mettre à jour le statut d'une transcription
+ */
+export async function updateTranscriptionStatus(
+  id: number,
+  status: 'pending' | 'processing' | 'completed' | 'error',
+  transcriptText?: string,
+  errorMessage?: string
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const updateData: Partial<InsertTranscription> = { status };
+  if (transcriptText !== undefined) updateData.transcriptText = transcriptText;
+  if (errorMessage !== undefined) updateData.errorMessage = errorMessage;
+
+  await db
+    .update(transcriptions)
+    .set(updateData)
+    .where(eq(transcriptions.id, id));
+}

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE transcriptions ADD COLUMN IF NOT EXISTS fileKey varchar(512) AFTER fileUrl;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34dHiYBFrZrzB5t.e635ab5adb48 --database oRqyQWHwreNEuW2rCuPNoU --execute ALTER TABLE transcriptions ADD COLUMN IF NOT EXISTS fileKey varchar(512) AFTER fileUrl;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 448
+}

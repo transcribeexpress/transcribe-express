@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE transcriptions \nADD COLUMN IF NOT EXISTS transcriptText text AFTER status,\nADD COLUMN IF NOT EXISTS errorMessage text AFTER transcriptText;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34dHiYBFrZrzB5t.e635ab5adb48 --database oRqyQWHwreNEuW2rCuPNoU --execute ALTER TABLE transcriptions \nADD COLUMN IF NOT EXISTS transcriptText text AFTER status,\nADD COLUMN IF NOT EXISTS errorMessage text AFTER transcriptText;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 464
+}

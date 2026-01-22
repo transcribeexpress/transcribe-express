@@ -5,13 +5,26 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import SSOCallback from "./pages/SSOCallback";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
+      {/* Pages publiques */}
       <Route path={"/"} component={Home} />
+      <Route path={"/login"} component={Login} />
+      
+      {/* Callback OAuth Clerk */}
+      <Route path={"/sso-callback"} component={SSOCallback} />
+      
+      {/* Pages protégées (authentification requise) */}
+      <Route path={"/dashboard"} component={Dashboard} />
+      
+      {/* Pages d'erreur */}
       <Route path={"/404"} component={NotFound} />
+      
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
@@ -19,15 +32,15 @@ function Router() {
 }
 
 // NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+// - Dark Mode First pour Transcribe Express (identité visuelle)
+// - Palette : Magenta #BE34D5 (primary), Cyan #34D5BE (accent)
+// - Couleurs définies dans index.css avec OKLCH
 
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <TooltipProvider>
