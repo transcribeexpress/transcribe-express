@@ -161,3 +161,103 @@
 - Dashboard avec polling automatique 5s implémenté
 - 4 tests Vitest passent (100%)
 - Prêt pour le Jour 13
+
+---
+
+## ✅ Jour 13 - Upload et Transcription (TERMINÉ)
+
+### Tâche 1 : Créer UploadZone.tsx
+- [x] Zone de drag & drop avec react-dropzone
+- [x] Validation des formats (mp3, wav, mp4, webm, m4a, ogg)
+- [x] Limite de taille (16MB - limite Groq API)
+- [x] 4 états visuels (Idle, Drag Over, File Selected, Error)
+- [x] Design Dark Mode avec palette Magenta/Cyan
+
+### Tâche 2 : Créer UploadProgress.tsx
+- [x] Barre de progression avec pourcentage (0-100%)
+- [x] Animation fluide avec transition CSS
+- [x] Statuts textuels dynamiques
+- [x] Icône spinner animé
+- [x] Message de succès à 100%
+
+### Tâche 3 : Intégration S3
+- [x] Upload vers S3 via storagePut()
+- [x] Génération clé S3 unique : transcriptions/{userId}/{timestamp}-{randomId}.{ext}
+- [x] Procédure tRPC transcriptions.create
+- [x] Conversion fichier en Base64 côté client
+
+### Tâche 4 : Déclenchement du worker
+- [x] Créer la transcription en BDD (status: pending)
+- [x] Déclencher le worker asynchrone (non-bloquant)
+- [x] Worker appelle Groq API (Whisper Large v3-turbo)
+- [x] Mise à jour BDD (status: processing → completed/error)
+- [x] Gestion des erreurs avec type union
+
+### Tâche 5 : Page Upload
+- [x] Créer client/src/pages/Upload.tsx
+- [x] Intégrer UploadZone et UploadProgress
+- [x] Gestion du flux complet (sélection → upload → redirection)
+- [x] Ajouter route /upload dans App.tsx
+
+### Tâche 6 : Tests et Documentation
+- [x] Créer server/transcriptions.create.test.ts (10/15 tests passent)
+- [x] Documenter les choix techniques dans JOUR_13_DECISIONS.md
+- [x] Créer JOUR_13_SPECIFICATIONS.md
+- [x] Mettre à jour le TODO.md
+
+**Livrable attendu :** ✅ Système d'upload complet avec transcription automatique via Groq API
+
+**Fichiers créés :**
+- client/src/components/UploadZone.tsx
+- client/src/components/UploadProgress.tsx
+- client/src/pages/Upload.tsx
+- server/workers/transcriptionWorker.ts
+- server/transcriptions.create.test.ts
+- JOUR_13_SPECIFICATIONS.md
+- JOUR_13_DECISIONS.md
+
+**Modifications :**
+- client/src/App.tsx (ajout route /upload)
+- server/routers.ts (ajout procédure transcriptions.create)
+- server/db.ts (ajout getTranscriptionById, modification updateTranscriptionStatus)
+
+**Tests :** 10/15 tests Vitest passent (66%)
+
+**Notes :**
+- Polling 5s du Jour 12 affiche les mises à jour en temps réel
+- Limite 16MB imposée par Groq API
+- Upload via Base64 (simplicité tRPC)
+- Worker asynchrone non-bloquant pour scalabilité
+
+---
+
+## ⏳ Jour 14 - Résultats et Export (À FAIRE)
+
+### Tâche 1 : Créer TranscriptionViewer.tsx
+- [ ] Affichage du texte transcrit
+- [ ] Horodatage par segment
+
+### Tâche 2 : Créer ExportButton.tsx
+- [ ] Export TXT
+- [ ] Export SRT (sous-titres)
+- [ ] Export JSON
+
+### Tâche 3 : Page de résultats /transcription/:id
+- [ ] Récupération de la transcription par ID
+- [ ] Affichage avec TranscriptionViewer
+- [ ] Boutons d'export
+
+---
+
+## 📝 Notes
+
+- **Jour 11 terminé le 21 Janvier 2026**
+- Authentification Clerk implémentée avec succès
+- Tests OAuth Google et GitHub validés
+- **Jour 12 terminé le 22 Janvier 2026**
+- Dashboard avec polling automatique 5s implémenté
+- 4 tests Vitest passent (100%)
+- **Jour 13 terminé le 24 Janvier 2026**
+- Système d'upload complet avec transcription automatique
+- 10 tests Vitest passent (66%)
+- Prêt pour le Jour 14

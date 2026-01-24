@@ -121,13 +121,34 @@ export async function createTranscription(transcription: InsertTranscription) {
 }
 
 /**
+ * Récupérer une transcription par son ID
+ */
+export async function getTranscriptionById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db
+    .select()
+    .from(transcriptions)
+    .where(eq(transcriptions.id, id))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+/**
  * Mettre à jour le statut d'une transcription
  */
 export async function updateTranscriptionStatus(
   id: number,
   status: 'pending' | 'processing' | 'completed' | 'error',
-  transcriptText?: string,
-  errorMessage?: string
+  updates?: {
+    transcriptText?: string;
+    errorMessage?: string;
+    duration?: number;
+  }
 ) {
   const db = await getDb();
   if (!db) {
@@ -135,8 +156,9 @@ export async function updateTranscriptionStatus(
   }
 
   const updateData: Partial<InsertTranscription> = { status };
-  if (transcriptText !== undefined) updateData.transcriptText = transcriptText;
-  if (errorMessage !== undefined) updateData.errorMessage = errorMessage;
+  if (updates?.transcriptText !== undefined) updateData.transcriptText = updates.transcriptText;
+  if (updates?.errorMessage !== undefined) updateData.errorMessage = updates.errorMessage;
+  if (updates?.duration !== undefined) updateData.duration = updates.duration;
 
   await db
     .update(transcriptions)
