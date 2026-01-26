@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Trash2 } from "lucide-react";
+import { Link } from "wouter";
 import {
   Table,
   TableBody,
@@ -126,14 +127,16 @@ export function TranscriptionList() {
                 <div className="flex items-center justify-end gap-1">
                   {transcription.status === "completed" && (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Voir la transcription"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/results/${transcription.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Voir la transcription"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         variant="ghost"
                         size="icon"

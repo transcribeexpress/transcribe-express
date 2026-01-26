@@ -93,7 +93,7 @@ export async function getUserByOpenId(openId: string) {
  * Récupérer toutes les transcriptions d'un utilisateur
  * Triées par date de création décroissante (plus récentes en premier)
  */
-export async function getUserTranscriptions(userId: number) {
+export async function getUserTranscriptions(userId: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get transcriptions: database not available");
@@ -164,4 +164,20 @@ export async function updateTranscriptionStatus(
     .update(transcriptions)
     .set(updateData)
     .where(eq(transcriptions.id, id));
+}
+
+/**
+ * Supprimer une transcription par son ID
+ */
+export async function deleteTranscription(id: number) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db
+    .delete(transcriptions)
+    .where(eq(transcriptions.id, id));
+  
+  return { success: true };
 }

@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
+import Results from "./pages/Results";
 import SSOCallback from "./pages/SSOCallback";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       {/* Pages protégées (authentification requise) */}
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/upload"} component={Upload} />
+      <Route path={"/results/:id"} component={Results} />
       
       {/* Pages d'erreur */}
       <Route path={"/404"} component={NotFound} />

@@ -30,7 +30,7 @@ describe("transcriptions.list procedure", () => {
   });
 
   it("should return empty array for user with no transcriptions", async () => {
-    const userId = 999999; // ID utilisateur fictif
+    const userId = "user-999999"; // ID utilisateur fictif
     const transcriptions = await getUserTranscriptions(userId);
     
     expect(transcriptions).toBeInstanceOf(Array);
@@ -39,7 +39,7 @@ describe("transcriptions.list procedure", () => {
 
   it("should create a transcription successfully", async () => {
     const testTranscription = {
-      userId: 1,
+      userId: "user-1",
       fileName: "test-audio.mp3",
       fileUrl: "https://example.com/test-audio.mp3",
       fileKey: "uploads/test-audio.mp3",
@@ -54,7 +54,7 @@ describe("transcriptions.list procedure", () => {
   it("should return transcriptions sorted by creation date (descending)", async () => {
     // Créer deux transcriptions avec des dates différentes
     await createTranscription({
-      userId: 1,
+      userId: "user-1",
       fileName: "first.mp3",
       fileUrl: "https://example.com/first.mp3",
       status: "completed" as const,
@@ -64,7 +64,7 @@ describe("transcriptions.list procedure", () => {
     await new Promise(resolve => setTimeout(resolve, 1100));
 
     await createTranscription({
-      userId: 1,
+      userId: "user-1",
       fileName: "second.mp3",
       fileUrl: "https://example.com/second.mp3",
       status: "processing" as const,
@@ -91,25 +91,26 @@ describe("transcriptions.list procedure", () => {
     // Créer des transcriptions pour l'utilisateur 1 uniquement
     // (pas d'utilisateur 2 car il n'existe pas en BDD)
     await createTranscription({
-      userId: 1,
+      userId: "user-1",
       fileName: "user1-file1.mp3",
       fileUrl: "https://example.com/user1-file1.mp3",
       status: "completed" as const,
     });
 
     await createTranscription({
-      userId: 1,
+      userId: "user-1",
       fileName: "user1-file2.mp3",
       fileUrl: "https://example.com/user1-file2.mp3",
       status: "completed" as const,
     });
 
-    const user1Transcriptions = await getUserTranscriptions(1);
-    const user999Transcriptions = await getUserTranscriptions(999999);
+    const user1Transcriptions = await getUserTranscriptions("user-1");
+    const user2Transcriptions = await getUserTranscriptions("user-2");
+    const user999Transcriptions = await getUserTranscriptions("user-999999");
 
     // Vérifier que l'utilisateur 1 voit ses 2 transcriptions
     expect(user1Transcriptions.length).toBe(2);
-    expect(user1Transcriptions.every(t => t.userId === 1)).toBe(true);
+    expect(user1Transcriptions.every(t => t.userId === "user-1")).toBe(true);
     
     // Vérifier qu'un utilisateur inexistant ne voit aucune transcription
     expect(user999Transcriptions.length).toBe(0);

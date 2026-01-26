@@ -1,0 +1,1 @@
+ALTER TABLE `transcriptions` MODIFY COLUMN `userId` varchar(255) NOT NULL;

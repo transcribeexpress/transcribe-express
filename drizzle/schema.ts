@@ -30,7 +30,7 @@ export type InsertUser = typeof users.$inferInsert;
  */
 export const transcriptions = mysqlTable("transcriptions", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(), // Référence vers users.id
+  userId: varchar("userId", { length: 255 }).notNull(), // Clerk user ID
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileUrl: text("fileUrl").notNull(),
   fileKey: varchar("fileKey", { length: 512 }), // Clé S3 pour suppression

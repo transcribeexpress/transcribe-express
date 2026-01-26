@@ -15,6 +15,13 @@
       "when": 1769059973360,
       "tag": "0001_rainy_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769406549291,
+      "tag": "0002_brief_the_captain",
+      "breakpoints": true
     }
   ]
 }
