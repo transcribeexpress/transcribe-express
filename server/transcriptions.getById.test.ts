@@ -7,7 +7,7 @@
  * - Transcription inexistante
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { appRouter } from "./routers";
 import { getDb } from "./db";
 import { transcriptions } from "../drizzle/schema";
@@ -17,7 +17,7 @@ describe("transcriptions.getById", () => {
   const testUserId = "test-user-123";
   const otherUserId = "other-user-456";
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Créer une transcription de test
     const db = await getDb();
     if (!db) throw new Error("Database not available");
@@ -33,11 +33,14 @@ describe("transcriptions.getById", () => {
     });
 
     testTranscriptionId = Number(result.insertId);
+    
+    // Attendre la propagation
+    await new Promise(resolve => setTimeout(resolve, 300));
   });
 
   it("should return transcription for owner", async () => {
     const caller = appRouter.createCaller({
-      user: { id: testUserId, email: "test@example.com", name: "Test User" },
+      user: { openId: testUserId, email: "test@example.com", name: "Test User" },
     });
 
     const transcription = await caller.transcriptions.getById({
@@ -53,7 +56,7 @@ describe("transcriptions.getById", () => {
 
   it("should throw error for non-owner", async () => {
     const caller = appRouter.createCaller({
-      user: { id: otherUserId, email: "other@example.com", name: "Other User" },
+      user: { openId: otherUserId, email: "other@example.com", name: "Other User" },
     });
 
     await expect(
@@ -63,7 +66,7 @@ describe("transcriptions.getById", () => {
 
   it("should throw error for invalid ID", async () => {
     const caller = appRouter.createCaller({
-      user: { id: testUserId, email: "test@example.com", name: "Test User" },
+      user: { openId: testUserId, email: "test@example.com", name: "Test User" },
     });
 
     await expect(

@@ -11,6 +11,10 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { getTranscriptionById, updateTranscriptionStatus } from "./db";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+import { transcriptions } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+
+const testUserId = 'user-test-create-123';
 
 describe("transcriptions.create procedure", () => {
   beforeAll(async () => {
@@ -25,7 +29,7 @@ describe("transcriptions.create procedure", () => {
     // Nettoyer la table transcriptions avant chaque test
     const db = await getDb();
     if (db) {
-      await db.execute(sql`DELETE FROM transcriptions WHERE userId = 1`);
+      await db.delete(transcriptions).where(eq(transcriptions.userId, testUserId));
     }
   });
 
@@ -34,12 +38,16 @@ describe("transcriptions.create procedure", () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const result = await db.execute(sql`
-      INSERT INTO transcriptions (userId, fileName, fileUrl, fileKey, status)
-      VALUES (1, 'test.mp3', 'https://example.com/test.mp3', 'test-key', 'pending')
-    `);
+    const [result] = await db.insert(transcriptions).values({
+      userId: testUserId,
+      fileName: 'test.mp3',
+      fileUrl: 'https://example.com/test.mp3',
+      fileKey: 'test-key',
+      status: 'pending',
+    });
 
-    const insertId = (result as any).insertId;
+    const insertId = Number(result.insertId);
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Récupérer la transcription
     const transcription = await getTranscriptionById(insertId);
@@ -59,12 +67,16 @@ describe("transcriptions.create procedure", () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const result = await db.execute(sql`
-      INSERT INTO transcriptions (userId, fileName, fileUrl, fileKey, status)
-      VALUES (1, 'test.mp3', 'https://example.com/test.mp3', 'test-key', 'pending')
-    `);
+    const [result] = await db.insert(transcriptions).values({
+      userId: testUserId,
+      fileName: 'test.mp3',
+      fileUrl: 'https://example.com/test.mp3',
+      fileKey: 'test-key',
+      status: 'pending',
+    });
 
-    const insertId = (result as any).insertId;
+    const insertId = Number(result.insertId);
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Mettre à jour le statut
     await updateTranscriptionStatus(insertId, 'processing');
@@ -82,12 +94,16 @@ describe("transcriptions.create procedure", () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const result = await db.execute(sql`
-      INSERT INTO transcriptions (userId, fileName, fileUrl, fileKey, status)
-      VALUES (1, 'test.mp3', 'https://example.com/test.mp3', 'test-key', 'processing')
-    `);
+    const [result] = await db.insert(transcriptions).values({
+      userId: testUserId,
+      fileName: 'test.mp3',
+      fileUrl: 'https://example.com/test.mp3',
+      fileKey: 'test-key',
+      status: 'processing',
+    });
 
-    const insertId = (result as any).insertId;
+    const insertId = Number(result.insertId);
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Mettre à jour avec le résultat
     await updateTranscriptionStatus(insertId, 'completed', {
@@ -110,12 +126,16 @@ describe("transcriptions.create procedure", () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const result = await db.execute(sql`
-      INSERT INTO transcriptions (userId, fileName, fileUrl, fileKey, status)
-      VALUES (1, 'test.mp3', 'https://example.com/test.mp3', 'test-key', 'processing')
-    `);
+    const [result] = await db.insert(transcriptions).values({
+      userId: testUserId,
+      fileName: 'test.mp3',
+      fileUrl: 'https://example.com/test.mp3',
+      fileKey: 'test-key',
+      status: 'processing',
+    });
 
-    const insertId = (result as any).insertId;
+    const insertId = Number(result.insertId);
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Mettre à jour avec une erreur
     await updateTranscriptionStatus(insertId, 'error', {

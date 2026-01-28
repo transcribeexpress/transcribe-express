@@ -70,7 +70,7 @@ describe("transcriptions.list procedure", () => {
       status: "processing" as const,
     });
 
-    const transcriptions = await getUserTranscriptions(1);
+    const transcriptions = await getUserTranscriptions("user-1");
     
     expect(transcriptions.length).toBeGreaterThanOrEqual(2);
     

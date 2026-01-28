@@ -408,3 +408,32 @@
 - vitest.config.ts (ajout tests client)
 
 **Tests :** 10/10 tests filters.test.ts passent (100%)
+
+
+---
+
+## ✅ Correction des Tests Vitest (TERMINÉ)
+
+### Objectif : Atteindre 100% de réussite des tests
+
+- [x] Corriger server/transcriptions.create.test.ts (6 tests corrigés)
+- [x] Corriger server/transcriptions.delete.test.ts (1 test corrigé)
+- [x] Corriger server/transcriptions.getById.test.ts (1 test corrigé)
+- [x] Corriger server/transcriptions.list.test.ts (1 test corrigé)
+- [x] Exécuter tous les tests et vérifier 44/44 passent (100%)
+- [x] Créer un checkpoint avec tests corrigés
+
+**Résultat :** ✅ 44/44 tests passent (100%)
+
+**Corrections appliquées :**
+1. Remplacement de tous les userId numériques (1, 2) par des strings (openId)
+2. Remplacement de `sql` template par Drizzle ORM `db.insert()` dans create.test.ts
+3. Changement de `beforeAll` en `beforeEach` dans getById.test.ts
+4. Ajout de délais de 300ms pour la propagation MySQL
+5. Correction de getUserTranscriptions(1) en getUserTranscriptions("user-1")
+
+**Fichiers modifiés :**
+- server/transcriptions.create.test.ts
+- server/transcriptions.delete.test.ts
+- server/transcriptions.getById.test.ts
+- server/transcriptions.list.test.ts

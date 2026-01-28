@@ -38,8 +38,11 @@ describe("transcriptions.delete", () => {
 
   it("should delete transcription for owner", async () => {
     const caller = appRouter.createCaller({
-      user: { id: testUserId, email: "test@example.com", name: "Test User" },
+      user: { openId: testUserId, email: "test@example.com", name: "Test User" },
     });
+
+    // Attendre la propagation de la création
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     const result = await caller.transcriptions.delete({
       id: testTranscriptionId,
@@ -60,8 +63,11 @@ describe("transcriptions.delete", () => {
   });
 
   it("should throw error for non-owner", async () => {
+    // Attendre la propagation de la création
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     const caller = appRouter.createCaller({
-      user: { id: otherUserId, email: "other@example.com", name: "Other User" },
+      user: { openId: otherUserId, email: "other@example.com", name: "Other User" },
     });
 
     await expect(
@@ -82,7 +88,7 @@ describe("transcriptions.delete", () => {
 
   it("should throw error for invalid ID", async () => {
     const caller = appRouter.createCaller({
-      user: { id: testUserId, email: "test@example.com", name: "Test User" },
+      user: { openId: testUserId, email: "test@example.com", name: "Test User" },
     });
 
     await expect(
