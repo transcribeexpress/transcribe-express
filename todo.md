@@ -323,3 +323,88 @@
 - Suppression BDD + S3 avec confirmation
 - Migration userId pour utiliser Clerk openId directement
 - Design cohérent avec palette Magenta/Cyan
+
+
+---
+
+## 📋 Création du SPRINT_2_PLAN (28 Janvier 2026)
+
+### Objectif : Documenter le plan de développement pour les Jours 15-21
+
+- [x] Créer le document SPRINT_2_PLAN.md
+- [x] Définir les objectifs du Sprint 2 (Recherche, Pagination, Optimisation, Analytics, UX, Tests, Validation)
+- [x] Détailler les tâches pour chaque jour (15-21)
+- [x] Créer les prompts de développement complets pour chaque jour
+- [x] Documenter l'architecture technique (procédures tRPC, composants, optimisations)
+- [x] Définir la stratégie de test (unitaires, fonctionnels, performance)
+- [x] Établir les métriques de succès (tests 100%, Lighthouse > 90, couverture > 80%)
+
+**Livrable :** ✅ SPRINT_2_PLAN.md créé (7 jours détaillés, 6 prompts complets, architecture complète)
+
+**Contenu du document :**
+- Vue d'ensemble du Sprint 2 (objectifs, rôles, contexte)
+- Planning détaillé Jours 15-21
+- Prompts de développement pour chaque jour
+- Architecture technique (procédures tRPC, composants, optimisations)
+- Stratégie de test (unitaires, fonctionnels, performance)
+- Métriques de suivi (techniques et fonctionnelles)
+- Critères de succès (Must Have, Should Have, Nice to Have)
+- Prochaines étapes Sprint 3 (Jours 22-28)
+
+**Fichier créé :** SPRINT_2_PLAN.md (355 lignes)
+
+
+---
+
+## ✅ Jour 15 - Recherche et Filtres (TERMINÉ)
+
+### Objectif : Permettre aux utilisateurs de rechercher et filtrer leurs transcriptions
+
+### Tâche 1 : Créer le composant SearchBar
+- [x] Créer client/src/components/SearchBar.tsx
+- [x] Implémenter le debounce (300ms)
+- [x] Icône Search et placeholder "Rechercher une transcription..."
+- [x] Styling avec palette Magenta/Cyan
+
+### Tâche 2 : Créer le composant FilterPanel
+- [x] Créer client/src/components/FilterPanel.tsx
+- [x] Filtres par statut (Tous, Completé, En cours, En attente, Erreur)
+- [x] Filtres par date (Aujourd'hui, Cette semaine, Ce mois, Personnalisé)
+- [ ] Date picker pour le filtre personnalisé (à implémenter Jour 16)
+
+### Tâche 3 : Implémenter la logique de filtrage
+- [x] Ajouter SearchBar et FilterPanel dans Dashboard.tsx
+- [x] Implémenter la logique de filtrage combiné (recherche + statut + date)
+- [x] Ajouter un badge de compteur de résultats
+- [x] Optimiser avec useMemo pour éviter les re-calculs
+
+### Tâche 4 : Tests Vitest
+- [x] Créer client/src/utils/filters.test.ts
+- [x] Tests de recherche par nom (partiel et complet)
+- [x] Tests de filtrage par statut
+- [x] Tests de filtrage par date
+- [x] Tests de combinaison recherche + filtres
+
+### Tâche 5 : Tests manuels et documentation
+- [x] Tester le flux complet dans le navigateur
+- [x] Vérifier la performance (< 100ms pour 1000 transcriptions)
+- [x] Créer JOUR_15_DECISIONS.md
+- [x] Créer JOUR_15_SPECIFICATIONS.md
+- [x] Créer un checkpoint Manus
+
+**Livrable attendu :** ✅ Dashboard avec recherche et filtres fonctionnels
+
+**Fichiers créés :**
+- client/src/components/SearchBar.tsx
+- client/src/components/FilterPanel.tsx
+- client/src/utils/filters.ts
+- client/src/utils/filters.test.ts
+- JOUR_15_DECISIONS.md
+- JOUR_15_SPECIFICATIONS.md
+
+**Modifications :**
+- client/src/pages/Dashboard.tsx (intégration SearchBar + FilterPanel)
+- client/src/components/TranscriptionList.tsx (props transcriptions + isLoading)
+- vitest.config.ts (ajout tests client)
+
+**Tests :** 10/10 tests filters.test.ts passent (100%)

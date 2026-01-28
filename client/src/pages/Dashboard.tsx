@@ -8,17 +8,47 @@
  * sera implémenté au Jour 12.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { UserMenu } from "@/components/UserMenu";
 import { TranscriptionList } from "@/components/TranscriptionList";
+import { SearchBar } from "@/components/SearchBar";
+import { FilterPanel, type StatusFilter, type DateFilter } from "@/components/FilterPanel";
 import { Mic, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { trpc } from "@/lib/trpc";
+import { applyFilters } from "@/utils/filters";
 
 export default function Dashboard() {
   const { user, isSignedIn, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
+  // Fetch transcriptions
+  const { data: transcriptions = [], isLoading: isLoadingTranscriptions } = trpc.transcriptions.list.useQuery(
+    undefined,
+    {
+      enabled: isSignedIn,
+      refetchInterval: 5000,
+      refetchIntervalInBackground: true,
+    }
+  );
+
+  // Apply filters with useMemo for performance
+  const filteredTranscriptions = useMemo(() => {
+    return applyFilters(
+      transcriptions,
+      searchQuery,
+      statusFilter,
+      dateFilter
+    );
+  }, [transcriptions, searchQuery, statusFilter, dateFilter]);
 
   // Rediriger vers login si non connecté
   useEffect(() => {
@@ -83,8 +113,42 @@ export default function Dashboard() {
           </Button>
         </div>
 
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher une transcription..."
+            />
+            <FilterPanel
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+            />
+          </div>
+
+          {/* Results Counter */}
+          {(searchQuery || statusFilter !== "all" || dateFilter !== "all") && (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-sm">
+                {filteredTranscriptions.length} résultat{filteredTranscriptions.length !== 1 ? "s" : ""}
+              </Badge>
+              {filteredTranscriptions.length === 0 && transcriptions.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Aucune transcription ne correspond aux filtres
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Liste des transcriptions avec polling automatique */}
-        <TranscriptionList />
+        <TranscriptionList 
+          transcriptions={filteredTranscriptions}
+          isLoading={isLoadingTranscriptions}
+        />
       </main>
     </div>
   );

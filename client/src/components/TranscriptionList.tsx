@@ -50,14 +50,29 @@ function formatDate(date: Date | string): string {
   }).format(d);
 }
 
-export function TranscriptionList() {
-  // Polling automatique toutes les 5 secondes
-  const { data: transcriptions, isLoading } = trpc.transcriptions.list.useQuery(undefined, {
-    refetchInterval: 5000, // 5 secondes
+interface TranscriptionListProps {
+  transcriptions?: Array<{
+    id: number;
+    fileName: string;
+    status: "pending" | "processing" | "completed" | "error";
+    duration: number | null;
+    createdAt: Date;
+  }>;
+  isLoading?: boolean;
+}
+
+export function TranscriptionList({ transcriptions, isLoading }: TranscriptionListProps = {}) {
+  // Fallback to fetching if no props provided (backward compatibility)
+  const query = trpc.transcriptions.list.useQuery(undefined, {
+    refetchInterval: 5000,
     refetchIntervalInBackground: true,
+    enabled: transcriptions === undefined,
   });
 
-  if (isLoading) {
+  const data = transcriptions ?? query.data;
+  const loading = isLoading ?? query.isLoading;
+
+  if (loading) {
     return (
       <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
@@ -67,7 +82,7 @@ export function TranscriptionList() {
     );
   }
 
-  if (!transcriptions || transcriptions.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed border-border rounded-xl bg-muted/20">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -109,7 +124,7 @@ export function TranscriptionList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transcriptions.map((transcription) => (
+              {data.map((transcription) => (
             <TableRow key={transcription.id}>
               <TableCell className="font-medium">
                 {transcription.fileName}
