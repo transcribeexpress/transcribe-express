@@ -9,11 +9,11 @@ import App from "./App";
 import "./index.css";
 
 // Clerk Publishable Key
-// La variable NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY est automatiquement exposée par Vite
-const CLERK_PUBLISHABLE_KEY = import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+// La variable VITE_* est automatiquement exposée par Vite
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 if (!CLERK_PUBLISHABLE_KEY) {
-  throw new Error("Missing Clerk Publishable Key. Please set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in your environment variables.");
+  throw new Error("Missing Clerk Publishable Key. Please set VITE_CLERK_PUBLISHABLE_KEY in your environment variables.");
 }
 
 const queryClient = new QueryClient();

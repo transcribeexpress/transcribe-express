@@ -562,3 +562,27 @@
 **Tests :** 98/98 tests passent (100%) - retry (16) + audioValidation (26)
 
 **Performance :** Validation audio < 2s, Retry backoff 1s/2s/4s, Estimation ±20%
+
+
+---
+
+## ✅ Correction Reboot Continu Dashboard/Upload (TERMINÉ)
+
+### Problème : Dashboard et Upload rebootent en boucle, n'affichent pas les données
+
+- [x] Analyser les logs serveur et console pour identifier la cause
+- [x] Identifier la boucle infinie dans Dashboard.tsx ou Upload.tsx
+- [x] Corriger le problème (variable d'environnement Clerk incorrecte)
+- [x] Tester le Dashboard pour vérifier la stabilité
+- [x] Tester l'Upload pour vérifier la stabilité
+- [x] Sauvegarder les corrections
+
+**Cause identifiée :**
+- La variable d'environnement Clerk utilisait `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` au lieu de `VITE_CLERK_PUBLISHABLE_KEY`
+- Clerk ne pouvait pas s'initialiser correctement
+- Les pages redirigaient en boucle vers `/login`
+
+**Correction appliquée :**
+- Modifié `client/src/main.tsx` pour accepter les deux formats de variables (`VITE_` et `NEXT_PUBLIC_`)
+- Le serveur a redémarré automatiquement avec la correction
+- L'authentification Clerk fonctionne maintenant correctement
