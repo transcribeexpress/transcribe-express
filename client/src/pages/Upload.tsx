@@ -11,7 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { UserMenu } from "@/components/UserMenu";
 import { UploadZone } from "@/components/UploadZone";
 import { UploadProgress } from "@/components/UploadProgress";
+import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
+import { validateAudioFile } from "@/utils/audioValidation";
 import { Mic, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // Toast sera ajouté plus tard
@@ -24,16 +26,37 @@ export default function Upload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number | undefined>(undefined);
+  const [transcriptionId, setTranscriptionId] = useState<number | null>(null);
+  
+  // Polling pour suivre l'état de la transcription
+  const { data: transcription } = trpc.transcriptions.getById.useQuery(
+    { id: transcriptionId! },
+    { 
+      enabled: transcriptionId !== null,
+      refetchInterval: 2000, // Polling toutes les 2 secondes
+    }
+  );
+  
+  // Calculer la progression et l'estimation de temps
+  const currentStep = transcription?.status === 'completed' ? 'completed' 
+    : transcription?.status === 'processing' ? 'transcription'
+    : transcription?.status === 'pending' ? 'processing'
+    : 'upload';
+  
+  const { progress: transcriptionProgress, estimatedTimeSeconds } = useTranscriptionProgress(
+    currentStep,
+    audioDuration
+  );
 
   const createTranscriptionMutation = trpc.transcriptions.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Success notification
       console.log("Upload réussi ! La transcription va démarrer automatiquement.");
       
-      // Rediriger vers le dashboard après 2 secondes
-      setTimeout(() => {
-        setLocation("/dashboard");
-      }, 2000);
+      // Stocker l'ID de la transcription pour le polling
+      setTranscriptionId(data.id);
     },
     onError: (error) => {
       // Error notification
@@ -51,6 +74,22 @@ export default function Upload() {
   }, [isSignedIn, isLoading, setLocation]);
 
   const handleFileSelect = async (file: File) => {
+    setValidationError(null);
+    
+    // Valider le fichier (format, taille, durée)
+    const validation = await validateAudioFile(file, true);
+    
+    if (!validation.valid) {
+      setValidationError(validation.error || 'Fichier invalide');
+      setSelectedFile(null);
+      return;
+    }
+    
+    // Stocker la durée pour l'estimation de temps
+    if (validation.duration) {
+      setAudioDuration(validation.duration);
+    }
+    
     setSelectedFile(file);
   };
 
@@ -176,20 +215,58 @@ export default function Upload() {
         )}
 
         {/* Upload Progress */}
-        {isUploading && selectedFile && (
+        {isUploading && !transcriptionId && selectedFile && (
           <UploadProgress
             progress={uploadProgress}
             fileName={selectedFile.name}
           />
         )}
+        
+        {/* Transcription Progress */}
+        {transcriptionId && transcription && (
+          <div className="space-y-6">
+            <div className="p-6 rounded-lg bg-card border border-border">
+              <h3 className="font-medium mb-4">Transcription en cours</h3>
+              <TranscriptionProgress
+                currentStep={currentStep}
+                progress={transcriptionProgress}
+                estimatedTimeSeconds={estimatedTimeSeconds}
+                error={transcription.errorMessage || undefined}
+              />
+            </div>
+            
+            {transcription.status === 'completed' && (
+              <div className="flex justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => setLocation(`/results/${transcriptionId}`)}
+                  className="min-w-[200px]"
+                >
+                  Voir les résultats
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
+        {/* Validation Error */}
+        {validationError && (
+          <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-destructive font-medium">
+              ⚠️ {validationError}
+            </p>
+          </div>
+        )}
+        
         {/* Info */}
-        <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
-          <h3 className="font-medium mb-2">Formats acceptés</h3>
-          <p className="text-sm text-muted-foreground">
-            MP3, WAV, M4A, OGG, MP4, WEBM • Taille maximale : 16MB
-          </p>
-        </div>
+        {!transcriptionId && (
+          <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
+            <h3 className="font-medium mb-2">Formats acceptés</h3>
+            <p className="text-sm text-muted-foreground">
+              MP3, WAV, M4A, OGG, MP4, WEBM • Taille maximale : 16MB • Durée maximale : 60 min
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

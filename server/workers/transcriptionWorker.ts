@@ -1,5 +1,6 @@
 import { getTranscriptionById, updateTranscriptionStatus } from '../db';
 import { transcribeAudio } from '../_core/voiceTranscription';
+import { retryWithBackoff, isRetryableError } from '../utils/retry';
 
 /**
  * Déclencher le worker de transcription de manière asynchrone
@@ -33,12 +34,35 @@ async function processTranscription(transcriptionId: number) {
     await updateTranscriptionStatus(transcriptionId, 'processing');
     console.log(`[Worker] Transcription ${transcriptionId} status: processing`);
 
-    // 3. Appeler Groq API (Whisper Large v3-turbo)
-    const result = await transcribeAudio({
-      audioUrl: transcription.fileUrl,
-      language: 'fr', // Français par défaut
-      prompt: 'Transcription audio/vidéo en français', // Contexte pour améliorer la précision
-    });
+    // 3. Appeler Groq API (Whisper Large v3-turbo) avec retry automatique
+    console.log(`[Worker] Calling Groq API for transcription ${transcriptionId}`);
+    
+    const retryResult = await retryWithBackoff(
+      async () => {
+        return await transcribeAudio({
+          audioUrl: transcription.fileUrl,
+          language: 'fr', // Français par défaut
+          prompt: 'Transcription audio/vidéo en français', // Contexte pour améliorer la précision
+        });
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 1000,
+        backoffMultiplier: 2,
+        onRetry: (attempt, error) => {
+          console.log(
+            `[Worker] Retry attempt ${attempt}/3 for transcription ${transcriptionId}. Error: ${error.message}`
+          );
+        },
+      }
+    );
+    
+    // Vérifier si le retry a échoué
+    if (!retryResult.success) {
+      throw retryResult.error || new Error('Transcription failed after 3 attempts');
+    }
+    
+    const result = retryResult.result!;
 
     // Vérifier si c'est une erreur
     if ('error' in result) {
@@ -59,10 +83,16 @@ async function processTranscription(transcriptionId: number) {
     console.error(`[Worker] Failed to process transcription ${transcriptionId}:`, error);
 
     // 5. Gérer les erreurs
+    const isRetryable = error instanceof Error && isRetryableError(error);
     const errorMessage = error.message || 'Erreur inconnue lors de la transcription';
+    const detailedError = isRetryable 
+      ? `${errorMessage} (erreur temporaire, réessayez plus tard)`
+      : errorMessage;
+    
+    console.log(`[Worker] Error is ${isRetryable ? 'retryable' : 'not retryable'}`);
     
     await updateTranscriptionStatus(transcriptionId, 'error', {
-      errorMessage,
+      errorMessage: detailedError,
     });
 
     console.log(`[Worker] Transcription ${transcriptionId} marked as error`);
