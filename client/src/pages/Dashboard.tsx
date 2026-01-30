@@ -8,8 +8,8 @@
  * sera implémenté au Jour 12.
  */
 
-import { useEffect, useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { UserMenu } from "@/components/UserMenu";
 import { TranscriptionList } from "@/components/TranscriptionList";
@@ -20,15 +20,37 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { applyFilters } from "@/utils/filters";
+import { Pagination } from "@/components/Pagination";
+import { SortControls, sortTranscriptions, type SortState, type SortField } from "@/components/SortControls";
+import { paginateItems } from "@/utils/pagination";
 
 export default function Dashboard() {
   const { user, isSignedIn, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Get URL search params
+  const searchParams = useSearch();
+  const urlParams = new URLSearchParams(searchParams);
+  
+  // Parse URL params for initial state
+  const initialPage = parseInt(urlParams.get("page") || "1", 10);
+  const initialSortField = (urlParams.get("sort") as SortField) || "createdAt";
+  const initialSortOrder = (urlParams.get("order") as "asc" | "desc") || "desc";
+  
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const itemsPerPage = 20;
+  
+  // Sort state
+  const [sortState, setSortState] = useState<SortState>({
+    field: initialSortField,
+    order: initialSortOrder,
+  });
 
   // Fetch transcriptions
   const { data: transcriptions = [], isLoading: isLoadingTranscriptions } = trpc.transcriptions.list.useQuery(
@@ -40,15 +62,53 @@ export default function Dashboard() {
     }
   );
 
-  // Apply filters with useMemo for performance
-  const filteredTranscriptions = useMemo(() => {
-    return applyFilters(
+  // Apply filters and sort with useMemo for performance
+  const filteredAndSortedTranscriptions = useMemo(() => {
+    const filtered = applyFilters(
       transcriptions,
       searchQuery,
       statusFilter,
       dateFilter
     );
-  }, [transcriptions, searchQuery, statusFilter, dateFilter]);
+    return sortTranscriptions(filtered, sortState);
+  }, [transcriptions, searchQuery, statusFilter, dateFilter, sortState]);
+  
+  // Apply pagination
+  const paginatedResult = useMemo(() => {
+    return paginateItems(filteredAndSortedTranscriptions, currentPage, itemsPerPage);
+  }, [filteredAndSortedTranscriptions, currentPage]);
+  
+  // Update URL when pagination or sort changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    if (sortState.field !== "createdAt") params.set("sort", sortState.field);
+    if (sortState.order !== "desc") params.set("order", sortState.order);
+    
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `?${newSearch}` : window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+  }, [currentPage, sortState]);
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, dateFilter]);
+  
+  // Handle sort change
+  const handleSortChange = useCallback((field: SortField) => {
+    setSortState((prev) => ({
+      field,
+      order: prev.field === field && prev.order === "asc" ? "desc" : "asc",
+    }));
+  }, []);
+  
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   // Rediriger vers login si non connecté
   useEffect(() => {
@@ -133,9 +193,9 @@ export default function Dashboard() {
           {(searchQuery || statusFilter !== "all" || dateFilter !== "all") && (
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-sm">
-                {filteredTranscriptions.length} résultat{filteredTranscriptions.length !== 1 ? "s" : ""}
+                {paginatedResult.totalItems} résultat{paginatedResult.totalItems !== 1 ? "s" : ""}
               </Badge>
-              {filteredTranscriptions.length === 0 && transcriptions.length > 0 && (
+              {paginatedResult.totalItems === 0 && transcriptions.length > 0 && (
                 <span className="text-sm text-muted-foreground">
                   Aucune transcription ne correspond aux filtres
                 </span>
@@ -144,11 +204,51 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Sort Controls */}
+        <div className="mb-4 flex items-center gap-4 px-4 py-2 bg-muted/30 rounded-lg">
+          <span className="text-sm text-muted-foreground">Trier par :</span>
+          <SortControls
+            field="createdAt"
+            label="Date"
+            currentSort={sortState}
+            onSortChange={handleSortChange}
+          />
+          <SortControls
+            field="fileName"
+            label="Nom"
+            currentSort={sortState}
+            onSortChange={handleSortChange}
+          />
+          <SortControls
+            field="duration"
+            label="Durée"
+            currentSort={sortState}
+            onSortChange={handleSortChange}
+          />
+          <SortControls
+            field="status"
+            label="Statut"
+            currentSort={sortState}
+            onSortChange={handleSortChange}
+          />
+        </div>
+        
         {/* Liste des transcriptions avec polling automatique */}
         <TranscriptionList 
-          transcriptions={filteredTranscriptions}
+          transcriptions={paginatedResult.items}
           isLoading={isLoadingTranscriptions}
         />
+        
+        {/* Pagination */}
+        {paginatedResult.totalPages > 1 && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={paginatedResult.currentPage}
+              totalPages={paginatedResult.totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

@@ -437,3 +437,65 @@
 - server/transcriptions.delete.test.ts
 - server/transcriptions.getById.test.ts
 - server/transcriptions.list.test.ts
+
+
+---
+
+## ✅ Jour 16 - Pagination et Tri (TERMINÉ)
+
+### Objectif : Implémenter la pagination (20/page) et le tri des transcriptions
+
+### Tâche 1 : Créer le composant Pagination
+- [x] Créer client/src/components/Pagination.tsx
+- [x] Navigation < 1 2 3 ... N >
+- [x] Gestion des ellipses pour grandes listes
+- [x] Accessibilité clavier (Tab, Enter, Arrow keys)
+
+### Tâche 2 : Créer le composant SortControls
+- [x] Créer client/src/components/SortControls.tsx
+- [x] Icônes de tri (↑ ↓) dans les en-têtes
+- [x] Tri par : date, nom, durée, statut
+- [x] Ordre croissant/décroissant
+
+### Tâche 3 : Implémenter la logique de pagination
+- [x] Ajouter state pagination dans Dashboard.tsx
+- [x] Limite 20 transcriptions par page
+- [x] Calcul du nombre total de pages
+- [x] Navigation entre les pages
+
+### Tâche 4 : Implémenter la logique de tri
+- [x] Ajouter state tri (field + order) dans Dashboard.tsx
+- [x] Fonction de tri stable (ordre prévisible)
+- [x] Intégration avec les filtres existants
+
+### Tâche 5 : Persistance dans l'URL
+- [x] Utiliser query params (?page=2&sort=createdAt&order=desc)
+- [x] Synchroniser state avec URL
+- [x] URL bookmarkable
+
+### Tâche 6 : Optimisation et tests
+- [x] Optimiser avec React.memo
+- [x] Créer client/src/utils/pagination.test.ts
+- [x] Créer client/src/utils/sorting.test.ts
+- [x] Tests manuels dans le navigateur
+- [x] Créer JOUR_16_DECISIONS.md
+- [x] Créer JOUR_16_SPECIFICATIONS.md
+- [x] Créer un checkpoint Manus
+
+**Livrable attendu :** ✅ Dashboard avec pagination (20/page) et tri dynamique
+
+**Fichiers créés :**
+- client/src/components/Pagination.tsx (140 lignes)
+- client/src/components/SortControls.tsx (100 lignes)
+- client/src/utils/pagination.ts (50 lignes)
+- client/src/utils/pagination.test.ts (120 lignes)
+- client/src/utils/sorting.test.ts (150 lignes)
+- JOUR_16_DECISIONS.md (355 lignes)
+- JOUR_16_SPECIFICATIONS.md (450 lignes)
+
+**Modifications :**
+- client/src/pages/Dashboard.tsx (+80 lignes - intégration pagination + tri + persistance URL)
+
+**Tests :** 28/28 tests passent (100%) - pagination (16) + sorting (12)
+
+**Performance :** < 50ms pour filtrage + tri + pagination de 1000 transcriptions
