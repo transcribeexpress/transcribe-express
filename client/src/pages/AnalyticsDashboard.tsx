@@ -16,6 +16,10 @@ import {
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
 import { Download, TrendingUp, Clock, CheckCircle, BarChart3 } from "lucide-react";
+import { motion } from "framer-motion";
+import { AnalyticsSkeleton } from "@/components/AnalyticsSkeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { useLocation } from "wouter";
 
 // Register Chart.js components
 ChartJS.register(
@@ -107,29 +111,39 @@ export function AnalyticsDashboard() {
   }, [stats]);
 
   if (isLoading) {
-    return (
-      <div className="container py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Chargement des statistiques...</div>
-        </div>
-      </div>
-    );
+    return <AnalyticsSkeleton />;
   }
 
-  if (!stats) {
+  const [, setLocation] = useLocation();
+
+  if (!stats || stats.total === 0) {
     return (
       <div className="container py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Aucune donnée disponible</div>
-        </div>
+        <EmptyState
+          icon={BarChart3}
+          title="Aucune donnée disponible"
+          description="Vous n'avez pas encore de transcriptions. Commencez par uploader un fichier pour voir vos statistiques apparaître ici."
+          actionLabel="Commencer"
+          onAction={() => setLocation("/upload")}
+        />
       </div>
     );
   }
 
   return (
-    <div className="container py-8 space-y-8">
+    <motion.div 
+      className="container py-8 space-y-8"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div 
+        className="flex items-center justify-between"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#E935C1] to-[#06B6D4] bg-clip-text text-transparent">
             Analytics
@@ -142,7 +156,7 @@ export function AnalyticsDashboard() {
           <Download className="w-4 h-4 mr-2" />
           Exporter CSV
         </Button>
-      </div>
+      </motion.div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -257,6 +271,6 @@ export function AnalyticsDashboard() {
           )}
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 }

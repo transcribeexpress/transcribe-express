@@ -16,7 +16,9 @@ import { trpc } from "@/lib/trpc";
 import { validateAudioFile } from "@/utils/audioValidation";
 import { Mic, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// Toast sera ajouté plus tard
+import { motion } from "framer-motion";
+import { UploadSkeleton } from "@/components/UploadSkeleton";
+import { toast } from "@/components/Toast";
 
 export default function Upload() {
   const { isSignedIn, isLoading } = useAuth();
@@ -52,15 +54,17 @@ export default function Upload() {
 
   const createTranscriptionMutation = trpc.transcriptions.create.useMutation({
     onSuccess: (data) => {
-      // Success notification
-      console.log("Upload réussi ! La transcription va démarrer automatiquement.");
+      toast.success("Upload réussi !", {
+        description: "La transcription va démarrer automatiquement.",
+      });
       
       // Stocker l'ID de la transcription pour le polling
       setTranscriptionId(data.id);
     },
     onError: (error) => {
-      // Error notification
-      console.error("Erreur d'upload:", error.message);
+      toast.error("Erreur d'upload", {
+        description: error.message,
+      });
       setIsUploading(false);
       setUploadProgress(0);
     },
@@ -80,7 +84,11 @@ export default function Upload() {
     const validation = await validateAudioFile(file, true);
     
     if (!validation.valid) {
-      setValidationError(validation.error || 'Fichier invalide');
+      const errorMsg = validation.error || 'Fichier invalide';
+      setValidationError(errorMsg);
+      toast.error("Fichier invalide", {
+        description: errorMsg,
+      });
       setSelectedFile(null);
       return;
     }
@@ -137,14 +145,7 @@ export default function Upload() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20" />
-          <div className="h-4 w-32 bg-muted rounded" />
-        </div>
-      </div>
-    );
+    return <UploadSkeleton />;
   }
 
   if (!isSignedIn) {
@@ -170,7 +171,12 @@ export default function Upload() {
       </header>
 
       {/* Main Content */}
-      <main className="container py-8 max-w-4xl">
+      <motion.main 
+        className="container py-8 max-w-4xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -182,14 +188,19 @@ export default function Upload() {
         </Button>
 
         {/* Page Title */}
-        <div className="mb-8">
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <h1 className="text-3xl font-bold tracking-tight">
             Nouvelle Transcription
           </h1>
           <p className="text-muted-foreground mt-1">
             Uploadez un fichier audio ou vidéo pour le transcrire automatiquement
           </p>
-        </div>
+        </motion.div>
 
         {/* Upload Zone */}
         {!isUploading && (
@@ -267,7 +278,7 @@ export default function Upload() {
             </p>
           </div>
         )}
-      </main>
+      </motion.main>
     </div>
   );
 }

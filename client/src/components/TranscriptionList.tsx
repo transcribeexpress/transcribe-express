@@ -24,6 +24,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { Mic, Upload } from "lucide-react";
+import { useLocation } from "wouter";
 
 /**
  * Formater la durée en secondes vers format MM:SS
@@ -82,31 +85,18 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
     );
   }
 
+  const [, setLocation] = useLocation();
+
   if (!data || data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed border-border rounded-xl bg-muted/20">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-8 h-8 text-primary/60"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-            />
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-foreground mb-2">
-          Aucune transcription
-        </h3>
-        <p className="text-muted-foreground text-center max-w-md">
-          Vous n'avez pas encore de transcription. Commencez par uploader un fichier audio ou vidéo.
-        </p>
+      <div className="border-2 border-dashed border-border rounded-xl bg-muted/20">
+        <EmptyState
+          icon={Mic}
+          title="Aucune transcription"
+          description="Vous n'avez pas encore de transcription. Commencez par uploader un fichier audio ou vidéo pour le transcrire automatiquement."
+          actionLabel="Uploader un fichier"
+          onAction={() => setLocation("/upload")}
+        />
       </div>
     );
   }

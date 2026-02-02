@@ -16,6 +16,9 @@ import {
 import { ArrowLeft, Download, Copy, Trash2, FileText, Clock, Calendar, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { generateTXT, generateSRT, generateVTT, downloadFile, getFileNameWithoutExtension } from "@/lib/exportFormats";
+import { motion } from "framer-motion";
+import { ResultsSkeleton } from "@/components/ResultsSkeleton";
+import { toast } from "@/components/Toast";
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
@@ -26,12 +29,16 @@ export default function Results() {
   // Mutation pour supprimer une transcription
   const deleteMutation = trpc.transcriptions.delete.useMutation({
     onSuccess: () => {
+      toast.success("Transcription supprimée", {
+        description: "La transcription a été supprimée avec succès.",
+      });
       // Rediriger vers le dashboard après suppression
       setLocation("/dashboard");
     },
     onError: (error) => {
-      console.error("Failed to delete transcription:", error);
-      alert("Erreur lors de la suppression de la transcription");
+      toast.error("Erreur de suppression", {
+        description: error.message,
+      });
     },
   });
 
@@ -55,6 +62,9 @@ export default function Results() {
     const content = generateTXT(transcription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.txt`;
     downloadFile(content, fileName, "text/plain");
+    toast.success("Export TXT réussi", {
+      description: `Fichier ${fileName} téléchargé.`,
+    });
   };
 
   const handleExportSRT = () => {
@@ -62,6 +72,9 @@ export default function Results() {
     const content = generateSRT(transcription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.srt`;
     downloadFile(content, fileName, "text/plain");
+    toast.success("Export SRT réussi", {
+      description: `Fichier ${fileName} téléchargé.`,
+    });
   };
 
   const handleExportVTT = () => {
@@ -69,6 +82,9 @@ export default function Results() {
     const content = generateVTT(transcription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.vtt`;
     downloadFile(content, fileName, "text/vtt");
+    toast.success("Export VTT réussi", {
+      description: `Fichier ${fileName} téléchargé.`,
+    });
   };
 
   // Fonction pour copier le texte dans le presse-papiers
@@ -79,8 +95,13 @@ export default function Results() {
       await navigator.clipboard.writeText(transcription.transcriptText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success("Texte copié", {
+        description: "Le texte a été copié dans le presse-papiers.",
+      });
     } catch (err) {
-      console.error("Erreur lors de la copie:", err);
+      toast.error("Erreur de copie", {
+        description: "Impossible de copier le texte.",
+      });
     }
   };
 
@@ -105,14 +126,7 @@ export default function Results() {
 
   // États de chargement et d'erreur
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-[#BE34D5] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Chargement de la transcription...</p>
-        </div>
-      </div>
-    );
+    return <ResultsSkeleton />;
   }
 
   if (error || !transcription) {
@@ -135,7 +149,12 @@ export default function Results() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div 
+      className="min-h-screen bg-background"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container py-4">
@@ -365,6 +384,6 @@ export default function Results() {
           </Card>
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }

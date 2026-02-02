@@ -23,6 +23,8 @@ import { applyFilters } from "@/utils/filters";
 import { Pagination } from "@/components/Pagination";
 import { SortControls, sortTranscriptions, type SortState, type SortField } from "@/components/SortControls";
 import { paginateItems } from "@/utils/pagination";
+import { motion, AnimatePresence } from "framer-motion";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 
 export default function Dashboard() {
   const { user, isSignedIn, isLoading } = useAuth();
@@ -118,14 +120,7 @@ export default function Dashboard() {
   }, [isSignedIn, isLoading, setLocation]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20" />
-          <div className="h-4 w-32 bg-muted rounded" />
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!isSignedIn) {
@@ -151,9 +146,19 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container py-8">
+      <motion.main 
+        className="container py-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Page Title */}
-        <div className="flex items-center justify-between mb-8">
+        <motion.div 
+          className="flex items-center justify-between mb-8"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               Mes Transcriptions
@@ -171,7 +176,7 @@ export default function Dashboard() {
             <Plus className="w-5 h-5" />
             Nouvelle transcription
           </Button>
-        </div>
+        </motion.div>
 
         {/* Search and Filters */}
         <div className="mb-6 space-y-4">
@@ -249,7 +254,7 @@ export default function Dashboard() {
             />
           </div>
         )}
-      </main>
+      </motion.main>
     </div>
   );
 }

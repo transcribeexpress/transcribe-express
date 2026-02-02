@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import "./index.css";
+import { Toaster } from "@/components/Toast";
 
 // Clerk Publishable Key
 // La variable VITE_* est automatiquement exposée par Vite
@@ -66,6 +67,7 @@ createRoot(document.getElementById("root")!).render(
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <App />
+        <Toaster />
       </QueryClientProvider>
     </trpc.Provider>
   </ClerkProvider>
