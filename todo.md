@@ -586,3 +586,42 @@
 - Modifié `client/src/main.tsx` pour accepter les deux formats de variables (`VITE_` et `NEXT_PUBLIC_`)
 - Le serveur a redémarré automatiquement avec la correction
 - L'authentification Clerk fonctionne maintenant correctement
+
+
+---
+
+## 📊 Jour 18 - Analytics et Statistiques (EN COURS)
+
+### Objectif : Créer le dashboard analytics avec KPIs et graphiques
+
+### Tâche 1 : Créer la page AnalyticsDashboard
+- [ ] Créer client/src/pages/AnalyticsDashboard.tsx
+- [ ] 4 KPI cards : Total, Durée totale, Temps moyen, Taux de succès
+- [ ] Layout responsive avec grid
+
+### Tâche 2 : Ajouter les graphiques
+- [ ] Installer Chart.js ou Recharts
+- [ ] Graphique en ligne : Transcriptions par jour (7 derniers jours)
+- [ ] Graphique en donut : Répartition par statut
+- [ ] Styling cohérent avec palette Magenta/Cyan
+
+### Tâche 3 : Créer la procédure tRPC transcriptions.stats
+- [ ] Créer server/routers/transcriptions.stats.ts
+- [ ] Calcul des KPIs (total, durée cumulée, temps moyen, taux succès)
+- [ ] Agrégation par jour pour le graphique en ligne
+- [ ] Agrégation par statut pour le donut
+
+### Tâche 4 : Implémenter l'export CSV
+- [ ] Bouton "Exporter CSV" en haut à droite
+- [ ] Fonction exportToCSV() côté client
+- [ ] Format CSV : Date, Nom, Statut, Durée, Créé le
+
+### Tâche 5 : Tests et documentation
+- [ ] Créer server/transcriptions.stats.test.ts
+- [ ] Tester les calculs de statistiques
+- [ ] Tester l'export CSV
+- [ ] Créer JOUR_18_DECISIONS.md
+- [ ] Créer JOUR_18_SPECIFICATIONS.md
+- [ ] Créer un checkpoint Manus
+
+**Livrable attendu :** Page analytics avec KPIs, graphiques et export CSV

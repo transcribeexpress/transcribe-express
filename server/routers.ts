@@ -126,6 +126,53 @@ export const appRouter = router({
         
         return { success: true };
       }),
+
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      const transcriptions = await getUserTranscriptions(ctx.user.openId);
+
+      // KPIs
+      const total = transcriptions.length;
+      const completedTranscriptions = transcriptions.filter(t => t.status === "completed");
+      const totalDuration = completedTranscriptions.reduce((sum, t) => sum + (t.duration || 0), 0);
+      const avgDuration = total > 0 ? totalDuration / total : 0;
+      const successRate = total > 0 ? (completedTranscriptions.length / total) * 100 : 0;
+
+      // Transcriptions par jour (7 derniers jours)
+      const today = new Date();
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (6 - i));
+        return date.toISOString().split('T')[0];
+      });
+
+      const transcriptionsByDay = last7Days.map(date => {
+        const count = transcriptions.filter(t => {
+          const tDate = new Date(t.createdAt).toISOString().split('T')[0];
+          return tDate === date;
+        }).length;
+        return { date, count };
+      });
+
+      // Répartition par statut
+      const statusCounts = transcriptions.reduce((acc, t) => {
+        acc[t.status] = (acc[t.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const transcriptionsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
+        status,
+        count,
+      }));
+
+      return {
+        total,
+        totalDuration,
+        avgDuration,
+        successRate,
+        transcriptionsByDay,
+        transcriptionsByStatus,
+      };
+    }),
   }),
 });
 
