@@ -22,5 +22,30 @@ export default defineConfig({
       },
     },
     globals: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      include: [
+        "server/**/*.ts",
+        "client/src/**/*.ts",
+        "client/src/**/*.tsx"
+      ],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/node_modules/**",
+        "**/dist/**",
+        "server/_core/**",
+        "**/*.d.ts"
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80
+      }
+    },
   },
 });

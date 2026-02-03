@@ -42,10 +42,10 @@
 - [x] Jour 17: Optimisation flux transcription (retry, validation)
 - [x] Jour 18: Analytics et statistiques (KPIs, graphiques, export CSV)
 - [x] Jour 19: Amélioration UX et Animations
-- [ ] Jour 20: Optimisation performance et cache
+- [x] Jour 20: Tests et Corrections de Bugs
 - [ ] Jour 21: Tests Sprint 2 et revue
 
-**Statut:** 🚧 En cours (5/7 tâches - 71%)
+**Statut:** 🚧 En cours (6/7 tâches - 86%)
 
 ---
 
@@ -74,12 +74,12 @@
 
 ## Progression Globale
 
-**Total:** 32/50 tâches complétées (64%)
+**Total:** 33/50 tâches complétées (66%)
 
 **Par phase:**
 - ✅ Semaine 1 (Fondation): 15/15 (100%)
 - ✅ Semaine 2 (Sprint 1): 12/12 (100%)
-- 🚧 Semaine 3 (Sprint 2): 5/7 (71%)
+- 🚧 Semaine 3 (Sprint 2): 6/7 (86%)
 - ⏳ Semaine 4 (Sprint 3): 0/7 (0%)
 - ⏳ Finalisation: 0/2 (0%)
 
@@ -112,7 +112,8 @@
 - ✅ Checkpoint 4: Pagination et tri (Jour 16)
 - ✅ Checkpoint 5: Optimisation transcription (Jour 17) - **5b572218**
 - ✅ Checkpoint 6: Analytics (Jour 18) - **bf00ecaa**
-- 🔄 Checkpoint 7: Amélioration UX (Jour 19) - **En cours**
+- ✅ Checkpoint 7: Amélioration UX (Jour 19) - **86d9a24b**
+- 🔄 Checkpoint 8: Tests et Corrections (Jour 20) - **En cours**
 
 ---
 
@@ -162,3 +163,42 @@
 - [x] Créer des empty states avec illustrations SVG
 - [x] Optimiser les animations pour les performances
 - [x] Créer les tests Vitest pour les animations et interactions
+
+
+## Jour 20: Tests et Corrections de Bugs (En cours)
+
+### Phase 1: Analyse de la couverture de code
+- [ ] Exécuter les tests avec coverage report
+- [ ] Identifier les fichiers avec couverture < 80%
+- [ ] Lister les fonctions non testées
+
+### Phase 2: Correction des bugs connus
+- [ ] Bug 1: Tests Vitest avec timing MySQL (délais insuffisants)
+- [ ] Bug 2: Erreur WebSocket Vite HMR (configuration manquante)
+- [ ] Bug 3: Polling dashboard continue après déconnexion
+- [ ] Bug 4: Upload de fichiers > 16MB échoue sans message clair
+
+### Phase 3: Ajout de tests manquants
+- [ ] Tests de retry automatique (transcription)
+- [ ] Tests de validation upload (edge cases)
+- [ ] Tests d'intégration S3
+- [ ] Tests de gestion d'erreurs
+- [ ] Tests de performance (temps de réponse)
+
+### Phase 4: Tests manuels des flux critiques
+- [ ] Flux complet: Inscription → Upload → Transcription → Export
+- [ ] Flux de recherche et filtres
+- [ ] Flux de pagination et tri
+- [ ] Flux de suppression et confirmation
+- [ ] Flux d'erreurs et retry
+
+### Phase 5: Documentation
+- [ ] Créer BUGS.md avec tous les bugs identifiés et corrigés
+- [ ] Documenter les tests de régression
+- [ ] Mettre à jour la documentation des tests
+
+### Phase 6: Validation finale
+- [ ] Vérifier que tous les tests passent (100%)
+- [ ] Vérifier la couverture de code (>80%)
+- [ ] Créer le rapport JOUR_20_VALIDATION.md
+- [ ] Créer le checkpoint GitHub
