@@ -2,15 +2,14 @@
  * Page Dashboard - Tableau de bord principal
  * 
  * Page protégée accessible uniquement aux utilisateurs connectés.
- * Affiche le header avec logo et UserMenu.
- * 
- * Note : Le contenu complet du dashboard (TranscriptionList, etc.)
- * sera implémenté au Jour 12.
+ * Utilise useClerkSync pour synchroniser la session Clerk → Manus OAuth
+ * avant de lancer les requêtes tRPC protégées.
  */
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useClerkSync } from "@/hooks/useClerkSync";
 import { UserMenu } from "@/components/UserMenu";
 import { TranscriptionList } from "@/components/TranscriptionList";
 import { SearchBar } from "@/components/SearchBar";
@@ -23,11 +22,12 @@ import { applyFilters } from "@/utils/filters";
 import { Pagination } from "@/components/Pagination";
 import { SortControls, sortTranscriptions, type SortState, type SortField } from "@/components/SortControls";
 import { paginateItems } from "@/utils/pagination";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 
 export default function Dashboard() {
   const { user, isSignedIn, isLoading } = useAuth();
+  const { isSessionReady, isSyncing, error: syncError } = useClerkSync();
   const [, setLocation] = useLocation();
 
   // Get URL search params
@@ -54,12 +54,12 @@ export default function Dashboard() {
     order: initialSortOrder,
   });
 
-  // Fetch transcriptions
+  // Fetch transcriptions - SEULEMENT quand la session Manus est prête
   const { data: transcriptions = [], isLoading: isLoadingTranscriptions } = trpc.transcriptions.list.useQuery(
     undefined,
     {
-      enabled: isSignedIn,
-      refetchInterval: 5000,
+      enabled: isSignedIn && isSessionReady, // Attendre que la session soit synchronisée
+      refetchInterval: isSessionReady ? 5000 : false, // Polling seulement si session prête
       refetchIntervalInBackground: true,
     }
   );
@@ -112,19 +112,41 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // Rediriger vers login si non connecté
-  useEffect(() => {
-    if (!isLoading && !isSignedIn) {
-      setLocation("/login");
-    }
-  }, [isSignedIn, isLoading, setLocation]);
-
-  if (isLoading) {
+  // État de chargement : Clerk charge OU session en cours de sync
+  if (isLoading || isSyncing) {
     return <DashboardSkeleton />;
   }
 
+  // Utilisateur non connecté : afficher un message au lieu de rediriger
   if (!isSignedIn) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mic className="w-12 h-12 text-primary mx-auto" />
+          <h2 className="text-xl font-semibold">Connexion requise</h2>
+          <p className="text-muted-foreground">Veuillez vous connecter pour accéder au dashboard.</p>
+          <Button onClick={() => setLocation("/login")}>
+            Se connecter
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Erreur de synchronisation
+  if (syncError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mic className="w-12 h-12 text-destructive mx-auto" />
+          <h2 className="text-xl font-semibold">Erreur de connexion</h2>
+          <p className="text-muted-foreground">Impossible de synchroniser votre session. Veuillez réessayer.</p>
+          <Button onClick={() => window.location.reload()}>
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

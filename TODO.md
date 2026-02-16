@@ -202,3 +202,14 @@
 - [ ] Vérifier la couverture de code (>80%)
 - [ ] Créer le rapport JOUR_20_VALIDATION.md
 - [ ] Créer le checkpoint GitHub
+
+
+## Bug Critique - Reboot Dashboard (Session 16 Fév 2026)
+
+- [x] CRITIQUE: Dashboard reboot en boucle - CORRIGÉ (useLocation() après return conditionnel dans TranscriptionList.tsx)
+- [x] CRITIQUE: Page Upload reboot - CORRIGÉ (suppression useEffect redirection)
+- [x] Audit global du flux d'authentification (10 fichiers audités)
+- [x] Identifier toutes les sources de redirection/reboot (3 sources trouvées)
+- [x] Corriger de manière cohérente sur tous les fichiers (8 fichiers modifiés)
+- [x] Création pont ClerkSync (Clerk → Manus OAuth)
+- [ ] Valider la stabilité avec tests manuels utilisateur

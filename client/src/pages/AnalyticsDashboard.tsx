@@ -20,6 +20,7 @@ import { motion } from "framer-motion";
 import { AnalyticsSkeleton } from "@/components/AnalyticsSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocation } from "wouter";
+import { useClerkSync } from "@/hooks/useClerkSync";
 
 // Register Chart.js components
 ChartJS.register(
@@ -35,7 +36,16 @@ ChartJS.register(
 );
 
 export function AnalyticsDashboard() {
-  const { data: stats, isLoading } = trpc.transcriptions.stats.useQuery();
+  const { isSessionReady, isSyncing } = useClerkSync();
+  const { data: stats, isLoading } = trpc.transcriptions.stats.useQuery(
+    undefined,
+    { enabled: isSessionReady }
+  );
+
+  // Afficher skeleton pendant la synchronisation
+  if (isSyncing) {
+    return <AnalyticsSkeleton />;
+  }
 
   // Export to CSV
   const exportToCSV = () => {

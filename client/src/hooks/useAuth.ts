@@ -4,11 +4,7 @@
  * Ce hook expose une interface simplifiée pour gérer l'authentification
  * utilisateur dans Transcribe Express.
  * 
- * @returns {Object} Objet contenant :
- *   - user: L'utilisateur connecté ou null
- *   - isLoading: État de chargement de l'authentification
- *   - isSignedIn: Booléen indiquant si l'utilisateur est connecté
- *   - signOut: Fonction pour déconnecter l'utilisateur
+ * La déconnexion nettoie à la fois la session Clerk ET le cookie Manus OAuth.
  */
 
 import { useUser, useClerk } from "@clerk/clerk-react";
@@ -43,8 +39,24 @@ export function useAuth() {
     isLoading: !isLoaded,
     isSignedIn: isSignedIn ?? false,
     signOut: async () => {
-      await signOut();
-      window.location.href = "/login";
+      try {
+        // 1. Nettoyer le cookie Manus OAuth
+        await fetch("/api/clerk/logout", {
+          method: "POST",
+          credentials: "include",
+        }).catch(() => {
+          // Ignorer les erreurs de nettoyage du cookie
+          console.warn("[Auth] Failed to clear Manus session cookie");
+        });
+
+        // 2. Déconnecter Clerk
+        await signOut();
+      } catch (error) {
+        console.error("[Auth] Sign out error:", error);
+      } finally {
+        // 3. Toujours rediriger vers login, même en cas d'erreur
+        window.location.replace("/login");
+      }
     },
   };
 }

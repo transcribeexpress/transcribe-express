@@ -19,12 +19,14 @@ import { generateTXT, generateSRT, generateVTT, downloadFile, getFileNameWithout
 import { motion } from "framer-motion";
 import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { toast } from "@/components/Toast";
+import { useClerkSync } from "@/hooks/useClerkSync";
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isSessionReady, isSyncing } = useClerkSync();
 
   // Mutation pour supprimer une transcription
   const deleteMutation = trpc.transcriptions.delete.useMutation({
@@ -52,9 +54,15 @@ export default function Results() {
     }
   };
 
-  const { data: transcription, isLoading, error } = trpc.transcriptions.getById.useQuery({
-    id: parseInt(id || "0"),
-  });
+  const { data: transcription, isLoading, error } = trpc.transcriptions.getById.useQuery(
+    { id: parseInt(id || "0") },
+    { enabled: isSessionReady }
+  );
+
+  // Afficher skeleton pendant la synchronisation
+  if (isSyncing) {
+    return <ResultsSkeleton />;
+  }
 
   // Fonctions d'export
   const handleExportTXT = () => {

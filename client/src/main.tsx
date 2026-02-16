@@ -1,8 +1,7 @@
 import { ClerkProvider } from "@clerk/clerk-react";
 import { trpc } from "@/lib/trpc";
-import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { httpBatchLink } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -17,33 +16,42 @@ if (!CLERK_PUBLISHABLE_KEY) {
   throw new Error("Missing Clerk Publishable Key. Please set VITE_CLERK_PUBLISHABLE_KEY in your environment variables.");
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Ne pas retry automatiquement les erreurs d'auth
+      retry: (failureCount, error) => {
+        // Ne pas retry les erreurs UNAUTHORIZED
+        if (error && typeof error === "object" && "message" in error) {
+          const msg = (error as { message: string }).message;
+          if (msg.includes("10001") || msg.includes("login")) {
+            return false;
+          }
+        }
+        return failureCount < 2;
+      },
+      // Désactiver le refetch automatique sur focus pour éviter les boucles
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
-  if (!(error instanceof TRPCClientError)) return;
-  if (typeof window === "undefined") return;
+// SUPPRIMÉ : Les redirections automatiques sur UNAUTHORIZED qui causaient
+// une boucle infinie avec Clerk. La gestion de l'authentification est 
+// maintenant faite par useClerkSync + les pages individuelles.
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
-  if (!isUnauthorized) return;
-
-  // Rediriger vers la page de login Clerk
-  window.location.href = "/login";
-};
-
+// Log les erreurs API sans rediriger
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    console.warn("[API Query Error]", error);
   }
 });
 
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    console.warn("[API Mutation Error]", error);
   }
 });
 

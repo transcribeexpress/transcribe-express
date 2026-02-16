@@ -2,12 +2,14 @@
  * Page Upload - Upload de fichiers audio/vidéo
  * 
  * Page protégée accessible uniquement aux utilisateurs connectés.
- * Permet d'uploader un fichier audio/vidéo et de déclencher la transcription.
+ * Utilise useClerkSync pour synchroniser la session Clerk → Manus OAuth
+ * avant de permettre les uploads.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useClerkSync } from "@/hooks/useClerkSync";
 import { UserMenu } from "@/components/UserMenu";
 import { UploadZone } from "@/components/UploadZone";
 import { UploadProgress } from "@/components/UploadProgress";
@@ -22,8 +24,8 @@ import { toast } from "@/components/Toast";
 
 export default function Upload() {
   const { isSignedIn, isLoading } = useAuth();
+  const { isSessionReady, isSyncing, error: syncError } = useClerkSync();
   const [, setLocation] = useLocation();
-  // Toast hook sera ajouté plus tard
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -36,8 +38,8 @@ export default function Upload() {
   const { data: transcription } = trpc.transcriptions.getById.useQuery(
     { id: transcriptionId! },
     { 
-      enabled: transcriptionId !== null,
-      refetchInterval: 2000, // Polling toutes les 2 secondes
+      enabled: transcriptionId !== null && isSessionReady,
+      refetchInterval: 2000,
     }
   );
   
@@ -69,13 +71,6 @@ export default function Upload() {
       setUploadProgress(0);
     },
   });
-
-  // Rediriger vers login si non connecté
-  useEffect(() => {
-    if (!isLoading && !isSignedIn) {
-      setLocation("/login");
-    }
-  }, [isSignedIn, isLoading, setLocation]);
 
   const handleFileSelect = async (file: File) => {
     setValidationError(null);
@@ -137,19 +132,49 @@ export default function Upload() {
       reader.readAsDataURL(selectedFile);
     } catch (error) {
       console.error("Upload error:", error);
-      // Error notification
-      console.error("Erreur d'upload: Une erreur est survenue lors de l'upload du fichier.");
+      toast.error("Erreur d'upload", {
+        description: "Une erreur est survenue lors de l'upload du fichier.",
+      });
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
 
-  if (isLoading) {
+  // État de chargement : Clerk charge OU session en cours de sync
+  if (isLoading || isSyncing) {
     return <UploadSkeleton />;
   }
 
+  // Utilisateur non connecté
   if (!isSignedIn) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mic className="w-12 h-12 text-primary mx-auto" />
+          <h2 className="text-xl font-semibold">Connexion requise</h2>
+          <p className="text-muted-foreground">Veuillez vous connecter pour uploader un fichier.</p>
+          <Button onClick={() => setLocation("/login")}>
+            Se connecter
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Erreur de synchronisation
+  if (syncError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mic className="w-12 h-12 text-destructive mx-auto" />
+          <h2 className="text-xl font-semibold">Erreur de connexion</h2>
+          <p className="text-muted-foreground">Impossible de synchroniser votre session.</p>
+          <Button onClick={() => window.location.reload()}>
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

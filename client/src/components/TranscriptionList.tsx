@@ -8,6 +8,9 @@
  * - Actions (Télécharger, Voir, Supprimer)
  * 
  * Utilise le polling automatique pour mise à jour en temps réel.
+ * 
+ * IMPORTANT: Tous les hooks sont appelés AVANT les returns conditionnels
+ * pour respecter les règles React (Rules of Hooks).
  */
 
 import { trpc } from "@/lib/trpc";
@@ -25,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { Mic, Upload } from "lucide-react";
+import { Mic } from "lucide-react";
 import { useLocation } from "wouter";
 
 /**
@@ -65,15 +68,30 @@ interface TranscriptionListProps {
 }
 
 export function TranscriptionList({ transcriptions, isLoading }: TranscriptionListProps = {}) {
-  // Fallback to fetching if no props provided (backward compatibility)
+  // ============================================================
+  // TOUS LES HOOKS DOIVENT ÊTRE APPELÉS ICI, AVANT TOUT RETURN
+  // ============================================================
+  
+  // Hook 1: useLocation (pour navigation)
+  const [, setLocation] = useLocation();
+  
+  // Hook 2: tRPC query (fallback si pas de props)
   const query = trpc.transcriptions.list.useQuery(undefined, {
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
     enabled: transcriptions === undefined,
   });
 
+  // ============================================================
+  // LOGIQUE DÉRIVÉE (pas de hooks après ce point)
+  // ============================================================
+  
   const data = transcriptions ?? query.data;
   const loading = isLoading ?? query.isLoading;
+
+  // ============================================================
+  // RETURNS CONDITIONNELS (safe car tous les hooks sont déjà appelés)
+  // ============================================================
 
   if (loading) {
     return (
@@ -84,8 +102,6 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
       </div>
     );
   }
-
-  const [, setLocation] = useLocation();
 
   if (!data || data.length === 0) {
     return (
