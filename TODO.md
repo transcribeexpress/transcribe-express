@@ -220,3 +220,10 @@
 - [x] Corriger le texte bleu sur la page d'authentification Google (manque de visibilité)
 - [x] Changer la couleur du texte en noir (text-black) pour améliorer le contraste
 - [x] Tester la visibilité sur fond sombre
+
+
+## Correction Style Bouton Google (18 Fév 2026)
+
+- [x] Changer le style du bouton Google pour correspondre au dark mode
+- [x] Fond bleu Google (#4285F4) avec texte blanc
+- [x] Tester la visibilité en dark mode

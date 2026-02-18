@@ -68,7 +68,7 @@ const providerConfig = {
     icon: GoogleIcon,
     label: "Continuer avec Google",
     strategy: "oauth_google" as const,
-    className: "bg-white hover:bg-gray-50 text-black border border-gray-300",
+    className: "bg-[#4285F4] hover:bg-[#357ae8] text-white border border-transparent",
   },
   github: {
     icon: GitHubIcon,
