@@ -213,3 +213,10 @@
 - [x] Corriger de manière cohérente sur tous les fichiers (8 fichiers modifiés)
 - [x] Création pont ClerkSync (Clerk → Manus OAuth)
 - [ ] Valider la stabilité avec tests manuels utilisateur
+
+
+## Correction Visibilité Texte (16 Fév 2026)
+
+- [x] Corriger le texte bleu sur la page d'authentification Google (manque de visibilité)
+- [x] Changer la couleur du texte en noir (text-black) pour améliorer le contraste
+- [x] Tester la visibilité sur fond sombre
