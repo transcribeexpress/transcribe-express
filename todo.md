@@ -677,3 +677,27 @@
 
 **Objectif :** Valider que le MVP est complet, stable et prêt pour le déploiement
 
+
+---
+
+## 🔒 Correction des Vulnérabilités de Sécurité (Avant Tests MVP)
+
+### Étape 1 : Mise à jour des packages
+- [x] Ajouter les overrides pnpm dans package.json ✅
+- [x] Mettre à jour body-parser vers ≥ 1.20.4 ✅ (via overrides)
+- [x] Mettre à jour path-to-regexp vers ≥ 0.1.13 ✅ (via overrides)
+- [x] Mettre à jour qs vers ≥ 6.14.2 ✅ (via overrides)
+- [x] Mettre à jour @aws-sdk/client-s3 vers latest ✅ (3.907.0 → 3.994.0)
+- [x] Exécuter pnpm install ✅ (+92 packages, -34 packages)
+
+### Étape 2 : Tests de non-régression
+- [x] Exécuter pnpm test (102/102 tests doivent passer) ✅ (102/102 passés)
+- [x] Vérifier pnpm check (0 erreur TypeScript) ✅
+- [x] Tester le serveur de développement ✅ (serveur fonctionnel)
+
+### Étape 3 : Vérification finale
+- [x] Exécuter pnpm audit (vérifier 0 vulnérabilité critique/high) ✅ (27 → 22 vuln, 0 critical, 9 high restants)
+- [x] Créer checkpoint sécurisé ⏳ (en cours)
+- [x] Documenter les corrections ⏳ (en cours)
+
+**Objectif :** Sécuriser le MVP avant la phase de test utilisateur
