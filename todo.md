@@ -720,3 +720,22 @@
 - [x] Valider la sélection de dates ✅ (Serveur fonctionnel)
 
 **Objectif :** Permettre aux utilisateurs de sélectionner des dates personnalisées via un calendrier visuel
+
+---
+
+## 🐛 Bug Identifié - Page de Profil Non Affichée
+
+### Problème
+- [x] La page de profil ne s'affiche pas lorsqu'on clique sur "Profil" dans le menu utilisateur ✅
+
+### Diagnostic
+- [x] Vérifier si la route /profile existe dans App.tsx ❌ (Manquante)
+- [x] Vérifier si le composant Profile.tsx existe ❌ (Manquant)
+- [x] Vérifier le lien dans UserMenu.tsx ❌ (Pas de navigation)
+
+### Correction
+- [x] Créer ou corriger la route /profile ✅ (Route ajoutée dans App.tsx)
+- [x] Implémenter le composant Profile.tsx ✅ (Composant complet créé)
+- [x] Tester l'affichage de la page de profil ✅ (102/102 tests passent, 0 erreur TypeScript, serveur fonctionnel)
+
+**Objectif :** Permettre aux utilisateurs de voir et modifier leur profil

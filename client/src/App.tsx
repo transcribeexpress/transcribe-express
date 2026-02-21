@@ -11,6 +11,7 @@ import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import SSOCallback from "./pages/SSOCallback";
 import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
+import Profile from "./pages/Profile";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
       <Route path={"/upload"} component={Upload} />
       <Route path={"/results/:id"} component={Results} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
+      <Route path={"/profile"} component={Profile} />
       
       {/* Pages d'erreur */}
       <Route path={"/404"} component={NotFound} />
