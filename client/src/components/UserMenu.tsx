@@ -113,7 +113,10 @@ export function UserMenu({ className }: UserMenuProps) {
           <span>Profil</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem 
+          onClick={() => setLocation("/settings")}
+          className="cursor-pointer"
+        >
           <Settings className="mr-2 h-4 w-4" />
           <span>Paramètres</span>
         </DropdownMenuItem>

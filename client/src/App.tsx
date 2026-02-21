@@ -12,6 +12,7 @@ import Results from "./pages/Results";
 import SSOCallback from "./pages/SSOCallback";
 import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -29,6 +30,7 @@ function Router() {
       <Route path={"/results/:id"} component={Results} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/profile"} component={Profile} />
+      <Route path={"/settings"} component={Settings} />
       
       {/* Pages d'erreur */}
       <Route path={"/404"} component={NotFound} />

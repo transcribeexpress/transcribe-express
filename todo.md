@@ -739,3 +739,23 @@
 - [x] Tester l'affichage de la page de profil ✅ (102/102 tests passent, 0 erreur TypeScript, serveur fonctionnel)
 
 **Objectif :** Permettre aux utilisateurs de voir et modifier leur profil
+
+---
+
+## 🐛 Bug Identifié - Page de Paramètres Non Affichée
+
+### Problème
+- [x] La page de paramètres ne s'affiche pas lorsqu'on clique sur "Paramètres" dans le menu utilisateur ✅
+
+### Diagnostic
+- [x] Vérifier si la route /settings existe dans App.tsx ❌ (Manquante)
+- [x] Vérifier si le composant Settings.tsx existe ❌ (Manquant)
+- [x] Vérifier le lien dans UserMenu.tsx ❌ (Pas de navigation)
+
+### Correction
+- [x] Créer la route /settings ✅ (Route ajoutée dans App.tsx)
+- [x] Implémenter le composant Settings.tsx ✅ (Composant complet créé)
+- [x] Ajouter la navigation dans UserMenu.tsx ✅ (onClick ajouté)
+- [x] Tester l'affichage de la page de paramètres ✅ (102/102 tests passent, 0 erreur TypeScript, serveur fonctionnel)
+
+**Objectif :** Permettre aux utilisateurs de gérer leurs préférences et paramètres
