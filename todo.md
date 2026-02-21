@@ -697,7 +697,26 @@
 
 ### Étape 3 : Vérification finale
 - [x] Exécuter pnpm audit (vérifier 0 vulnérabilité critique/high) ✅ (27 → 22 vuln, 0 critical, 9 high restants)
-- [x] Créer checkpoint sécurisé ⏳ (en cours)
-- [x] Documenter les corrections ⏳ (en cours)
+- [x] Créer checkpoint sécurisé ✅ (65948ab6)
+- [x] Documenter les corrections ✅ (RAPPORT_CORRECTION_SECURITE.md)
 
 **Objectif :** Sécuriser le MVP avant la phase de test utilisateur
+
+---
+
+## 🐛 Bug Identifié - Calendrier de Dates Personnalisées
+
+### Problème
+- [x] Le calendrier ne s'affiche pas lors de la sélection de "Date personnalisée" dans la recherche de transcriptions ✅
+
+### Diagnostic
+- [x] Vérifier l'implémentation du composant DatePicker dans Dashboard.tsx ✅ (Manquant)
+- [x] Vérifier l'import et la configuration de react-day-picker ✅ (Calendar existe)
+- [x] Vérifier les styles CSS du calendrier ✅ (OK)
+
+### Correction
+- [x] Implémenter ou corriger le composant DatePicker ✅ (FilterPanel mis à jour)
+- [x] Tester l'affichage du calendrier ✅ (102/102 tests passent, 0 erreur TypeScript)
+- [x] Valider la sélection de dates ✅ (Serveur fonctionnel)
+
+**Objectif :** Permettre aux utilisateurs de sélectionner des dates personnalisées via un calendrier visuel

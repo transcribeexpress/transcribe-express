@@ -43,6 +43,14 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>();
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>();
+  
+  // Handler for custom date range
+  const handleCustomDateChange = useCallback((from: Date | undefined, to: Date | undefined) => {
+    setCustomDateFrom(from);
+    setCustomDateTo(to);
+  }, []);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -70,10 +78,12 @@ export default function Dashboard() {
       transcriptions,
       searchQuery,
       statusFilter,
-      dateFilter
+      dateFilter,
+      customDateFrom,
+      customDateTo
     );
     return sortTranscriptions(filtered, sortState);
-  }, [transcriptions, searchQuery, statusFilter, dateFilter, sortState]);
+  }, [transcriptions, searchQuery, statusFilter, dateFilter, customDateFrom, customDateTo, sortState]);
   
   // Apply pagination
   const paginatedResult = useMemo(() => {
@@ -95,7 +105,7 @@ export default function Dashboard() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, dateFilter]);
+  }, [searchQuery, statusFilter, dateFilter, customDateFrom, customDateTo]);
   
   // Handle sort change
   const handleSortChange = useCallback((field: SortField) => {
@@ -213,6 +223,9 @@ export default function Dashboard() {
               onStatusFilterChange={setStatusFilter}
               dateFilter={dateFilter}
               onDateFilterChange={setDateFilter}
+              customDateFrom={customDateFrom}
+              customDateTo={customDateTo}
+              onCustomDateChange={handleCustomDateChange}
             />
           </div>
 

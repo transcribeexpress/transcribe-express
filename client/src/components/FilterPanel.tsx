@@ -1,4 +1,5 @@
-import { Filter, Calendar } from "lucide-react";
+import { useState } from "react";
+import { Filter, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -7,7 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 
 export type StatusFilter = "all" | "completed" | "processing" | "pending" | "error";
 export type DateFilter = "all" | "today" | "week" | "month" | "custom";
@@ -27,7 +37,43 @@ export function FilterPanel({
   onStatusFilterChange,
   dateFilter,
   onDateFilterChange,
+  customDateFrom,
+  customDateTo,
+  onCustomDateChange,
 }: FilterPanelProps) {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: customDateFrom,
+    to: customDateTo,
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const handleDateRangeSelect = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from && range?.to && onCustomDateChange) {
+      onCustomDateChange(range.from, range.to);
+      setIsCalendarOpen(false);
+    }
+  };
+
+  const handleDateFilterChange = (value: DateFilter) => {
+    onDateFilterChange(value);
+    if (value === "custom") {
+      setIsCalendarOpen(true);
+    } else {
+      // Reset custom dates when switching to predefined filters
+      setDateRange(undefined);
+      if (onCustomDateChange) {
+        onCustomDateChange(undefined, undefined);
+      }
+    }
+  };
+
+  const formatDateRange = () => {
+    if (!dateRange?.from) return "Sélectionner une période";
+    if (!dateRange.to) return format(dateRange.from, "dd MMM yyyy", { locale: fr });
+    return `${format(dateRange.from, "dd MMM", { locale: fr })} - ${format(dateRange.to, "dd MMM yyyy", { locale: fr })}`;
+  };
+
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-end">
       {/* Status Filter */}
@@ -53,21 +99,69 @@ export function FilterPanel({
       {/* Date Filter */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="date-filter" className="text-sm font-medium">
-          <Calendar className="inline h-4 w-4 mr-1" />
+          <CalendarIcon className="inline h-4 w-4 mr-1" />
           Période
         </Label>
-        <Select value={dateFilter} onValueChange={onDateFilterChange}>
-          <SelectTrigger id="date-filter" className="w-[180px] bg-card border-border">
-            <SelectValue placeholder="Toutes les dates" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes les dates</SelectItem>
-            <SelectItem value="today">Aujourd'hui</SelectItem>
-            <SelectItem value="week">Cette semaine</SelectItem>
-            <SelectItem value="month">Ce mois</SelectItem>
-            <SelectItem value="custom">Personnalisé</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={dateFilter} onValueChange={handleDateFilterChange}>
+            <SelectTrigger id="date-filter" className="w-[180px] bg-card border-border">
+              <SelectValue placeholder="Toutes les dates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les dates</SelectItem>
+              <SelectItem value="today">Aujourd'hui</SelectItem>
+              <SelectItem value="week">Cette semaine</SelectItem>
+              <SelectItem value="month">Ce mois</SelectItem>
+              <SelectItem value="custom">Personnalisé</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Custom Date Range Picker */}
+          {dateFilter === "custom" && (
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[280px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formatDateRange()}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={handleDateRangeSelect}
+                  numberOfMonths={2}
+                  locale={fr}
+                  disabled={(date) => date > new Date()}
+                />
+                <div className="p-3 border-t border-border flex justify-between items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDateRange(undefined);
+                      if (onCustomDateChange) {
+                        onCustomDateChange(undefined, undefined);
+                      }
+                    }}
+                  >
+                    Effacer
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsCalendarOpen(false)}
+                    disabled={!dateRange?.from || !dateRange?.to}
+                  >
+                    Appliquer
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </div>
 
       {/* Reset Button */}
@@ -78,6 +172,10 @@ export function FilterPanel({
           onClick={() => {
             onStatusFilterChange("all");
             onDateFilterChange("all");
+            setDateRange(undefined);
+            if (onCustomDateChange) {
+              onCustomDateChange(undefined, undefined);
+            }
           }}
           className="md:mb-0.5"
         >
