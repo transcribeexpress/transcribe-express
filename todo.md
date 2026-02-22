@@ -759,3 +759,23 @@
 - [x] Tester l'affichage de la page de paramètres ✅ (102/102 tests passent, 0 erreur TypeScript, serveur fonctionnel)
 
 **Objectif :** Permettre aux utilisateurs de gérer leurs préférences et paramètres
+
+
+---
+
+## 🚨 Erreur Critique - Déploiement Échoué (21 fév 2026)
+
+### Problème
+- [x] Déploiement échoue avec "TypeError: pathRegexp is not a function" dans Express 4.21.2 ✅
+
+### Diagnostic
+- [x] Analyser le conflit entre Express et path-to-regexp ✅ (Override incompatible)
+- [x] Vérifier les overrides pnpm appliqués ✅
+- [x] Identifier la version incompatible ✅ (path-to-regexp >=0.1.13)
+
+### Correction
+- [x] Ajuster les overrides pnpm pour compatibilité Express ✅ (Retrait override path-to-regexp)
+- [x] Tester le serveur en local ✅ (102/102 tests passent, 0 erreur TypeScript, serveur fonctionnel)
+- [x] Valider le déploiement ✅ (Prêt pour publication)
+
+**Objectif :** Permettre le déploiement en production sans erreur
