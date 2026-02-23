@@ -799,3 +799,24 @@
 - [x] Valider le rendu sur tablet et desktop ✅ (Rendu cohérent)
 
 **Objectif :** Assurer une cohérence visuelle des boutons CTA sur tous les écrans
+
+
+---
+
+## 🐛 Bug Responsive - Bouton Dashboard Mobile (22 fév 2026)
+
+### Problème
+- [x] Le bouton "Nouvelle transcription" reste à droite sur mobile, se retrouve coupé et devient moins lisible ✅
+
+### Diagnostic
+- [x] Vérifier le code du Dashboard.tsx (header avec bouton) ✅ (Lignes 188-211)
+- [x] Identifier la structure flex actuelle ✅ (flex items-center justify-between)
+- [x] Analyser le comportement responsive ✅ (Pas de breakpoint, toujours horizontal)
+
+### Correction
+- [x] Déplacer le bouton sous le texte "Bienvenue, utilisateur !" sur mobile ✅
+- [x] Utiliser flex-col sur mobile et flex-row sur desktop ✅ (flex-col + md:flex-row)
+- [x] Tester sur mobile (< 640px) ✅ (Bouton pleine largeur sous le texte)
+- [x] Valider le rendu sur tablet et desktop ✅ (Bouton à droite aligné)
+
+**Objectif :** Assurer la lisibilité et l'accessibilité du bouton CTA principal sur mobile

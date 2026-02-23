@@ -186,7 +186,7 @@ export default function Dashboard() {
       >
         {/* Page Title */}
         <motion.div 
-          className="flex items-center justify-between mb-8"
+          className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -202,7 +202,7 @@ export default function Dashboard() {
           
           <Button 
             size="lg" 
-            className="gap-2"
+            className="gap-2 w-full md:w-auto"
             onClick={() => setLocation("/upload")}
           >
             <Plus className="w-5 h-5" />
