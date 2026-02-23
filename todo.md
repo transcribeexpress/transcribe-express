@@ -779,3 +779,23 @@
 - [x] Valider le déploiement ✅ (Prêt pour publication)
 
 **Objectif :** Permettre le déploiement en production sans erreur
+
+
+---
+
+## 🐛 Bug Responsive - Bouton Démo Mobile (22 fév 2026)
+
+### Problème
+- [x] Le bouton "Voir la démo" prend toute la largeur sur mobile au lieu de suivre la taille du bouton "Commencer gratuitement" ✅
+
+### Diagnostic
+- [x] Vérifier le code HTML/CSS de la page Home.tsx ✅
+- [x] Identifier les classes Tailwind appliquées aux boutons ✅ (Bouton 1: Link wrapper, Bouton 2: pas de Link)
+- [x] Comparer les styles entre les deux boutons ✅ (Le bouton démo n'est pas dans un Link)
+
+### Correction
+- [x] Harmoniser les classes responsive des deux boutons ✅ (Ajout div wrapper + items-center)
+- [x] Tester sur mobile (< 640px) ✅ (Boutons alignés et centrés)
+- [x] Valider le rendu sur tablet et desktop ✅ (Rendu cohérent)
+
+**Objectif :** Assurer une cohérence visuelle des boutons CTA sur tous les écrans

@@ -32,15 +32,17 @@ export default function Home() {
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
             Convertissez vos fichiers audio et vidéo en texte en quelques secondes avec une précision exceptionnelle grâce à l'intelligence artificielle.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/login">
               <Button size="lg" className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white">
                 Commencer gratuitement
               </Button>
             </Link>
-            <Button size="lg" variant="outline">
-              Voir la démo
-            </Button>
+            <div>
+              <Button size="lg" variant="outline">
+                Voir la démo
+              </Button>
+            </div>
           </div>
         </div>
       </section>
