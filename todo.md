@@ -820,3 +820,28 @@
 - [x] Valider le rendu sur tablet et desktop ✅ (Bouton à droite aligné)
 
 **Objectif :** Assurer la lisibilité et l'accessibilité du bouton CTA principal sur mobile
+
+
+---
+
+## 🐛 Bug UX Mobile - Barre "Trier par" Déborde (22 fév 2026)
+
+### Problème
+- [x] La barre "Trier par" sur mobile déborde à droite et n'est pas correctement enveloppée ✅
+- [x] Le débordement entraîne un problème de stabilité de la page qui n'est pas centrée sur mobile ✅
+- [x] L'affichage n'est pas ergonomique pour les petits écrans ✅
+
+### Diagnostic
+- [x] Vérifier le code de la section "Trier par" dans Dashboard.tsx ✅ (Lignes 248-274)
+- [x] Identifier les éléments qui causent le débordement ✅ (4 SortControls en flex horizontal)
+- [x] Analyser la structure flex et les breakpoints responsive ✅ (Pas de breakpoint, toujours horizontal)
+
+### Correction
+- [x] Réorganiser l'affichage de la barre de tri pour mobile ✅
+- [x] Utiliser un layout vertical (flex-col) sur mobile ✅ (Grille 2x2)
+- [x] Optimiser l'espacement et la taille des éléments ✅
+- [x] Tester sur mobile (< 640px) ✅ (Grille 2x2, pas de débordement)
+- [x] Valider le rendu sur tablet et desktop ✅ (Ligne horizontale préservée)
+
+**Objectif :** Créer un affichage ergonomique et stable de la barre de tri sur tous les écrans
+

@@ -245,32 +245,34 @@ export default function Dashboard() {
         </div>
 
         {/* Sort Controls */}
-        <div className="mb-4 flex items-center gap-4 px-4 py-2 bg-muted/30 rounded-lg">
-          <span className="text-sm text-muted-foreground">Trier par :</span>
-          <SortControls
-            field="createdAt"
-            label="Date"
-            currentSort={sortState}
-            onSortChange={handleSortChange}
-          />
-          <SortControls
-            field="fileName"
-            label="Nom"
-            currentSort={sortState}
-            onSortChange={handleSortChange}
-          />
-          <SortControls
-            field="duration"
-            label="Durée"
-            currentSort={sortState}
-            onSortChange={handleSortChange}
-          />
-          <SortControls
-            field="status"
-            label="Statut"
-            currentSort={sortState}
-            onSortChange={handleSortChange}
-          />
+        <div className="mb-4 px-4 py-3 bg-muted/30 rounded-lg">
+          <span className="block text-sm text-muted-foreground mb-3 md:mb-0 md:inline md:mr-4">Trier par :</span>
+          <div className="grid grid-cols-2 gap-2 md:inline-flex md:gap-4">
+            <SortControls
+              field="createdAt"
+              label="Date"
+              currentSort={sortState}
+              onSortChange={handleSortChange}
+            />
+            <SortControls
+              field="fileName"
+              label="Nom"
+              currentSort={sortState}
+              onSortChange={handleSortChange}
+            />
+            <SortControls
+              field="duration"
+              label="Durée"
+              currentSort={sortState}
+              onSortChange={handleSortChange}
+            />
+            <SortControls
+              field="status"
+              label="Statut"
+              currentSort={sortState}
+              onSortChange={handleSortChange}
+            />
+          </div>
         </div>
         
         {/* Liste des transcriptions avec polling automatique */}
