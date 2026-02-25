@@ -128,12 +128,12 @@ export function FilterPanel({
                   {formatDateRange()}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-y-auto" align="start">
                 <Calendar
                   mode="range"
                   selected={dateRange}
                   onSelect={handleDateRangeSelect}
-                  numberOfMonths={2}
+                  numberOfMonths={window.innerWidth < 768 ? 1 : 2}
                   locale={fr}
                   disabled={(date) => date > new Date()}
                 />

@@ -845,3 +845,27 @@
 
 **Objectif :** Créer un affichage ergonomique et stable de la barre de tri sur tous les écrans
 
+
+
+---
+
+## 🐛 Bug Mobile - Calendrier de Dates Non Scrollable (22 fév 2026)
+
+### Problème
+- [x] Le sélecteur de dates personnalisées s'affiche sur mobile mais n'est pas scrollable ✅
+- [x] Impossible de faire défiler le calendrier pour naviguer entre les mois ✅
+- [x] L'utilisateur ne peut pas sélectionner des dates en dehors de la vue initiale ✅
+
+### Diagnostic
+- [x] Vérifier le code du FilterPanel.tsx (Popover + Calendar) ✅
+- [x] Identifier les contraintes de hauteur/overflow ✅ (PopoverContent sans max-height)
+- [x] Analyser le comportement du Popover sur mobile ✅ (2 mois affichés, pas de scroll)
+
+### Correction
+- [x] Ajuster la hauteur max du Popover sur mobile ✅ (max-h-[80vh])
+- [x] Activer le scroll vertical (overflow-y-auto) ✅
+- [x] Optimiser l'affichage du calendrier pour mobile (1 mois au lieu de 2) ✅
+- [x] Tester le scroll et la navigation sur mobile ✅ (1 mois affiché, scrollable)
+- [x] Valider la sélection de dates ✅ (Fonctionnel)
+
+**Objectif :** Rendre le calendrier pleinement fonctionnel et scrollable sur mobile
