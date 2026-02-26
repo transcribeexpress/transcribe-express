@@ -879,3 +879,15 @@
 - [x] Tester la navigation Login → Home ✅
 
 **Objectif :** Améliorer la navigation en ajoutant un lien de retour au site depuis la page de connexion
+
+---
+
+## 🔐 Sécurité - Déconnexion Complète Clerk (26 fév 2026)
+
+- [x] Analyser le code de déconnexion actuel (useAuth.ts, UserMenu.tsx) ✅
+- [x] Implémenter la révocation complète de session Clerk ✅
+- [x] Forcer la déconnexion OAuth pour éviter reconnexion automatique ✅
+- [x] Tester la déconnexion sur appareil partagé ✅
+- [x] Valider que la reconnexion nécessite une nouvelle authentification ✅
+
+**Objectif :** Maximiser la sécurité en forçant une déconnexion complète pour protéger les utilisateurs sur appareils partagés/publics

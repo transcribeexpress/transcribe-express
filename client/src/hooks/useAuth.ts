@@ -7,7 +7,7 @@
  * La déconnexion nettoie à la fois la session Clerk ET le cookie Manus OAuth.
  */
 
-import { useUser, useClerk } from "@clerk/clerk-react";
+import { useUser, useClerk, useSession } from "@clerk/clerk-react";
 
 export interface AuthUser {
   id: string;
@@ -22,6 +22,7 @@ export interface AuthUser {
 export function useAuth() {
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
+  const { session } = useSession();
 
   // Transformer l'utilisateur Clerk en format simplifié
   const authUser: AuthUser | null = user ? {
@@ -49,8 +50,15 @@ export function useAuth() {
           console.warn("[Auth] Failed to clear Manus session cookie");
         });
 
-        // 2. Déconnecter Clerk
-        await signOut();
+        // 2. Déconnecter Clerk avec révocation complète de session
+        // L'option { sessionId } force la révocation de la session OAuth active
+        // Cela empêche la reconnexion automatique sur appareils partagés
+        if (session?.id) {
+          await signOut({ sessionId: session.id });
+        } else {
+          // Fallback: déconnexion standard si pas de session active
+          await signOut();
+        }
       } catch (error) {
         console.error("[Auth] Sign out error:", error);
       } finally {
