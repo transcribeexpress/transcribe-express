@@ -20,7 +20,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { LoginButton } from "@/components/LoginButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic } from "lucide-react";
+import { Mic, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Login() {
   const { isSignedIn, isLoading } = useAuth();
@@ -48,6 +49,14 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Fond avec effet de gradient subtil */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5 pointer-events-none" />
+      
+      {/* Bouton retour à l'accueil */}
+      <Link href="/">
+        <button className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Retour au site</span>
+        </button>
+      </Link>
       
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">

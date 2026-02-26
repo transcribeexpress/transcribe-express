@@ -869,3 +869,13 @@
 - [x] Valider la sélection de dates ✅ (Fonctionnel)
 
 **Objectif :** Rendre le calendrier pleinement fonctionnel et scrollable sur mobile
+
+---
+
+## 🔗 UX - Lien vers Page d'Accueil depuis Login (25 fév 2026)
+
+- [x] Ajouter un lien vers la page d'accueil depuis la page de connexion ✅
+- [x] Permettre aux utilisateurs de revenir au site depuis /login ✅
+- [x] Tester la navigation Login → Home ✅
+
+**Objectif :** Améliorer la navigation en ajoutant un lien de retour au site depuis la page de connexion
