@@ -1,27 +1,19 @@
 /**
  * Page Login - Page de connexion Transcribe Express
  * 
- * Conformité avec UI_MOCKUPS.md (Maquette 1) :
- * - Logo Transcribe Express avec icône microphone magenta
- * - Titre "Transcribe Express" centré
- * - Sous-titre "Connectez-vous pour continuer"
- * - Card centrée avec fond #1E1E1E et border-radius 16px
- * - 2 boutons OAuth : Google et GitHub
- * - Lien "Pas encore de compte ? Créer un compte"
- * 
  * Identité visuelle :
  * - Dark Mode First
  * - Magenta #BE34D5 pour les accents
  * - Cyan #34D5BE pour les liens
+ * - Logo neon officiel Transcribe Express
  */
 
 import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { LoginButton } from "@/components/LoginButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const { isSignedIn, isLoading } = useAuth();
@@ -49,7 +41,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Fond avec effet de gradient subtil */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5 pointer-events-none" />
-      
+
       {/* Bouton retour à l'accueil */}
       <Link href="/">
         <button className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group">
@@ -60,11 +52,13 @@ export default function Login() {
       
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">
-          {/* Logo avec icône microphone */}
+          {/* Logo Transcribe Express - fond transparent, taille généreuse */}
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Mic className="w-8 h-8 text-primary" />
-            </div>
+            <img
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028820418/aKxqWAiFfKFpPUbU.png"
+              alt="Transcribe Express Logo"
+              className="w-20 h-20 object-contain [mix-blend-mode:screen]"
+            />
           </div>
           
           {/* Titre */}

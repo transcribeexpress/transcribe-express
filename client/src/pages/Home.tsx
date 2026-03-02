@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Mic, Zap, Globe, Lock, Download, Clock } from "lucide-react";
+import { Zap, Globe, Lock, Download, Clock, FileAudio } from "lucide-react";
 
 export default function Home() {
   return (
@@ -9,9 +9,11 @@ export default function Home() {
       <header className="container py-6">
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#BE34D5] to-[#34D5BE] flex items-center justify-center">
-              <Mic className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028820418/aKxqWAiFfKFpPUbU.png"
+              alt="Transcribe Express Logo"
+              className="w-10 h-10 object-contain [mix-blend-mode:screen]"
+            />
             <span className="text-xl font-bold">Transcribe Express</span>
           </div>
           <Link href="/login">
@@ -117,7 +119,7 @@ export default function Home() {
           {/* Feature 6 */}
           <div className="p-6 rounded-2xl border bg-card hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 rounded-xl bg-[#34D5BE]/10 flex items-center justify-center mb-4">
-              <Mic className="w-6 h-6 text-[#34D5BE]" />
+              <FileAudio className="w-6 h-6 text-[#34D5BE]" />
             </div>
             <h3 className="text-xl font-semibold mb-2">Formats Multiples</h3>
             <p className="text-muted-foreground">

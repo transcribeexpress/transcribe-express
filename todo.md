@@ -872,22 +872,11 @@
 
 ---
 
-## 🔗 UX - Lien vers Page d'Accueil depuis Login (25 fév 2026)
+## 🎨 Design - Nouveau Logo Transcribe Express (26 fév 2026)
 
-- [x] Ajouter un lien vers la page d'accueil depuis la page de connexion ✅
-- [x] Permettre aux utilisateurs de revenir au site depuis /login ✅
-- [x] Tester la navigation Login → Home ✅
+- [x] Uploader le logo neon sur le CDN ✅
+- [x] Remplacer l'icône microphone dans la navbar (Home.tsx) ✅
+- [x] Remplacer l'icône microphone dans la page Login ✅
+- [x] Vérifier le rendu sur desktop et mobile ✅
 
-**Objectif :** Améliorer la navigation en ajoutant un lien de retour au site depuis la page de connexion
-
----
-
-## 🔐 Sécurité - Déconnexion Complète Clerk (26 fév 2026)
-
-- [x] Analyser le code de déconnexion actuel (useAuth.ts, UserMenu.tsx) ✅
-- [x] Implémenter la révocation complète de session Clerk ✅
-- [x] Forcer la déconnexion OAuth pour éviter reconnexion automatique ✅
-- [x] Tester la déconnexion sur appareil partagé ✅
-- [x] Valider que la reconnexion nécessite une nouvelle authentification ✅
-
-**Objectif :** Maximiser la sécurité en forçant une déconnexion complète pour protéger les utilisateurs sur appareils partagés/publics
+**Objectif :** Intégrer le logo neon officiel Transcribe Express pour renforcer l'identité visuelle
