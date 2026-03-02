@@ -880,3 +880,13 @@
 - [x] Vérifier le rendu sur desktop et mobile ✅
 
 **Objectif :** Intégrer le logo neon officiel Transcribe Express pour renforcer l'identité visuelle
+
+---
+
+## 🎨 Design - Logo Neon Dashboard & Upload (02 mars 2026)
+
+- [x] Remplacer le logo dans DashboardLayout (sidebar) ✅
+- [x] Remplacer le logo dans la page Upload (nouvelle transcription) ✅
+- [x] Vérifier le rendu sur les deux pages ✅
+
+**Objectif :** Uniformiser le logo neon sur toutes les pages de l'application

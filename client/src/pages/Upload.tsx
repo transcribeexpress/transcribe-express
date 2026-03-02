@@ -16,11 +16,13 @@ import { UploadProgress } from "@/components/UploadProgress";
 import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
 import { validateAudioFile } from "@/utils/audioValidation";
-import { Mic, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { UploadSkeleton } from "@/components/UploadSkeleton";
 import { toast } from "@/components/Toast";
+
+const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028820418/aKxqWAiFfKFpPUbU.png";
 
 export default function Upload() {
   const { isSignedIn, isLoading } = useAuth();
@@ -150,7 +152,7 @@ export default function Upload() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Mic className="w-12 h-12 text-primary mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto [mix-blend-mode:screen]" />
           <h2 className="text-xl font-semibold">Connexion requise</h2>
           <p className="text-muted-foreground">Veuillez vous connecter pour uploader un fichier.</p>
           <Button onClick={() => setLocation("/login")}>
@@ -166,7 +168,7 @@ export default function Upload() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Mic className="w-12 h-12 text-destructive mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto [mix-blend-mode:screen]" />
           <h2 className="text-xl font-semibold">Erreur de connexion</h2>
           <p className="text-muted-foreground">Impossible de synchroniser votre session.</p>
           <Button onClick={() => window.location.reload()}>
@@ -184,9 +186,7 @@ export default function Upload() {
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Mic className="w-5 h-5 text-primary" />
-            </div>
+            <img src={LOGO_URL} alt="Transcribe Express Logo" className="w-10 h-10 object-contain [mix-blend-mode:screen]" />
             <span className="font-semibold text-lg">Transcribe Express</span>
           </div>
 
