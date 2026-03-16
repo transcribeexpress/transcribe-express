@@ -26,7 +26,7 @@ import { paginateItems } from "@/utils/pagination";
 import { motion } from "framer-motion";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 
-const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028820418/aKxqWAiFfKFpPUbU.png";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png";
 
 export default function Dashboard() {
   const { user, isSignedIn, isLoading } = useAuth();

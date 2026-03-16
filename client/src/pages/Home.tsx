@@ -10,7 +10,7 @@ export default function Home() {
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
-              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028820418/aKxqWAiFfKFpPUbU.png"
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png"
               alt="Transcribe Express Logo"
               className="w-10 h-10 object-contain [mix-blend-mode:screen]"
             />
