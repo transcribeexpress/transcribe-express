@@ -21,6 +21,7 @@ import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { toast } from "sonner";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png";
+const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png";
 
 export default function Settings() {
   const { user, isSignedIn, isLoading } = useAuth();
@@ -94,8 +95,8 @@ export default function Settings() {
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="Transcribe Express" className="w-10 h-10 object-contain [mix-blend-mode:screen]" />
-            <span className="font-semibold text-lg">Transcribe Express</span>
+            <img src={LOGO_URL} alt="Transcribe Express Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain [mix-blend-mode:screen] flex-shrink-0" />
+            <img src={WORDMARK_URL} alt="Transcribe Express" className="h-8 sm:h-10 md:h-12 w-auto max-w-[120px] sm:max-w-[160px] md:max-w-[200px] object-contain" />
           </div>
 
           {/* User Menu */}
