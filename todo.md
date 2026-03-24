@@ -909,3 +909,14 @@
 - [x] Vérifier l'affichage du favicon dans l'onglet navigateur ✅
 
 **Objectif :** Afficher le logo neon officiel comme favicon du site
+
+---
+
+## 🎨 Design - Logo Typographique Navbar Home (24 mars 2026)
+
+- [ ] Uploader l'image logo typographique sur le CDN S3
+- [ ] Remplacer le texte "Transcribe Express" par l'image dans Home.tsx
+- [ ] Appliquer les styles responsive (mobile/tablette/desktop)
+- [ ] Valider le rendu sur toutes les tailles d'écran
+
+**Objectif :** Identité visuelle renforcée avec logo typographique personnalisé dans la navbar

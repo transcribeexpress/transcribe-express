@@ -12,9 +12,13 @@ export default function Home() {
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png"
               alt="Transcribe Express Logo"
-              className="w-10 h-10 object-contain [mix-blend-mode:screen]"
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain [mix-blend-mode:screen] flex-shrink-0"
             />
-            <span className="text-xl font-bold">Transcribe Express</span>
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png"
+              alt="Transcribe Express"
+              className="h-10 sm:h-12 md:h-14 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain"
+            />
           </div>
           <Link href="/login">
             <Button variant="outline">Se connecter</Button>
