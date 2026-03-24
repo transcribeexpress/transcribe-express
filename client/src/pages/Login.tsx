@@ -52,17 +52,22 @@ export default function Login() {
       
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">
-          {/* Logo Transcribe Express - fond transparent, taille généreuse */}
-          <div className="flex justify-center">
+          {/* Logo + Wordmark Transcribe Express */}
+          <div className="flex items-center justify-center gap-3">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png"
               alt="Transcribe Express Logo"
-              className="w-20 h-20 object-contain [mix-blend-mode:screen]"
+              className="w-12 h-12 object-contain [mix-blend-mode:screen] flex-shrink-0"
+            />
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png"
+              alt="Transcribe Express"
+              className="h-10 w-auto max-w-[160px] object-contain"
             />
           </div>
           
-          {/* Titre */}
-          <CardTitle className="text-2xl font-bold tracking-tight">
+          {/* Titre masqué - remplacé par le wordmark */}
+          <CardTitle className="sr-only">
             Transcribe Express
           </CardTitle>
           
