@@ -900,3 +900,12 @@
 - [x] Vérifier le rendu sur les deux pages ✅
 
 **Objectif :** Compléter l'uniformisation du logo neon sur toutes les pages restantes
+
+---
+
+## 🎨 Design - Favicon Logo Neon (24 mars 2026)
+
+- [x] Configurer VITE_APP_LOGO avec l'URL du logo neon CloudFront ✅
+- [x] Vérifier l'affichage du favicon dans l'onglet navigateur ✅
+
+**Objectif :** Afficher le logo neon officiel comme favicon du site
