@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useClerkSync } from "@/hooks/useClerkSync";
 import { UserMenu } from "@/components/UserMenu";
-import { Mic, ArrowLeft, Bell, Globe, Palette, Key, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, Globe, Palette, Key, Shield, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,8 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { toast } from "sonner";
+
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png";
 
 export default function Settings() {
   const { user, isSignedIn, isLoading } = useAuth();
@@ -58,7 +60,7 @@ export default function Settings() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Mic className="w-12 h-12 text-primary mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto [mix-blend-mode:screen]" />
           <h2 className="text-xl font-semibold">Connexion requise</h2>
           <p className="text-muted-foreground">Veuillez vous connecter pour accéder aux paramètres.</p>
           <Button onClick={() => setLocation("/login")}>
@@ -74,7 +76,7 @@ export default function Settings() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Mic className="w-12 h-12 text-destructive mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto [mix-blend-mode:screen]" />
           <h2 className="text-xl font-semibold">Erreur de connexion</h2>
           <p className="text-muted-foreground">Impossible de synchroniser votre session. Veuillez réessayer.</p>
           <Button onClick={() => window.location.reload()}>
@@ -92,9 +94,7 @@ export default function Settings() {
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Mic className="w-5 h-5 text-primary" />
-            </div>
+            <img src={LOGO_URL} alt="Transcribe Express" className="w-10 h-10 object-contain [mix-blend-mode:screen]" />
             <span className="font-semibold text-lg">Transcribe Express</span>
           </div>
 

@@ -890,3 +890,13 @@
 - [x] Vérifier le rendu sur les deux pages ✅
 
 **Objectif :** Uniformiser le logo neon sur toutes les pages de l'application
+
+---
+
+## 🎨 Design - Logo Neon Profile & Settings (24 mars 2026)
+
+- [x] Appliquer le logo neon sur Profile.tsx ✅
+- [x] Appliquer le logo neon sur Settings.tsx ✅
+- [x] Vérifier le rendu sur les deux pages ✅
+
+**Objectif :** Compléter l'uniformisation du logo neon sur toutes les pages restantes
