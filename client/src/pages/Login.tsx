@@ -52,17 +52,17 @@ export default function Login() {
       
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">
-          {/* Logo + Wordmark Transcribe Express */}
-          <div className="flex items-center justify-center gap-3">
+          {/* Logo + Wordmark Transcribe Express - disposition verticale */}
+          <div className="flex flex-col items-center gap-3">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png"
               alt="Transcribe Express Logo"
-              className="w-12 h-12 object-contain [mix-blend-mode:screen] flex-shrink-0"
+              className="w-16 h-16 object-contain [mix-blend-mode:screen]"
             />
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png"
               alt="Transcribe Express"
-              className="h-10 w-auto max-w-[160px] object-contain"
+              className="h-10 w-auto max-w-[200px] object-contain"
             />
           </div>
           
