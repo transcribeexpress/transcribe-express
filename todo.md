@@ -920,3 +920,12 @@
 - [ ] Valider le rendu sur toutes les tailles d'écran
 
 **Objectif :** Identité visuelle renforcée avec logo typographique personnalisé dans la navbar
+
+---
+
+## 🔐 Auth - Email + Mot de passe
+
+- [x] Créer composant EmailSignIn (connexion email/mdp + mot de passe oublié + reset) ✅
+- [x] Créer composant EmailSignUp (inscription + vérification OTP email) ✅
+- [x] Intégrer les formulaires dans Login.tsx avec navigation entre modes ✅
+- [x] Tester le rendu : mode OAuth, mode Email connexion, mode Email inscription ✅
