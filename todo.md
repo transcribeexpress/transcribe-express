@@ -975,6 +975,21 @@
 - [x] Aucun mix-blend-mode:screen dans le code ✅
 - [x] Créer checkpoint de production ✅
 - [x] Push GitHub ✅
-- [ ] Cliquer sur "Publish" dans l'interface Manus
+- [x] Cliquer sur "Publish" dans l'interface Manus ✅
 
 **Objectif :** Déployer Transcribe Express en production sur transcribeexpress.manus.space
+
+---
+
+## 🎨 Design - Nouveau logo v4 (27 mars 2026)
+
+- [x] Uploader neon_symbol_transparent.png (v4) sur le CDN S3
+- [x] Remplacer l'URL du logo dans Home.tsx
+- [x] Remplacer l'URL du logo dans Login.tsx
+- [x] Remplacer l'URL du logo dans Dashboard.tsx
+- [x] Remplacer l'URL du logo dans Upload.tsx
+- [x] Remplacer l'URL du logo dans Profile.tsx
+- [x] Remplacer l'URL du logo dans Settings.tsx
+- [x] Valider le rendu sur toutes les pages
+
+**Objectif :** Intégrer le nouveau logo Magenta/Cyan avec fond blanc transparent sur toutes les pages

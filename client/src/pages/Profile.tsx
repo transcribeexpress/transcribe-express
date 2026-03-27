@@ -20,7 +20,7 @@ import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/brand/neon-symbol-transparent-v3.png";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_d91b011d.png";
 const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png";
 
 export default function Profile() {
@@ -61,7 +61,7 @@ export default function Profile() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto" style={{ mixBlendMode: 'screen' }} />
           <h2 className="text-xl font-semibold">Connexion requise</h2>
           <p className="text-muted-foreground">Veuillez vous connecter pour accéder à votre profil.</p>
           <Button onClick={() => setLocation("/login")}>
@@ -77,7 +77,7 @@ export default function Profile() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto" />
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-16 h-16 mx-auto" style={{ mixBlendMode: 'screen' }} />
           <h2 className="text-xl font-semibold">Erreur de connexion</h2>
           <p className="text-muted-foreground">Impossible de synchroniser votre session. Veuillez réessayer.</p>
           <Button onClick={() => window.location.reload()}>
@@ -95,7 +95,7 @@ export default function Profile() {
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="Transcribe Express Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0" />
+            <img src={LOGO_URL} alt="Transcribe Express Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0" style={{ mixBlendMode: 'screen' }} />
             <img src={WORDMARK_URL} alt="Transcribe Express" className="h-8 sm:h-10 md:h-12 w-auto max-w-[120px] sm:max-w-[160px] md:max-w-[200px] object-contain" />
           </div>
 
