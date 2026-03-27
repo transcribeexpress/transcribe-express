@@ -956,3 +956,25 @@
 - [x] Corriger le fond damier visible sur l'icône dans Upload.tsx ✅
 - [x] Corriger le fond damier visible sur l'icône dans Profile.tsx ✅
 - [x] Corriger le fond damier visible sur l'icône dans Settings.tsx ✅
+
+---
+
+## 🎨 Design - Nouveau logo fond blanc transparent
+- [ ] Uploader neon_symbol_transparent.png sur le CDN S3
+- [ ] Remplacer l'URL dans Home.tsx, Login.tsx, Dashboard.tsx, Upload.tsx, Profile.tsx, Settings.tsx
+- [ ] Supprimer mix-blend-mode:screen (plus nécessaire avec fond blanc transparent)
+
+---
+
+## 🚀 Publication en Production (27 mars 2026)
+
+- [x] Vérification finale : 102/102 tests Vitest passent ✅
+- [x] Vérification TypeScript : 0 erreur ✅
+- [x] Serveur de développement : running ✅
+- [x] Logo neon transparent v3 sur toutes les pages (Home, Login, Dashboard, Upload, Profile, Settings) ✅
+- [x] Aucun mix-blend-mode:screen dans le code ✅
+- [x] Créer checkpoint de production ✅
+- [x] Push GitHub ✅
+- [ ] Cliquer sur "Publish" dans l'interface Manus
+
+**Objectif :** Déployer Transcribe Express en production sur transcribeexpress.manus.space

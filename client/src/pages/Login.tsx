@@ -21,7 +21,7 @@ import { EmailSignUp } from "@/components/EmailSignUp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Mail, Chrome } from "lucide-react";
 
-const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/brand/transcribe-express-icon-transparent-v2.png";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/brand/neon-symbol-transparent-v3.png";
 const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png";
 
 type AuthMode = "oauth" | "email_signin" | "email_signup";
@@ -69,7 +69,7 @@ export default function Login() {
             <img
               src={LOGO_URL}
               alt="Transcribe Express Logo"
-              className="w-20 h-20 object-contain [mix-blend-mode:screen] drop-shadow-[0_0_12px_rgba(180,0,255,0.6)]"
+              className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(180,0,255,0.6)]"
             />
             <img
               src={WORDMARK_URL}
