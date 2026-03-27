@@ -929,3 +929,11 @@
 - [x] Créer composant EmailSignUp (inscription + vérification OTP email) ✅
 - [x] Intégrer les formulaires dans Login.tsx avec navigation entre modes ✅
 - [x] Tester le rendu : mode OAuth, mode Email connexion, mode Email inscription ✅
+
+---
+
+## 🎨 Design - Nouvelle icône neon Login (fond transparent)
+
+- [x] Uploader la nouvelle icône PNG transparent sur le CDN S3 ✅
+- [x] Mettre à jour Login.tsx avec la nouvelle URL ✅
+- [x] Valider le rendu sans fond visible ✅

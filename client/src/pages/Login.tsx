@@ -21,7 +21,7 @@ import { EmailSignUp } from "@/components/EmailSignUp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Mail, Chrome } from "lucide-react";
 
-const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-logo-e6ea58c3.png";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/brand/transcribe-express-icon-transparent-v2.png";
 const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png";
 
 type AuthMode = "oauth" | "email_signin" | "email_signup";
