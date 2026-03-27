@@ -937,3 +937,11 @@
 - [x] Uploader la nouvelle icône PNG transparent sur le CDN S3 ✅
 - [x] Mettre à jour Login.tsx avec la nouvelle URL ✅
 - [x] Valider le rendu sans fond visible ✅
+
+---
+
+## 🎨 Design - Nouvelle icône neon (fond transparent) sur Home, Dashboard, Upload
+
+- [x] Mettre à jour Home.tsx avec la nouvelle icône transparente ✅
+- [x] Mettre à jour Dashboard.tsx avec la nouvelle icône transparente ✅
+- [x] Mettre à jour Upload.tsx avec la nouvelle icône transparente ✅
