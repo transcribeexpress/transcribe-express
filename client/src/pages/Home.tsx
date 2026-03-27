@@ -12,7 +12,7 @@ export default function Home() {
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/brand/transcribe-express-icon-transparent-v2.png"
               alt="Transcribe Express Logo"
-              className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0"
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain [mix-blend-mode:screen] flex-shrink-0"
             />
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png"

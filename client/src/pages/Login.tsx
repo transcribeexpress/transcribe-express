@@ -69,7 +69,7 @@ export default function Login() {
             <img
               src={LOGO_URL}
               alt="Transcribe Express Logo"
-              className="w-16 h-16 object-contain [mix-blend-mode:screen]"
+              className="w-20 h-20 object-contain [mix-blend-mode:screen] drop-shadow-[0_0_12px_rgba(180,0,255,0.6)]"
             />
             <img
               src={WORDMARK_URL}

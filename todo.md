@@ -945,3 +945,14 @@
 - [x] Mettre à jour Home.tsx avec la nouvelle icône transparente ✅
 - [x] Mettre à jour Dashboard.tsx avec la nouvelle icône transparente ✅
 - [x] Mettre à jour Upload.tsx avec la nouvelle icône transparente ✅
+
+---
+
+## 🐛 Bug - Fond damier visible sur l'icône neon
+
+- [x] Corriger le fond damier visible sur l'icône dans Home.tsx ✅
+- [x] Corriger le fond damier visible sur l'icône dans Login.tsx ✅
+- [x] Corriger le fond damier visible sur l'icône dans Dashboard.tsx ✅
+- [x] Corriger le fond damier visible sur l'icône dans Upload.tsx ✅
+- [x] Corriger le fond damier visible sur l'icône dans Profile.tsx ✅
+- [x] Corriger le fond damier visible sur l'icône dans Settings.tsx ✅
