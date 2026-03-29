@@ -1038,3 +1038,22 @@
 - [x] Supprimer toutes les limites de taille dans le serveur (audioProcessor V3)
 - [x] Contournement du reverse proxy via presigned URL S3 (upload navigateur → S3 direct)
 - [x] Architecture V3 : presigned URL → upload direct S3 → notification serveur → worker transcription
+
+---
+
+## 🐛 Bug critique — Erreur réseau lors de l'upload (29 mars 2026)
+
+- [x] Erreur réseau à l'upload → CORS S3 configuré avec succès
+- [x] Diagnostiquer le pipeline presigned URL → upload S3 → notification serveur
+- [x] Vérifier la configuration CORS du bucket S3 → Preflight OPTIONS 200, Allow-Origin: *
+- [x] Vérifier la construction de l'URL pré-signée → PUT 200 OK
+- [x] Corriger et valider → CORS actif, upload direct S3 fonctionnel
+
+---
+
+## 🐛 Bug critique — Worker 403 Forbidden lors du téléchargement S3 (29 mars 2026)
+
+- [x] Le worker utilise l'URL publique → 403 car bucket privé → Corrigé : téléchargement via AWS SDK
+- [x] Modifier audioProcessor.ts pour télécharger via AWS SDK (GetObject)
+- [x] Ajouté downloadFileFromS3() dans s3Direct.ts
+- [x] Validé : 176/176 tests passent, 0 erreur TypeScript

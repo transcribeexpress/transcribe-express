@@ -79,6 +79,39 @@ export async function verifyFileExists(fileKey: string): Promise<boolean> {
 }
 
 /**
+ * Télécharger un fichier depuis S3 via AWS SDK (avec credentials)
+ * Utilisé par le worker de transcription pour récupérer les fichiers uploadés
+ */
+export async function downloadFileFromS3(fileKey: string): Promise<Buffer> {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+  });
+
+  const response = await s3Client.send(command);
+
+  if (!response.Body) {
+    throw new Error(`S3 GetObject returned empty body for key: ${fileKey}`);
+  }
+
+  // Convertir le stream en Buffer
+  const chunks: Uint8Array[] = [];
+  const stream = response.Body as any;
+  
+  if (typeof stream.transformToByteArray === 'function') {
+    // AWS SDK v3 native method
+    const byteArray = await stream.transformToByteArray();
+    return Buffer.from(byteArray);
+  }
+  
+  // Fallback: read stream manually
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * Générer une URL pré-signée pour téléchargement (lecture)
  */
 export async function generatePresignedDownloadUrl(

@@ -47,11 +47,12 @@ async function processTranscription(transcriptionId: number) {
     console.log(`[Worker] Transcription ${transcriptionId} status: processing`);
 
     // 3. Extraire l'audio via FFmpeg (gère MOV, MP4, AVI, MKV, etc.)
-    console.log(`[Worker] Processing media file: ${transcription.fileName}`);
+    console.log(`[Worker] Processing media file: ${transcription.fileName} (key: ${transcription.fileKey})`);
     const audioResult = await processMediaFile(
       transcription.fileUrl,
       transcription.fileName,
-      getMimeTypeFromFileName(transcription.fileName)
+      getMimeTypeFromFileName(transcription.fileName),
+      transcription.fileKey ?? undefined  // Télécharger via AWS SDK au lieu de l'URL publique
     );
 
     if (!audioResult.success) {

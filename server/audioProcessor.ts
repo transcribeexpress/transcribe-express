@@ -19,6 +19,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { randomBytes } from 'crypto';
+import { downloadFileFromS3 } from './s3Direct';
 
 // Types MIME supportés (vidéo + audio)
 export const SUPPORTED_VIDEO_MIMES = [
@@ -294,14 +295,16 @@ export async function extractAndConvertAudio(
 }
 
 /**
- * Pipeline complet : télécharger un fichier depuis S3, extraire l'audio, convertir en FLAC
+ * Pipeline complet : télécharger un fichier depuis S3 via AWS SDK, extraire l'audio, convertir en FLAC
  * 
  * C'est le point d'entrée principal utilisé par le worker de transcription.
+ * Utilise le fileKey pour télécharger via AWS SDK (avec credentials) au lieu de l'URL publique.
  */
 export async function processMediaFile(
   fileUrl: string,
   fileName: string,
-  mimeType: string
+  mimeType: string,
+  fileKey?: string
 ): Promise<AudioProcessingOutput> {
   console.log(`[AudioProcessor] Processing: ${fileName} (${mimeType})`);
 
@@ -317,7 +320,16 @@ export async function processMediaFile(
   // 2. Télécharger le fichier depuis S3
   let fileBuffer: Buffer;
   try {
-    fileBuffer = await downloadFileFromUrl(fileUrl);
+    if (fileKey) {
+      // Méthode préférée : télécharger via AWS SDK (avec credentials, pas de 403)
+      console.log(`[AudioProcessor] Downloading via AWS SDK: ${fileKey}`);
+      fileBuffer = await downloadFileFromS3(fileKey);
+    } else {
+      // Fallback : télécharger via URL publique (pour compatibilité)
+      console.log(`[AudioProcessor] Downloading via public URL: ${fileUrl}`);
+      fileBuffer = await downloadFileFromUrl(fileUrl);
+    }
+    console.log(`[AudioProcessor] Downloaded: ${(fileBuffer.length / 1024 / 1024).toFixed(1)} MB`);
   } catch (error: any) {
     return {
       success: false,
