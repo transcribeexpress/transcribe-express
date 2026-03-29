@@ -2,23 +2,24 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, AlertCircle, Film, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isVideoFile } from '@/utils/audioValidation';
+import { isVideoFile, SUPPORTED_EXTENSIONS } from '@/utils/audioValidation';
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 Mo (V2)
-const ACCEPTED_FORMATS = {
-  'audio/mpeg': ['.mp3'],
-  'audio/wav': ['.wav'],
-  'audio/mp4': ['.m4a'],
-  'audio/x-m4a': ['.m4a'],
-  'audio/ogg': ['.ogg'],
-  'audio/flac': ['.flac'],
-  'audio/webm': ['.webm'],
-  'video/mp4': ['.mp4'],
-  'video/webm': ['.webm'],
-  'video/quicktime': ['.mov'],
-  'video/x-msvideo': ['.avi'],
-  'video/x-matroska': ['.mkv'],
-};
+
+/**
+ * Valider un fichier par son extension (pas par MIME type)
+ * 
+ * Raison : Sur iOS/Safari, les fichiers .mov sont souvent envoyés avec
+ * un MIME type vide ou 'application/octet-stream' au lieu de 'video/quicktime'.
+ * react-dropzone rejette ces fichiers si on utilise la validation MIME stricte.
+ * 
+ * Solution : On désactive la validation `accept` de react-dropzone et on
+ * valide manuellement par extension de fichier.
+ */
+function isAcceptedFile(file: File): boolean {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  return SUPPORTED_EXTENSIONS.includes(ext);
+}
 
 interface UploadZoneProps {
   onFileSelect: (file: File) => void;
@@ -37,31 +38,40 @@ export function UploadZone({
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     setError(null);
 
-    // Gérer les fichiers rejetés
-    if (rejectedFiles.length > 0) {
-      const rejection = rejectedFiles[0];
-      if (rejection.errors[0]?.code === 'file-too-large') {
-        setError(`Le fichier est trop volumineux. Taille maximale : ${Math.floor(maxSize / 1024 / 1024)} Mo`);
-      } else if (rejection.errors[0]?.code === 'file-invalid-type') {
-        setError('Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM');
-      } else {
-        setError('Erreur lors de la sélection du fichier');
-      }
+    // Combiner tous les fichiers (acceptés + rejetés par MIME) pour validation manuelle
+    const allFiles = [
+      ...acceptedFiles,
+      ...rejectedFiles.map((r: any) => r.file).filter(Boolean),
+    ];
+
+    if (allFiles.length === 0) {
+      setError('Aucun fichier sélectionné');
       return;
     }
 
-    // Gérer le fichier accepté
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
-      setSelectedFile(file);
-      onFileSelect(file);
+    const file = allFiles[0];
+
+    // Validation manuelle par extension
+    if (!isAcceptedFile(file)) {
+      setError('Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM');
+      return;
     }
+
+    // Validation de taille
+    if (file.size > maxSize) {
+      setError(`Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(0)} Mo). Taille maximale : ${Math.floor(maxSize / 1024 / 1024)} Mo`);
+      return;
+    }
+
+    setSelectedFile(file);
+    onFileSelect(file);
   }, [onFileSelect, maxSize]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: ACCEPTED_FORMATS,
-    maxSize,
+    // NE PAS utiliser `accept` pour éviter le rejet MIME sur iOS/Safari
+    // La validation est faite manuellement dans onDrop par extension
+    maxSize: undefined, // Désactivé, géré manuellement
     multiple: false,
     disabled,
   });

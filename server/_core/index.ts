@@ -8,6 +8,8 @@ import { registerClerkSyncRoutes } from "./clerkSync";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { uploadRouter } from "../uploadRoute";
+import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,13 +33,31 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads (500 Mo vidéo + overhead base64)
-  app.use(express.json({ limit: "700mb" }));
-  app.use(express.urlencoded({ limit: "700mb", extended: true }));
+  // Configure body parser for JSON (tRPC) — pas besoin de 700mb maintenant
+  // Les fichiers volumineux passent par la route multipart /api/upload
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Clerk sync routes for Clerk → Manus OAuth session bridging
   registerClerkSyncRoutes(app);
+
+  // Route d'upload multipart avec authentification
+  // Middleware auth pour injecter req.user avant la route upload
+  app.use("/api", async (req, res, next) => {
+    if (req.path === '/upload' && req.method === 'POST') {
+      try {
+        const user = await sdk.authenticateRequest(req);
+        (req as any).user = user;
+      } catch {
+        res.status(401).json({ error: 'Non authentifié. Veuillez vous connecter.' });
+        return;
+      }
+    }
+    next();
+  });
+  app.use("/api", uploadRouter);
+
   // tRPC API
   app.use(
     "/api/trpc",

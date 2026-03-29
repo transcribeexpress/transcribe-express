@@ -1019,3 +1019,11 @@
 - [x] Audit du code frontend : cohérence des limites, formats, messages d'erreur
 - [x] Écriture des tests Vitest pour audioProcessor et audioChunker
 - [x] Validation end-to-end du pipeline complet
+
+---
+
+## 🐛 Bugs critiques — Test en conditions réelles (29 mars 2026)
+
+- [x] Bug 1 : Format MOV non accepté à l'upload → Correction : validation par extension au lieu de MIME type
+- [x] Bug 2 : Erreur "The string did not match the pattern" → Correction : upload multipart (multer) au lieu de base64 via tRPC
+- [x] Vérification et validation des corrections (177/177 tests passent)

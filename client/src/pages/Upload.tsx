@@ -4,9 +4,12 @@
  * Page protégée accessible uniquement aux utilisateurs connectés.
  * Utilise useClerkSync pour synchroniser la session Clerk → Manus OAuth
  * avant de permettre les uploads.
+ * 
+ * V2 : Upload multipart via /api/upload au lieu de base64 via tRPC
+ * pour supporter les fichiers volumineux (jusqu'à 500 Mo).
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useClerkSync } from "@/hooks/useClerkSync";
@@ -57,25 +60,7 @@ export default function Upload() {
     audioDuration
   );
 
-  const createTranscriptionMutation = trpc.transcriptions.create.useMutation({
-    onSuccess: (data) => {
-      toast.success("Upload réussi !", {
-        description: "La transcription va démarrer automatiquement.",
-      });
-      
-      // Stocker l'ID de la transcription pour le polling
-      setTranscriptionId(data.id);
-    },
-    onError: (error) => {
-      toast.error("Erreur d'upload", {
-        description: error.message,
-      });
-      setIsUploading(false);
-      setUploadProgress(0);
-    },
-  });
-
-  const handleFileSelect = async (file: File) => {
+  const handleFileSelect = useCallback(async (file: File) => {
     setValidationError(null);
     
     // Valider le fichier (format, taille, durée)
@@ -97,51 +82,90 @@ export default function Upload() {
     }
     
     setSelectedFile(file);
-  };
+  }, []);
 
-  const handleUpload = async () => {
+  /**
+   * Upload multipart via XMLHttpRequest
+   * 
+   * Pourquoi XHR au lieu de fetch ?
+   * - XHR supporte le suivi de progression d'upload (upload.onprogress)
+   * - fetch ne supporte pas le suivi de progression d'upload nativement
+   * - Pour un fichier de 160 Mo, l'utilisateur a besoin de voir la progression
+   */
+  const handleUpload = useCallback(async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
 
     try {
-      // Convertir le fichier en Base64
-      const reader = new FileReader();
-      
-      reader.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.floor((event.loaded / event.total) * 80) + 10;
-          setUploadProgress(progress);
-        }
-      };
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('fileName', selectedFile.name);
 
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        
-        setUploadProgress(90);
+      const result = await new Promise<{ id: number; fileName: string; fileUrl: string; status: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
 
-        // Envoyer vers le serveur
-        await createTranscriptionMutation.mutateAsync({
-          fileName: selectedFile.name,
-          fileSize: selectedFile.size,
-          mimeType: selectedFile.type,
-          fileBuffer: base64,
-        });
+        // Suivi de la progression d'upload
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.floor((event.loaded / event.total) * 90);
+            setUploadProgress(progress);
+          }
+        };
 
-        setUploadProgress(100);
-      };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              setUploadProgress(100);
+              resolve(response);
+            } catch {
+              reject(new Error('Réponse invalide du serveur'));
+            }
+          } else {
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              reject(new Error(errorResponse.error || `Erreur serveur (${xhr.status})`));
+            } catch {
+              reject(new Error(`Erreur serveur (${xhr.status})`));
+            }
+          }
+        };
 
-      reader.readAsDataURL(selectedFile);
-    } catch (error) {
+        xhr.onerror = () => {
+          reject(new Error('Erreur réseau. Vérifiez votre connexion.'));
+        };
+
+        xhr.ontimeout = () => {
+          reject(new Error('Le transfert a expiré. Le fichier est peut-être trop volumineux pour votre connexion.'));
+        };
+
+        // Timeout de 10 minutes pour les gros fichiers
+        xhr.timeout = 10 * 60 * 1000;
+
+        xhr.open('POST', '/api/upload');
+        // Les cookies sont envoyés automatiquement (same-origin)
+        xhr.withCredentials = true;
+        xhr.send(formData);
+      });
+
+      toast.success("Upload réussi !", {
+        description: "La transcription va démarrer automatiquement.",
+      });
+
+      // Stocker l'ID de la transcription pour le polling
+      setTranscriptionId(result.id);
+
+    } catch (error: any) {
       console.error("Upload error:", error);
       toast.error("Erreur d'upload", {
-        description: "Une erreur est survenue lors de l'upload du fichier.",
+        description: error.message || "Une erreur est survenue lors de l'upload du fichier.",
       });
       setIsUploading(false);
       setUploadProgress(0);
     }
-  };
+  }, [selectedFile]);
 
   // État de chargement : Clerk charge OU session en cours de sync
   if (isLoading || isSyncing) {
@@ -153,9 +177,9 @@ export default function Upload() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-<img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
-           <h2 className="text-xl font-semibold">Connexion requise</h2>
-           <p className="text-muted-foreground">Veuillez vous connecter pour uploader un fichier.</p>
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
+          <h2 className="text-xl font-semibold">Connexion requise</h2>
+          <p className="text-muted-foreground">Veuillez vous connecter pour uploader un fichier.</p>
           <Button onClick={() => setLocation("/login")}>
             Se connecter
           </Button>
@@ -169,8 +193,8 @@ export default function Upload() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-<img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
-           <h2 className="text-xl font-semibold">Erreur de connexion</h2>
+          <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
+          <h2 className="text-xl font-semibold">Erreur de connexion</h2>
           <p className="text-muted-foreground">Impossible de synchroniser votre session.</p>
           <Button onClick={() => window.location.reload()}>
             Réessayer
@@ -290,7 +314,7 @@ export default function Upload() {
         {validationError && (
           <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-sm text-destructive font-medium">
-              ⚠️ {validationError}
+              {validationError}
             </p>
           </div>
         )}
