@@ -13,6 +13,7 @@ import SSOCallback from "./pages/SSOCallback";
 import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import ProgressPage from "./pages/Progress";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/upload"} component={Upload} />
       <Route path={"/results/:id"} component={Results} />
+      <Route path={"/progress/:id"} component={ProgressPage} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/settings"} component={Settings} />

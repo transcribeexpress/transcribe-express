@@ -1,15 +1,13 @@
 /**
- * Worker de transcription — Pipeline complet V3
+ * Worker de transcription — Pipeline complet V4
  * 
- * Pipeline optimisé pour les gros fichiers :
- * 1. Récupérer la transcription depuis la BDD
- * 2. Mettre à jour le statut à "processing"
- * 3. Télécharger le fichier depuis S3 en streaming vers le disque (pas de Buffer en mémoire)
- * 4. Extraire l'audio via FFmpeg (conversion MOV/MP4/etc → FLAC 16kHz mono)
- * 5. Si audio > 20 Mo → chunking automatique avec chevauchement
- * 6. Transcrire chaque chunk (ou le fichier entier) via Groq Whisper
- * 7. Réassembler les transcriptions (si chunking)
- * 8. Sauvegarder le résultat en BDD
+ * Pipeline avec suivi de progression en temps réel :
+ * 1. downloading (0-20%) : Téléchargement depuis S3 vers le disque
+ * 2. extracting_audio (20-40%) : Extraction audio via FFmpeg
+ * 3. transcribing (40-90%) : Transcription via Groq Whisper (avec chunking si nécessaire)
+ * 4. completed (100%) : Terminé
+ * 
+ * Supporte l'annulation : vérifie le statut en BDD avant chaque étape.
  * 
  * Optimisations mémoire :
  * - S3 → disque en streaming (pas de Buffer 550 Mo en mémoire)
@@ -18,7 +16,7 @@
  * - Timeout global de 10 minutes
  */
 
-import { getTranscriptionById, updateTranscriptionStatus } from '../db';
+import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress } from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
 import { processMediaFile } from '../audioProcessor';
 import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions } from '../audioChunker';
@@ -27,18 +25,57 @@ import { retryWithBackoff } from '../utils/retry';
 // Timeout global pour le worker (10 minutes)
 const WORKER_TIMEOUT_MS = 10 * 60 * 1000;
 
+// Map des workers actifs pour permettre l'annulation
+const activeWorkers = new Map<number, { cancelled: boolean }>();
+
+/**
+ * Vérifier si une transcription a été annulée
+ */
+async function isCancelled(transcriptionId: number): Promise<boolean> {
+  // Vérifier le flag local d'abord (plus rapide)
+  const worker = activeWorkers.get(transcriptionId);
+  if (worker?.cancelled) return true;
+
+  // Vérifier en BDD
+  const transcription = await getTranscriptionById(transcriptionId);
+  if (transcription?.status === 'cancelled') {
+    if (worker) worker.cancelled = true;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Annuler un worker en cours
+ */
+export function cancelTranscriptionWorker(transcriptionId: number): boolean {
+  const worker = activeWorkers.get(transcriptionId);
+  if (worker) {
+    worker.cancelled = true;
+    return true;
+  }
+  return false;
+}
+
 /**
  * Déclencher le worker de transcription de manière asynchrone
  * Cette fonction ne bloque pas la requête HTTP
  */
 export async function triggerTranscriptionWorker(transcriptionId: number) {
+  // Enregistrer le worker actif
+  activeWorkers.set(transcriptionId, { cancelled: false });
+
   // Lancer le worker en arrière-plan (non-bloquant)
   processTranscription(transcriptionId).catch((error) => {
     console.error(`[Worker] FATAL error for transcription ${transcriptionId}:`, error);
     // Tenter de marquer comme erreur en BDD même en cas de crash
     updateTranscriptionStatus(transcriptionId, 'error', {
       errorMessage: `Worker crash: ${error?.message || 'Unknown error'}`,
+      processingStep: 'error',
+      processingProgress: 0,
     }).catch(() => {});
+  }).finally(() => {
+    activeWorkers.delete(transcriptionId);
   });
 }
 
@@ -63,7 +100,7 @@ async function processTranscription(transcriptionId: number) {
 }
 
 /**
- * Logique principale de traitement
+ * Logique principale de traitement avec suivi de progression
  */
 async function doProcessTranscription(transcriptionId: number, startTime: number) {
   const log = (msg: string) => {
@@ -80,12 +117,28 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
       throw new Error(`Transcription ${transcriptionId} not found`);
     }
 
-    // 2. Mettre à jour le statut à "processing"
-    await updateTranscriptionStatus(transcriptionId, 'processing');
+    // 2. Mettre à jour le statut à "processing" + étape "downloading"
+    await updateTranscriptionStatus(transcriptionId, 'processing', {
+      processingStep: 'downloading',
+      processingProgress: 5,
+    });
     log(`Status: processing | File: ${transcription.fileName} | Key: ${transcription.fileKey}`);
+
+    // === ÉTAPE 1 : TÉLÉCHARGEMENT S3 (0-20%) ===
+    await updateTranscriptionProgress(transcriptionId, 'downloading', 10);
+
+    // Vérifier annulation
+    if (await isCancelled(transcriptionId)) {
+      log('Cancelled before download');
+      return;
+    }
 
     // 3. Extraire l'audio via FFmpeg (streaming S3 → disque → FFmpeg → FLAC)
     log('Starting audio processing (S3 streaming → FFmpeg)...');
+    
+    // Mettre à jour la progression pendant le téléchargement
+    await updateTranscriptionProgress(transcriptionId, 'downloading', 15);
+
     const audioResult = await processMediaFile(
       transcription.fileUrl,
       transcription.fileName,
@@ -97,9 +150,21 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
       throw new Error(`Audio processing failed: ${audioResult.error}`);
     }
 
+    // === ÉTAPE 2 : EXTRACTION AUDIO (20-40%) ===
+    await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 30);
     log(`Audio extracted: ${(audioResult.processedSizeBytes / 1024 / 1024).toFixed(1)}MB FLAC, duration: ${audioResult.durationSeconds.toFixed(1)}s`);
 
-    // 4. Vérifier si le chunking est nécessaire
+    // Vérifier annulation
+    if (await isCancelled(transcriptionId)) {
+      log('Cancelled after audio extraction');
+      return;
+    }
+
+    await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 40);
+
+    // === ÉTAPE 3 : TRANSCRIPTION (40-90%) ===
+    await updateTranscriptionProgress(transcriptionId, 'transcribing', 45);
+
     let transcriptText: string;
     let detectedLanguage: string = 'fr';
     let totalDuration: number = audioResult.durationSeconds;
@@ -113,13 +178,21 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
         audioResult.extension
       );
 
-      log(`Split into ${chunks.length} chunks`);
+      const totalChunks = chunks.length;
+      log(`Split into ${totalChunks} chunks`);
 
       try {
+        let completedChunks = 0;
+
         // Transcrire les chunks en parallèle (max 3 simultanés)
         const chunkResults = await transcribeChunksParallel(
           chunks,
           async (buffer, mimeType) => {
+            // Vérifier annulation avant chaque chunk
+            if (await isCancelled(transcriptionId)) {
+              throw new Error('Transcription cancelled by user');
+            }
+
             const retryResult = await retryWithBackoff(
               async () => transcribeAudioBuffer(buffer, mimeType, 'fr'),
               {
@@ -135,6 +208,16 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
             if (!retryResult.success || !retryResult.result) {
               throw retryResult.error || new Error('Chunk transcription failed');
             }
+
+            // Mettre à jour la progression par chunk (45% → 90%)
+            completedChunks++;
+            const chunkProgress = 45 + Math.floor((completedChunks / totalChunks) * 45);
+            await updateTranscriptionProgress(
+              transcriptionId, 
+              `transcribing_${completedChunks}/${totalChunks}`, 
+              chunkProgress
+            );
+            log(`Chunk ${completedChunks}/${totalChunks} completed (${chunkProgress}%)`);
 
             return retryResult.result;
           }
@@ -159,6 +242,13 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
     } else {
       // ===== MODE DIRECT (fichier < 20 Mo) =====
       log(`Direct transcription: ${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB`);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 55);
+
+      // Vérifier annulation
+      if (await isCancelled(transcriptionId)) {
+        log('Cancelled before transcription');
+        return;
+      }
 
       const retryResult = await retryWithBackoff(
         async () => transcribeAudioBuffer(audioResult.audioBuffer, 'audio/flac', 'fr'),
@@ -179,25 +269,46 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
       transcriptText = retryResult.result.text;
       detectedLanguage = retryResult.result.language;
       totalDuration = retryResult.result.duration || totalDuration;
+
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
     }
+
+    // Vérifier annulation une dernière fois
+    if (await isCancelled(transcriptionId)) {
+      log('Cancelled before saving');
+      return;
+    }
+
+    // === ÉTAPE 4 : SAUVEGARDE (90-100%) ===
+    await updateTranscriptionProgress(transcriptionId, 'saving', 95);
 
     // 5. Sauvegarder le résultat
     await updateTranscriptionStatus(transcriptionId, 'completed', {
       transcriptText,
       duration: Math.floor(totalDuration),
+      processingStep: 'completed',
+      processingProgress: 100,
     });
 
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    log(`✅ COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
+    log(`COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
 
   } catch (error: any) {
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.error(`[Worker][${transcriptionId}][${totalElapsed}s] ❌ FAILED:`, error);
+    console.error(`[Worker][${transcriptionId}][${totalElapsed}s] FAILED:`, error);
+
+    // Ne pas écraser le statut si annulé
+    if (await isCancelled(transcriptionId)) {
+      log('Worker stopped due to cancellation');
+      return;
+    }
 
     const errorMessage = error.message || 'Erreur inconnue lors de la transcription';
     
     await updateTranscriptionStatus(transcriptionId, 'error', {
       errorMessage,
+      processingStep: 'error',
+      processingProgress: 0,
     });
 
     log(`Marked as error: ${errorMessage}`);

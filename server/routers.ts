@@ -2,8 +2,8 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription } from "./db";
-import { triggerTranscriptionWorker } from "./workers/transcriptionWorker";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus } from "./db";
+import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
@@ -137,6 +137,39 @@ export const appRouter = router({
         
         await deleteTranscription(input.id);
         
+        return { success: true };
+      }),
+
+    /**
+     * Annuler une transcription en cours
+     */
+    cancel: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const transcription = await getTranscriptionById(input.id);
+        
+        if (!transcription) {
+          throw new Error("Transcription not found");
+        }
+        
+        if (transcription.userId !== ctx.user.openId) {
+          throw new Error("Access denied");
+        }
+        
+        // Vérifier que la transcription est en cours
+        if (transcription.status !== 'pending' && transcription.status !== 'processing') {
+          throw new Error("La transcription n'est pas en cours de traitement");
+        }
+
+        // Signaler l'annulation au worker
+        cancelTranscriptionWorker(input.id);
+
+        // Mettre à jour le statut en BDD
+        await updateTranscriptionStatus(input.id, 'cancelled', {
+          processingStep: 'cancelled',
+          processingProgress: 0,
+        });
+
         return { success: true };
       }),
 

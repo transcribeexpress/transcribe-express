@@ -143,11 +143,13 @@ export async function getTranscriptionById(id: number) {
  */
 export async function updateTranscriptionStatus(
   id: number,
-  status: 'pending' | 'processing' | 'completed' | 'error',
+  status: 'pending' | 'processing' | 'completed' | 'error' | 'cancelled',
   updates?: {
     transcriptText?: string;
     errorMessage?: string;
     duration?: number;
+    processingStep?: string;
+    processingProgress?: number;
   }
 ) {
   const db = await getDb();
@@ -159,10 +161,32 @@ export async function updateTranscriptionStatus(
   if (updates?.transcriptText !== undefined) updateData.transcriptText = updates.transcriptText;
   if (updates?.errorMessage !== undefined) updateData.errorMessage = updates.errorMessage;
   if (updates?.duration !== undefined) updateData.duration = updates.duration;
+  if (updates?.processingStep !== undefined) updateData.processingStep = updates.processingStep;
+  if (updates?.processingProgress !== undefined) updateData.processingProgress = updates.processingProgress;
 
   await db
     .update(transcriptions)
     .set(updateData)
+    .where(eq(transcriptions.id, id));
+}
+
+/**
+ * Mettre à jour uniquement l'étape et la progression d'une transcription
+ * Utilisé par le worker pour signaler la progression sans changer le statut
+ */
+export async function updateTranscriptionProgress(
+  id: number,
+  processingStep: string,
+  processingProgress: number
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db
+    .update(transcriptions)
+    .set({ processingStep, processingProgress })
     .where(eq(transcriptions.id, id));
 }
 

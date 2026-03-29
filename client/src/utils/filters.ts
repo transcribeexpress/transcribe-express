@@ -3,7 +3,7 @@ import type { StatusFilter, DateFilter } from "@/components/FilterPanel";
 export interface Transcription {
   id: number;
   fileName: string;
-  status: "pending" | "processing" | "completed" | "error";
+  status: "pending" | "processing" | "completed" | "error" | "cancelled";
   createdAt: Date;
   duration: number | null;
 }

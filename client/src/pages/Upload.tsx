@@ -161,7 +161,8 @@ export default function Upload() {
         description: "La transcription va démarrer automatiquement.",
       });
 
-      setTranscriptionId(result.id);
+      // Rediriger vers la page de progression
+      setLocation(`/progress/${result.id}`);
 
     } catch (error: any) {
       console.error("Upload error:", error);

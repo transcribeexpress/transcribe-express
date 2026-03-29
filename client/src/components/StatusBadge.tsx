@@ -6,20 +6,26 @@
  * - processing : Jaune avec animation pulse (En cours)
  * - completed : Vert (Terminé)
  * - error : Rouge (Erreur)
+ * - cancelled : Orange (Annulé)
  */
 
-import { CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
+import { CheckCircle, Clock, Loader2, XCircle, Ban } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Status = "pending" | "processing" | "completed" | "error";
+type Status = "pending" | "processing" | "completed" | "error" | "cancelled";
 
 interface StatusBadgeProps {
   status: Status;
   className?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<Status, {
+  label: string;
+  icon: typeof CheckCircle;
+  className: string;
+  iconClassName: string;
+}> = {
   pending: {
     label: "En attente",
     icon: Clock,
@@ -44,10 +50,17 @@ const statusConfig = {
     className: "bg-red-500/10 text-red-500 border-red-500/20",
     iconClassName: "",
   },
+  cancelled: {
+    label: "Annulé",
+    icon: Ban,
+    className: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+    iconClassName: "",
+  },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const config = statusConfig[status];
+  if (!config) return null;
   const Icon = config.icon;
 
   return (

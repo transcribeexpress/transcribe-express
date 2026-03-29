@@ -27,6 +27,16 @@ export type InsertUser = typeof users.$inferInsert;
 
 /**
  * Table transcriptions - Stocke les transcriptions audio/vidéo
+ * 
+ * Étapes du pipeline (processingStep) :
+ * - uploading : Upload vers S3 en cours
+ * - downloading : Téléchargement depuis S3 vers le serveur
+ * - extracting_audio : Extraction audio via FFmpeg
+ * - transcribing : Transcription via Groq Whisper
+ * - completed : Terminé
+ * - error : Erreur
+ * 
+ * processingProgress : 0-100 (pourcentage de progression global)
  */
 export const transcriptions = mysqlTable("transcriptions", {
   id: int("id").autoincrement().primaryKey(),
@@ -35,7 +45,11 @@ export const transcriptions = mysqlTable("transcriptions", {
   fileUrl: text("fileUrl").notNull(),
   fileKey: varchar("fileKey", { length: 512 }), // Clé S3 pour suppression
   duration: int("duration"), // Durée en secondes
-  status: mysqlEnum("status", ["pending", "processing", "completed", "error"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "completed", "error", "cancelled"]).default("pending").notNull(),
+  /** Étape actuelle du pipeline de traitement */
+  processingStep: varchar("processingStep", { length: 50 }),
+  /** Pourcentage de progression globale (0-100) */
+  processingProgress: int("processingProgress").default(0),
   transcriptText: text("transcriptText"),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

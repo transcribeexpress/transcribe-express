@@ -16,7 +16,7 @@
 import { trpc } from "@/lib/trpc";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Trash2 } from "lucide-react";
+import { Download, Eye, Trash2, Loader2, Ban, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import {
   Table,
@@ -29,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { Mic } from "lucide-react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 /**
@@ -60,7 +61,7 @@ interface TranscriptionListProps {
   transcriptions?: Array<{
     id: number;
     fileName: string;
-    status: "pending" | "processing" | "completed" | "error";
+    status: "pending" | "processing" | "completed" | "error" | "cancelled";
     duration: number | null;
     createdAt: Date;
   }>;
@@ -80,6 +81,17 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
     enabled: transcriptions === undefined,
+  });
+
+  // Hook 3: Mutation d'annulation
+  const cancelMutation = trpc.transcriptions.cancel.useMutation({
+    onSuccess: () => {
+      toast.success("Transcription annulée");
+      query.refetch();
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    },
   });
 
   // ============================================================
@@ -146,6 +158,37 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
+                  {/* Transcription en cours : lien vers la progression */}
+                  {(transcription.status === "pending" || transcription.status === "processing") && (
+                    <>
+                      <Link href={`/progress/${transcription.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary"
+                          title="Voir la progression"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-orange-500 hover:text-orange-500"
+                        title="Arrêter le traitement"
+                        onClick={() => cancelMutation.mutate({ id: transcription.id })}
+                        disabled={cancelMutation.isPending}
+                      >
+                        {cancelMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Ban className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Transcription terminée : voir + télécharger */}
                   {transcription.status === "completed" && (
                     <>
                       <Link href={`/results/${transcription.id}`}>
@@ -168,14 +211,18 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
                       </Button>
                     </>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+
+                  {/* Supprimer (toujours visible sauf en cours) */}
+                  {transcription.status !== "pending" && transcription.status !== "processing" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

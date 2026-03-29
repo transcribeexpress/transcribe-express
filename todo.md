@@ -1071,3 +1071,32 @@
 - [x] Worker marque la transcription en erreur même en cas de crash inattendu
 - [x] Test pipeline complet réussi : 150 Mo MP4 → 2.7 Mo FLAC → transcription 97.5s en 13s total
 - [x] 176/176 tests passent, 0 erreur TypeScript
+
+---
+
+## 🎯 Améliorations UX — Suivi de progression (29 mars 2026)
+
+### Action 1 : Lien vers la page de progression depuis le Dashboard
+- [x] Quand une transcription est en statut "processing", afficher un lien cliquable dans le Dashboard
+- [x] Le lien redirige vers une page /progress/:id qui montre l'avancement en temps réel
+- [x] L'utilisateur peut naviguer entre Dashboard et page de progression sans perdre le contexte
+
+### Action 2 : Boutons Pause/Arrêter le traitement
+- [x] Ajouter un bouton "Arrêter" sur la page de progression pour annuler le traitement
+- [x] Implémenter la procédure tRPC transcriptions.cancel côté serveur
+- [x] Mettre à jour le statut en BDD à "cancelled" et nettoyer les ressources
+
+### Action 3 : Barre de progression détaillée avec étapes du pipeline
+- [x] Ajouter une colonne "processingStep" dans la table transcriptions en BDD
+- [x] Le worker met à jour l'étape à chaque phase : downloading, extracting_audio, transcribing, chunking
+- [x] Le frontend affiche les étapes avec des icônes et un stepper visuel (page /progress/:id)
+- [x] Polling toutes les 2 secondes pour mise à jour en temps réel
+- [x] Afficher le pourcentage de progression par chunk si chunking actif
+
+### Prérequis technique
+- [x] Modifier le schéma BDD pour ajouter processingStep et processingProgress
+- [x] Modifier le worker pour mettre à jour l'étape à chaque phase du pipeline
+- [x] Créer la page /progress/:id avec le stepper visuel
+- [x] Modifier le Dashboard/TranscriptionList pour ajouter le lien vers /progress/:id
+- [x] Upload.tsx redirige automatiquement vers /progress/:id après le lancement
+- [x] 176/176 tests passent, 0 erreur TypeScript
