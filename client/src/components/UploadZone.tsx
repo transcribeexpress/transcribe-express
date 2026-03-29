@@ -4,17 +4,12 @@ import { Upload, File, X, AlertCircle, Film, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isVideoFile, SUPPORTED_EXTENSIONS } from '@/utils/audioValidation';
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 Mo (V2)
-
 /**
  * Valider un fichier par son extension (pas par MIME type)
  * 
  * Raison : Sur iOS/Safari, les fichiers .mov sont souvent envoyés avec
  * un MIME type vide ou 'application/octet-stream' au lieu de 'video/quicktime'.
  * react-dropzone rejette ces fichiers si on utilise la validation MIME stricte.
- * 
- * Solution : On désactive la validation `accept` de react-dropzone et on
- * valide manuellement par extension de fichier.
  */
 function isAcceptedFile(file: File): boolean {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -23,13 +18,11 @@ function isAcceptedFile(file: File): boolean {
 
 interface UploadZoneProps {
   onFileSelect: (file: File) => void;
-  maxSize?: number;
   disabled?: boolean;
 }
 
 export function UploadZone({ 
   onFileSelect, 
-  maxSize = MAX_FILE_SIZE,
   disabled = false 
 }: UploadZoneProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -51,27 +44,20 @@ export function UploadZone({
 
     const file = allFiles[0];
 
-    // Validation manuelle par extension
+    // Validation manuelle par extension uniquement (plus de limite de taille)
     if (!isAcceptedFile(file)) {
       setError('Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM');
       return;
     }
 
-    // Validation de taille
-    if (file.size > maxSize) {
-      setError(`Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(0)} Mo). Taille maximale : ${Math.floor(maxSize / 1024 / 1024)} Mo`);
-      return;
-    }
-
     setSelectedFile(file);
     onFileSelect(file);
-  }, [onFileSelect, maxSize]);
+  }, [onFileSelect]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     // NE PAS utiliser `accept` pour éviter le rejet MIME sur iOS/Safari
-    // La validation est faite manuellement dans onDrop par extension
-    maxSize: undefined, // Désactivé, géré manuellement
+    maxSize: undefined,
     multiple: false,
     disabled,
   });
@@ -85,7 +71,8 @@ export function UploadZone({
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} Go`;
   };
 
   const isVideo = selectedFile ? isVideoFile(selectedFile) : false;
@@ -135,7 +122,7 @@ export function UploadZone({
                 <Film className="w-3.5 h-3.5" />
                 <span>Vidéo : MP4, MOV, AVI, MKV, WEBM</span>
               </div>
-              <p className="text-gray-600 mt-1">Taille max : {Math.floor(maxSize / 1024 / 1024)} Mo • Durée max : 120 min</p>
+              <p className="text-gray-600 mt-1">Aucune limite de taille • Upload direct vers le cloud</p>
             </div>
           </div>
         )}

@@ -1027,3 +1027,14 @@
 - [x] Bug 1 : Format MOV non accepté à l'upload → Correction : validation par extension au lieu de MIME type
 - [x] Bug 2 : Erreur "The string did not match the pattern" → Correction : upload multipart (multer) au lieu de base64 via tRPC
 - [x] Vérification et validation des corrections (177/177 tests passent)
+
+---
+
+## 🐛 Bugs critiques — Session 2 (29 mars 2026)
+
+- [x] Supprimer la limite de 500 Mo → Upload direct S3 via URL pré-signée (aucune limite)
+- [x] Corriger l'erreur 413 → Contournement du reverse proxy via upload direct S3
+- [x] Supprimer toutes les limites de taille dans le frontend (audioValidation V3, UploadZone V3)
+- [x] Supprimer toutes les limites de taille dans le serveur (audioProcessor V3)
+- [x] Contournement du reverse proxy via presigned URL S3 (upload navigateur → S3 direct)
+- [x] Architecture V3 : presigned URL → upload direct S3 → notification serveur → worker transcription

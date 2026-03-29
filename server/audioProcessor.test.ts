@@ -6,8 +6,6 @@ import {
   SUPPORTED_EXTENSIONS,
   SUPPORTED_VIDEO_MIMES,
   SUPPORTED_AUDIO_MIMES,
-  MAX_FILE_SIZE_MB,
-  MAX_FILE_SIZE_BYTES,
 } from "./audioProcessor";
 
 describe("audioProcessor", () => {
@@ -104,9 +102,10 @@ describe("audioProcessor", () => {
   });
 
   describe("constants", () => {
-    it("has correct max file size of 500 MB", () => {
-      expect(MAX_FILE_SIZE_MB).toBe(500);
-      expect(MAX_FILE_SIZE_BYTES).toBe(500 * 1024 * 1024);
+    it("does not export MAX_FILE_SIZE (removed in V3 — no size limit)", async () => {
+      const module = await import("./audioProcessor");
+      expect((module as any).MAX_FILE_SIZE_MB).toBeUndefined();
+      expect((module as any).MAX_FILE_SIZE_BYTES).toBeUndefined();
     });
 
     it("includes all expected extensions", () => {

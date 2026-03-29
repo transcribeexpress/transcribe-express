@@ -1,12 +1,18 @@
 /**
  * Page Upload - Upload de fichiers audio/vidéo
  * 
- * Page protégée accessible uniquement aux utilisateurs connectés.
- * Utilise useClerkSync pour synchroniser la session Clerk → Manus OAuth
- * avant de permettre les uploads.
+ * V3 : Upload direct vers S3 via URL pré-signée
  * 
- * V2 : Upload multipart via /api/upload au lieu de base64 via tRPC
- * pour supporter les fichiers volumineux (jusqu'à 500 Mo).
+ * Architecture :
+ * 1. Le frontend demande une URL pré-signée au serveur (petite requête tRPC)
+ * 2. Le frontend upload directement vers S3 via PUT (pas de limite proxy)
+ * 3. Le frontend confirme l'upload au serveur (petite requête tRPC)
+ * 4. Le serveur lance le worker de transcription
+ * 
+ * Avantages :
+ * - AUCUNE limite de taille (pas de passage par le reverse proxy)
+ * - Progression d'upload en temps réel
+ * - Pas de surcharge mémoire côté serveur
  */
 
 import { useState, useCallback } from "react";
@@ -18,7 +24,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { UploadProgress } from "@/components/UploadProgress";
 import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
-import { validateAudioFile } from "@/utils/audioValidation";
+import { validateFormat } from "@/utils/audioValidation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -39,6 +45,10 @@ export default function Upload() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | undefined>(undefined);
   const [transcriptionId, setTranscriptionId] = useState<number | null>(null);
+  
+  // Mutations tRPC pour l'upload direct S3
+  const getUploadUrl = trpc.transcriptions.getUploadUrl.useMutation();
+  const confirmUpload = trpc.transcriptions.confirmUpload.useMutation();
   
   // Polling pour suivre l'état de la transcription
   const { data: transcription } = trpc.transcriptions.getById.useQuery(
@@ -63,34 +73,27 @@ export default function Upload() {
   const handleFileSelect = useCallback(async (file: File) => {
     setValidationError(null);
     
-    // Valider le fichier (format, taille, durée)
-    const validation = await validateAudioFile(file, true);
-    
-    if (!validation.valid) {
-      const errorMsg = validation.error || 'Fichier invalide';
+    // Valider uniquement le format (plus de limite de taille)
+    if (!validateFormat(file)) {
+      const errorMsg = 'Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, WEBM, MP4, MOV, AVI, MKV';
       setValidationError(errorMsg);
-      toast.error("Fichier invalide", {
+      toast.error("Format non supporté", {
         description: errorMsg,
       });
       setSelectedFile(null);
       return;
     }
     
-    // Stocker la durée pour l'estimation de temps
-    if (validation.duration) {
-      setAudioDuration(validation.duration);
-    }
-    
     setSelectedFile(file);
   }, []);
 
   /**
-   * Upload multipart via XMLHttpRequest
+   * Upload direct vers S3 via URL pré-signée
    * 
-   * Pourquoi XHR au lieu de fetch ?
-   * - XHR supporte le suivi de progression d'upload (upload.onprogress)
-   * - fetch ne supporte pas le suivi de progression d'upload nativement
-   * - Pour un fichier de 160 Mo, l'utilisateur a besoin de voir la progression
+   * Étapes :
+   * 1. Obtenir l'URL pré-signée depuis le serveur
+   * 2. Upload direct vers S3 via PUT + XHR (progression)
+   * 3. Confirmer l'upload au serveur pour lancer la transcription
    */
   const handleUpload = useCallback(async () => {
     if (!selectedFile) return;
@@ -99,14 +102,18 @@ export default function Upload() {
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('fileName', selectedFile.name);
+      // Étape 1 : Obtenir l'URL pré-signée
+      toast.info("Préparation de l'upload...");
+      
+      const { uploadUrl, fileKey, fileUrl } = await getUploadUrl.mutateAsync({
+        fileName: selectedFile.name,
+        contentType: selectedFile.type || 'application/octet-stream',
+      });
 
-      const result = await new Promise<{ id: number; fileName: string; fileUrl: string; status: string }>((resolve, reject) => {
+      // Étape 2 : Upload direct vers S3 via XHR
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
-        // Suivi de la progression d'upload
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const progress = Math.floor((event.loaded / event.total) * 90);
@@ -116,20 +123,10 @@ export default function Upload() {
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              setUploadProgress(100);
-              resolve(response);
-            } catch {
-              reject(new Error('Réponse invalide du serveur'));
-            }
+            setUploadProgress(95);
+            resolve();
           } else {
-            try {
-              const errorResponse = JSON.parse(xhr.responseText);
-              reject(new Error(errorResponse.error || `Erreur serveur (${xhr.status})`));
-            } catch {
-              reject(new Error(`Erreur serveur (${xhr.status})`));
-            }
+            reject(new Error(`Erreur S3 (${xhr.status}): ${xhr.statusText}`));
           }
         };
 
@@ -138,23 +135,32 @@ export default function Upload() {
         };
 
         xhr.ontimeout = () => {
-          reject(new Error('Le transfert a expiré. Le fichier est peut-être trop volumineux pour votre connexion.'));
+          reject(new Error('Le transfert a expiré. Vérifiez votre connexion.'));
         };
 
-        // Timeout de 10 minutes pour les gros fichiers
-        xhr.timeout = 10 * 60 * 1000;
+        // Timeout de 30 minutes pour les très gros fichiers
+        xhr.timeout = 30 * 60 * 1000;
 
-        xhr.open('POST', '/api/upload');
-        // Les cookies sont envoyés automatiquement (same-origin)
-        xhr.withCredentials = true;
-        xhr.send(formData);
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', selectedFile.type || 'application/octet-stream');
+        xhr.send(selectedFile);
       });
+
+      // Étape 3 : Confirmer l'upload et lancer la transcription
+      setUploadProgress(98);
+      
+      const result = await confirmUpload.mutateAsync({
+        fileName: selectedFile.name,
+        fileKey,
+        fileUrl,
+      });
+
+      setUploadProgress(100);
 
       toast.success("Upload réussi !", {
         description: "La transcription va démarrer automatiquement.",
       });
 
-      // Stocker l'ID de la transcription pour le polling
       setTranscriptionId(result.id);
 
     } catch (error: any) {
@@ -165,9 +171,9 @@ export default function Upload() {
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [selectedFile]);
+  }, [selectedFile, getUploadUrl, confirmUpload]);
 
-  // État de chargement : Clerk charge OU session en cours de sync
+  // État de chargement
   if (isLoading || isSyncing) {
     return <UploadSkeleton />;
   }
@@ -209,13 +215,10 @@ export default function Upload() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-2">
             <img src={LOGO_URL} alt="Transcribe Express Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0" style={{ mixBlendMode: 'screen' }} />
             <img src={WORDMARK_URL} alt="Transcribe Express" className="h-8 sm:h-10 md:h-12 w-auto max-w-[120px] sm:max-w-[160px] md:max-w-[200px] object-contain" />
           </div>
-
-          {/* User Menu */}
           <UserMenu />
         </div>
       </header>
@@ -329,11 +332,8 @@ export default function Upload() {
             <p className="text-sm text-muted-foreground">
               Vidéo : MP4, MOV, AVI, MKV, WEBM
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Taille maximale : 500 Mo • Durée maximale : 120 min
-            </p>
             <p className="text-xs text-muted-foreground/70 mt-2">
-              L'audio est extrait automatiquement des fichiers vidéo. Les fichiers volumineux sont découpés et transcrits en parallèle.
+              Aucune limite de taille. L'audio est extrait automatiquement des fichiers vidéo. Les fichiers volumineux sont découpés et transcrits en parallèle.
             </p>
           </div>
         )}

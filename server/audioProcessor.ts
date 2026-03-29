@@ -48,9 +48,9 @@ export const SUPPORTED_EXTENSIONS = [
   'mp3', 'wav', 'm4a', 'ogg', 'flac',  // audio
 ];
 
-// Limite de taille : 500 Mo (fichiers vidéo bruts acceptés)
-export const MAX_FILE_SIZE_MB = 500;
-export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+// Pas de limite de taille côté serveur
+// L'upload se fait directement vers S3 via URL pré-signée (pas de passage par le proxy)
+// Le serveur télécharge ensuite depuis S3 pour le traitement
 
 // Limite de taille pour l'audio extrait envoyé directement à Groq (sans chunking)
 export const MAX_AUDIO_CHUNK_SIZE_MB = 20;
@@ -69,7 +69,7 @@ export interface AudioProcessingResult {
 export interface AudioProcessingError {
   success: false;
   error: string;
-  code: 'DOWNLOAD_FAILED' | 'CONVERSION_FAILED' | 'UNSUPPORTED_FORMAT' | 'FILE_TOO_LARGE' | 'NO_AUDIO_TRACK';
+  code: 'DOWNLOAD_FAILED' | 'CONVERSION_FAILED' | 'UNSUPPORTED_FORMAT' | 'NO_AUDIO_TRACK';
 }
 
 export type AudioProcessingOutput = AudioProcessingResult | AudioProcessingError;
@@ -326,19 +326,9 @@ export async function processMediaFile(
     };
   }
 
-  // 3. Vérifier la taille
-  if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
-    const sizeMB = (fileBuffer.length / 1024 / 1024).toFixed(1);
-    return {
-      success: false,
-      error: `Fichier trop volumineux (${sizeMB} MB). Maximum: ${MAX_FILE_SIZE_MB} MB`,
-      code: 'FILE_TOO_LARGE',
-    };
-  }
-
-  // 4. Déterminer l'extension d'entrée
+  // 3. Déterminer l'extension d'entrée
   const inputExtension = fileName.split('.').pop()?.toLowerCase() || 'mp4';
 
-  // 5. Extraire et convertir l'audio
+  // 4. Extraire et convertir l'audio
   return await extractAndConvertAudio(fileBuffer, inputExtension);
 }

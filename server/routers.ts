@@ -4,20 +4,12 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription } from "./db";
 import { triggerTranscriptionWorker } from "./workers/transcriptionWorker";
-import { storagePut, storageDelete } from "./storage";
+import { storageDelete } from "./storage";
+import { generatePresignedUploadUrl, verifyFileExists } from "./s3Direct";
+import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
 import { z } from "zod";
-import { randomBytes } from "crypto";
-
-/**
- * Extraire l'extension d'un nom de fichier
- */
-function getFileExtension(fileName: string): string {
-  const parts = fileName.split('.');
-  return parts.length > 1 ? parts[parts.length - 1] : 'bin';
-}
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -35,46 +27,71 @@ export const appRouter = router({
       return await getUserTranscriptions(ctx.user.openId);
     }),
 
-    create: protectedProcedure
+    /**
+     * Étape 1 : Obtenir une URL pré-signée pour upload direct vers S3
+     * 
+     * Le frontend appelle cette procédure pour obtenir une URL pré-signée,
+     * puis upload le fichier directement vers S3 (pas de passage par le serveur).
+     * Cela supprime toute limite de taille liée au reverse proxy.
+     */
+    getUploadUrl: protectedProcedure
       .input(z.object({
-        fileName: z.string(),
-        fileSize: z.number(),
-        mimeType: z.string(),
-        fileBuffer: z.string(), // Base64 encoded
+        fileName: z.string().min(1),
+        contentType: z.string().min(1),
       }))
       .mutation(async ({ ctx, input }) => {
-        // 1. Générer une clé S3 unique
-        const randomId = randomBytes(8).toString('hex');
-        const timestamp = Date.now();
-        const extension = getFileExtension(input.fileName);
-        const fileKey = `transcriptions/${ctx.user.openId}/${timestamp}-${randomId}.${extension}`;
-        
-        // 2. Upload vers S3
-        const { url } = await storagePut(
-          fileKey,
-          Buffer.from(input.fileBuffer, 'base64'),
-          input.mimeType
+        // Valider l'extension
+        const ext = input.fileName.split('.').pop()?.toLowerCase() || '';
+        if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+          throw new Error(`Format non supporté: .${ext}. Formats acceptés: ${SUPPORTED_EXTENSIONS.join(', ')}`);
+        }
+
+        const { uploadUrl, fileKey, fileUrl } = await generatePresignedUploadUrl(
+          ctx.user.openId,
+          input.fileName,
+          input.contentType
         );
-        
-        // 3. Créer l'entrée en BDD
+
+        return { uploadUrl, fileKey, fileUrl };
+      }),
+
+    /**
+     * Étape 2 : Confirmer l'upload et lancer la transcription
+     * 
+     * Après que le frontend a uploadé le fichier directement vers S3,
+     * il appelle cette procédure pour créer l'entrée en BDD et lancer le worker.
+     */
+    confirmUpload: protectedProcedure
+      .input(z.object({
+        fileName: z.string().min(1),
+        fileKey: z.string().min(1),
+        fileUrl: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Vérifier que le fichier existe bien sur S3
+        const exists = await verifyFileExists(input.fileKey);
+        if (!exists) {
+          throw new Error('Le fichier n\'a pas été trouvé sur S3. L\'upload a peut-être échoué.');
+        }
+
+        // Créer l'entrée en BDD
         const result = await createTranscription({
           userId: ctx.user.openId,
           fileName: input.fileName,
-          fileUrl: url,
-          fileKey: fileKey,
+          fileUrl: input.fileUrl,
+          fileKey: input.fileKey,
           status: 'pending',
         });
 
-        // Récupérer l'ID inséré (MySQL renvoie un objet avec insertId)
         const transcriptionId = (result as any).insertId || (result as any)[0]?.insertId;
-        
-        // 4. Déclencher le worker asynchrone
+
+        // Déclencher le worker asynchrone
         await triggerTranscriptionWorker(transcriptionId);
-        
+
         return {
           id: transcriptionId,
           fileName: input.fileName,
-          fileUrl: url,
+          fileUrl: input.fileUrl,
           status: 'pending' as const,
         };
       }),
@@ -99,29 +116,25 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        // 1. Récupérer la transcription
         const transcription = await getTranscriptionById(input.id);
         
         if (!transcription) {
           throw new Error("Transcription not found");
         }
         
-        // 2. Vérifier que l'utilisateur est propriétaire
         if (transcription.userId !== ctx.user.openId) {
           throw new Error("Access denied");
         }
         
-        // 3. Supprimer le fichier de S3 (si fileKey existe)
+        // Supprimer le fichier de S3
         if (transcription.fileKey) {
           try {
             await storageDelete(transcription.fileKey);
           } catch (error) {
             console.error("Failed to delete file from S3:", error);
-            // Continue quand même pour supprimer de la BDD
           }
         }
         
-        // 4. Supprimer l'entrée de la BDD
         await deleteTranscription(input.id);
         
         return { success: true };
@@ -130,14 +143,12 @@ export const appRouter = router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       const transcriptions = await getUserTranscriptions(ctx.user.openId);
 
-      // KPIs
       const total = transcriptions.length;
       const completedTranscriptions = transcriptions.filter(t => t.status === "completed");
       const totalDuration = completedTranscriptions.reduce((sum, t) => sum + (t.duration || 0), 0);
       const avgDuration = total > 0 ? totalDuration / total : 0;
       const successRate = total > 0 ? (completedTranscriptions.length / total) * 100 : 0;
 
-      // Transcriptions par jour (7 derniers jours)
       const today = new Date();
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(today);
@@ -153,7 +164,6 @@ export const appRouter = router({
         return { date, count };
       });
 
-      // Répartition par statut
       const statusCounts = transcriptions.reduce((acc, t) => {
         acc[t.status] = (acc[t.status] || 0) + 1;
         return acc;
