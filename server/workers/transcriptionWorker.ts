@@ -1,15 +1,21 @@
 /**
- * Worker de transcription — Pipeline complet
+ * Worker de transcription — Pipeline complet V3
  * 
- * Pipeline V2 :
+ * Pipeline optimisé pour les gros fichiers :
  * 1. Récupérer la transcription depuis la BDD
  * 2. Mettre à jour le statut à "processing"
- * 3. Télécharger le fichier depuis S3
+ * 3. Télécharger le fichier depuis S3 en streaming vers le disque (pas de Buffer en mémoire)
  * 4. Extraire l'audio via FFmpeg (conversion MOV/MP4/etc → FLAC 16kHz mono)
  * 5. Si audio > 20 Mo → chunking automatique avec chevauchement
  * 6. Transcrire chaque chunk (ou le fichier entier) via Groq Whisper
  * 7. Réassembler les transcriptions (si chunking)
  * 8. Sauvegarder le résultat en BDD
+ * 
+ * Optimisations mémoire :
+ * - S3 → disque en streaming (pas de Buffer 550 Mo en mémoire)
+ * - FFmpeg lit/écrit sur le disque
+ * - Seul le FLAC résultant (~2-10 Mo) est chargé en mémoire
+ * - Timeout global de 10 minutes
  */
 
 import { getTranscriptionById, updateTranscriptionStatus } from '../db';
@@ -18,6 +24,9 @@ import { processMediaFile } from '../audioProcessor';
 import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions } from '../audioChunker';
 import { retryWithBackoff } from '../utils/retry';
 
+// Timeout global pour le worker (10 minutes)
+const WORKER_TIMEOUT_MS = 10 * 60 * 1000;
+
 /**
  * Déclencher le worker de transcription de manière asynchrone
  * Cette fonction ne bloque pas la requête HTTP
@@ -25,16 +34,45 @@ import { retryWithBackoff } from '../utils/retry';
 export async function triggerTranscriptionWorker(transcriptionId: number) {
   // Lancer le worker en arrière-plan (non-bloquant)
   processTranscription(transcriptionId).catch((error) => {
-    console.error(`[Worker] Error for transcription ${transcriptionId}:`, error);
+    console.error(`[Worker] FATAL error for transcription ${transcriptionId}:`, error);
+    // Tenter de marquer comme erreur en BDD même en cas de crash
+    updateTranscriptionStatus(transcriptionId, 'error', {
+      errorMessage: `Worker crash: ${error?.message || 'Unknown error'}`,
+    }).catch(() => {});
   });
 }
 
 /**
- * Traiter une transcription de manière asynchrone
+ * Traiter une transcription de manière asynchrone avec timeout global
  */
 async function processTranscription(transcriptionId: number) {
+  const startTime = Date.now();
+  
+  // Timeout global
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Worker timeout: transcription ${transcriptionId} exceeded ${WORKER_TIMEOUT_MS / 1000}s`));
+    }, WORKER_TIMEOUT_MS);
+  });
+
+  // Course entre le traitement et le timeout
+  await Promise.race([
+    doProcessTranscription(transcriptionId, startTime),
+    timeoutPromise,
+  ]);
+}
+
+/**
+ * Logique principale de traitement
+ */
+async function doProcessTranscription(transcriptionId: number, startTime: number) {
+  const log = (msg: string) => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[Worker][${transcriptionId}][${elapsed}s] ${msg}`);
+  };
+
   try {
-    console.log(`[Worker] Starting transcription ${transcriptionId}`);
+    log('Starting transcription');
     
     // 1. Récupérer la transcription
     const transcription = await getTranscriptionById(transcriptionId);
@@ -44,22 +82,22 @@ async function processTranscription(transcriptionId: number) {
 
     // 2. Mettre à jour le statut à "processing"
     await updateTranscriptionStatus(transcriptionId, 'processing');
-    console.log(`[Worker] Transcription ${transcriptionId} status: processing`);
+    log(`Status: processing | File: ${transcription.fileName} | Key: ${transcription.fileKey}`);
 
-    // 3. Extraire l'audio via FFmpeg (gère MOV, MP4, AVI, MKV, etc.)
-    console.log(`[Worker] Processing media file: ${transcription.fileName} (key: ${transcription.fileKey})`);
+    // 3. Extraire l'audio via FFmpeg (streaming S3 → disque → FFmpeg → FLAC)
+    log('Starting audio processing (S3 streaming → FFmpeg)...');
     const audioResult = await processMediaFile(
       transcription.fileUrl,
       transcription.fileName,
       getMimeTypeFromFileName(transcription.fileName),
-      transcription.fileKey ?? undefined  // Télécharger via AWS SDK au lieu de l'URL publique
+      transcription.fileKey ?? undefined
     );
 
     if (!audioResult.success) {
       throw new Error(`Audio processing failed: ${audioResult.error}`);
     }
 
-    console.log(`[Worker] Audio extracted: ${(audioResult.processedSizeBytes / 1024 / 1024).toFixed(1)}MB, duration: ${audioResult.durationSeconds.toFixed(1)}s`);
+    log(`Audio extracted: ${(audioResult.processedSizeBytes / 1024 / 1024).toFixed(1)}MB FLAC, duration: ${audioResult.durationSeconds.toFixed(1)}s`);
 
     // 4. Vérifier si le chunking est nécessaire
     let transcriptText: string;
@@ -68,14 +106,14 @@ async function processTranscription(transcriptionId: number) {
 
     if (needsChunking(audioResult.audioBuffer.length)) {
       // ===== MODE CHUNKING =====
-      console.log(`[Worker] File needs chunking (${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB > 20MB)`);
+      log(`Chunking needed: ${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB > 20MB`);
 
       const { chunks, totalDuration: chunkTotalDuration, tempFiles } = await splitAudioIntoChunks(
         audioResult.audioBuffer,
         audioResult.extension
       );
 
-      console.log(`[Worker] Split into ${chunks.length} chunks`);
+      log(`Split into ${chunks.length} chunks`);
 
       try {
         // Transcrire les chunks en parallèle (max 3 simultanés)
@@ -89,7 +127,7 @@ async function processTranscription(transcriptionId: number) {
                 initialDelayMs: 2000,
                 backoffMultiplier: 2,
                 onRetry: (attempt, error) => {
-                  console.log(`[Worker] Chunk retry ${attempt}/3: ${error.message}`);
+                  log(`Chunk retry ${attempt}/3: ${error.message}`);
                 },
               }
             );
@@ -107,7 +145,7 @@ async function processTranscription(transcriptionId: number) {
         detectedLanguage = chunkResults[0]?.language || 'fr';
         totalDuration = chunkTotalDuration || totalDuration;
 
-        console.log(`[Worker] Reassembled ${chunkResults.length} chunks → ${transcriptText.length} chars`);
+        log(`Reassembled ${chunkResults.length} chunks → ${transcriptText.length} chars`);
       } finally {
         // Nettoyer les fichiers temporaires
         for (const tempFile of tempFiles) {
@@ -120,7 +158,7 @@ async function processTranscription(transcriptionId: number) {
 
     } else {
       // ===== MODE DIRECT (fichier < 20 Mo) =====
-      console.log(`[Worker] Direct transcription (${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB)`);
+      log(`Direct transcription: ${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB`);
 
       const retryResult = await retryWithBackoff(
         async () => transcribeAudioBuffer(audioResult.audioBuffer, 'audio/flac', 'fr'),
@@ -129,7 +167,7 @@ async function processTranscription(transcriptionId: number) {
           initialDelayMs: 1000,
           backoffMultiplier: 2,
           onRetry: (attempt, error) => {
-            console.log(`[Worker] Retry attempt ${attempt}/3 for transcription ${transcriptionId}: ${error.message}`);
+            log(`Retry attempt ${attempt}/3: ${error.message}`);
           },
         }
       );
@@ -149,10 +187,12 @@ async function processTranscription(transcriptionId: number) {
       duration: Math.floor(totalDuration),
     });
 
-    console.log(`[Worker] Transcription ${transcriptionId} completed: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s`);
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    log(`✅ COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
 
   } catch (error: any) {
-    console.error(`[Worker] Failed to process transcription ${transcriptionId}:`, error);
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`[Worker][${transcriptionId}][${totalElapsed}s] ❌ FAILED:`, error);
 
     const errorMessage = error.message || 'Erreur inconnue lors de la transcription';
     
@@ -160,7 +200,7 @@ async function processTranscription(transcriptionId: number) {
       errorMessage,
     });
 
-    console.log(`[Worker] Transcription ${transcriptionId} marked as error`);
+    log(`Marked as error: ${errorMessage}`);
   }
 }
 

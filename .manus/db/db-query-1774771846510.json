@@ -1,0 +1,109 @@
+{
+  "query": "SELECT id, status, fileName, fileUrl, fileKey, errorMessage, duration, createdAt, updatedAt FROM transcriptions ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34dHiYBFrZrzB5t.e635ab5adb48 --database oRqyQWHwreNEuW2rCuPNoU --execute SELECT id, status, fileName, fileUrl, fileKey, errorMessage, duration, createdAt, updatedAt FROM transcriptions ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "750026",
+      "status": "processing",
+      "fileName": "Test Transcribe express Genesis.mp4",
+      "fileUrl": "https://transcribe-express-files.s3.eu-west-3.amazonaws.com/transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774771163629-a0370c258b72c116.mp4",
+      "fileKey": "transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774771163629-a0370c258b72c116.mp4",
+      "errorMessage": "NULL",
+      "duration": "NULL",
+      "createdAt": "2026-03-29 07:59:41",
+      "updatedAt": "2026-03-29 07:59:41"
+    },
+    {
+      "id": "750025",
+      "status": "processing",
+      "fileName": "Test Transcribe express Genesis.MOV",
+      "fileUrl": "https://transcribe-express-files.s3.eu-west-3.amazonaws.com/transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774770286804-d24a2e5825c54a98.mov",
+      "fileKey": "transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774770286804-d24a2e5825c54a98.mov",
+      "errorMessage": "NULL",
+      "duration": "NULL",
+      "createdAt": "2026-03-29 07:45:35",
+      "updatedAt": "2026-03-29 07:45:35"
+    },
+    {
+      "id": "750024",
+      "status": "completed",
+      "fileName": "test-audio.mp3",
+      "fileUrl": "https://example.com/test.mp3",
+      "fileKey": "test-key",
+      "errorMessage": "NULL",
+      "duration": "120",
+      "createdAt": "2026-03-29 07:41:51",
+      "updatedAt": "2026-03-29 07:41:51"
+    },
+    {
+      "id": "750023",
+      "status": "completed",
+      "fileName": "test-audio.mp3",
+      "fileUrl": "https://example.com/test.mp3",
+      "fileKey": "test-key",
+      "errorMessage": "NULL",
+      "duration": "120",
+      "createdAt": "2026-03-29 07:41:50",
+      "updatedAt": "2026-03-29 07:41:50"
+    },
+    {
+      "id": "750021",
+      "status": "completed",
+      "fileName": "test-audio-delete.mp3",
+      "fileUrl": "https://example.com/test-delete.mp3",
+      "fileKey": "test-key-delete",
+      "errorMessage": "NULL",
+      "duration": "60",
+      "createdAt": "2026-03-29 07:41:50",
+      "updatedAt": "2026-03-29 07:41:50"
+    },
+    {
+      "id": "750022",
+      "status": "completed",
+      "fileName": "test-audio.mp3",
+      "fileUrl": "https://example.com/test.mp3",
+      "fileKey": "test-key",
+      "errorMessage": "NULL",
+      "duration": "120",
+      "createdAt": "2026-03-29 07:41:50",
+      "updatedAt": "2026-03-29 07:41:50"
+    },
+    {
+      "id": "750020",
+      "status": "completed",
+      "fileName": "test-audio-delete.mp3",
+      "fileUrl": "https://example.com/test-delete.mp3",
+      "fileKey": "test-key-delete",
+      "errorMessage": "NULL",
+      "duration": "60",
+      "createdAt": "2026-03-29 07:41:50",
+      "updatedAt": "2026-03-29 07:41:50"
+    },
+    {
+      "id": "750018",
+      "status": "completed",
+      "fileName": "user1-file2.mp3",
+      "fileUrl": "https://example.com/user1-file2.mp3",
+      "fileKey": "NULL",
+      "errorMessage": "NULL",
+      "duration": "NULL",
+      "createdAt": "2026-03-29 07:41:49",
+      "updatedAt": "2026-03-29 07:41:49"
+    },
+    {
+      "id": "750017",
+      "status": "completed",
+      "fileName": "user1-file1.mp3",
+      "fileUrl": "https://example.com/user1-file1.mp3",
+      "fileKey": "NULL",
+      "errorMessage": "NULL",
+      "duration": "NULL",
+      "createdAt": "2026-03-29 07:41:49",
+      "updatedAt": "2026-03-29 07:41:49"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tfileName\tfileUrl\tfileKey\terrorMessage\tduration\tcreatedAt\tupdatedAt\n750026\tprocessing\tTest Transcribe express Genesis.mp4\thttps://transcribe-express-files.s3.eu-west-3.amazonaws.com/transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774771163629-a0370c258b72c116.mp4\ttranscriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774771163629-a0370c258b72c116.mp4\tNULL\tNULL\t2026-03-29 07:59:41\t2026-03-29 07:59:41\n750025\tprocessing\tTest Transcribe express Genesis.MOV\thttps://transcribe-express-files.s3.eu-west-3.amazonaws.com/transcriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774770286804-d24a2e5825c54a98.mov\ttranscriptions/clerk_user_38bCwOiFTw9Fkv9NC57btQlZwOR/1774770286804-d24a2e5825c54a98.mov\tNULL\tNULL\t2026-03-29 07:45:35\t2026-03-29 07:45:35\n750024\tcompleted\ttest-audio.mp3\thttps://example.com/test.mp3\ttest-key\tNULL\t120\t2026-03-29 07:41:51\t2026-03-29 07:41:51\n750023\tcompleted\ttest-audio.mp3\thttps://example.com/test.mp3\ttest-key\tNULL\t120\t2026-03-29 07:41:50\t2026-03-29 07:41:50\n750021\tcompleted\ttest-audio-delete.mp3\thttps://example.com/test-delete.mp3\ttest-key-delete\tNULL\t60\t2026-03-29 07:41:50\t2026-03-29 07:41:50\n750022\tcompleted\ttest-audio.mp3\thttps://example.com/test.mp3\ttest-key\tNULL\t120\t2026-03-29 07:41:50\t2026-03-29 07:41:50\n750020\tcompleted\ttest-audio-delete.mp3\thttps://example.com/test-delete.mp3\ttest-key-delete\tNULL\t60\t2026-03-29 07:41:50\t2026-03-29 07:41:50\n750018\tcompleted\tuser1-file2.mp3\thttps://example.com/user1-file2.mp3\tNULL\tNULL\tNULL\t2026-03-29 07:41:49\t2026-03-29 07:41:49\n750017\tcompleted\tuser1-file1.mp3\thttps://example.com/user1-file1.mp3\tNULL\tNULL\tNULL\t2026-03-29 07:41:49\t2026-03-29 07:41:49\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

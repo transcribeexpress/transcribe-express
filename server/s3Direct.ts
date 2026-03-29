@@ -17,6 +17,9 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomBytes } from 'crypto';
+import * as fs from 'fs';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 
 // Configuration S3 depuis les variables d'environnement
 const s3Client = new S3Client({
@@ -80,7 +83,7 @@ export async function verifyFileExists(fileKey: string): Promise<boolean> {
 
 /**
  * Télécharger un fichier depuis S3 via AWS SDK (avec credentials)
- * Utilisé par le worker de transcription pour récupérer les fichiers uploadés
+ * Charge le fichier entier en mémoire — utiliser downloadFileFromS3ToFile pour les gros fichiers
  */
 export async function downloadFileFromS3(fileKey: string): Promise<Buffer> {
   const command = new GetObjectCommand({
@@ -95,7 +98,6 @@ export async function downloadFileFromS3(fileKey: string): Promise<Buffer> {
   }
 
   // Convertir le stream en Buffer
-  const chunks: Uint8Array[] = [];
   const stream = response.Body as any;
   
   if (typeof stream.transformToByteArray === 'function') {
@@ -105,10 +107,69 @@ export async function downloadFileFromS3(fileKey: string): Promise<Buffer> {
   }
   
   // Fallback: read stream manually
+  const chunks: Uint8Array[] = [];
   for await (const chunk of stream) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
+}
+
+/**
+ * Télécharger un fichier depuis S3 directement vers le disque (streaming)
+ * 
+ * IMPORTANT : Cette méthode est optimisée pour les gros fichiers (> 100 Mo).
+ * Elle utilise le streaming pour éviter de charger le fichier entier en mémoire,
+ * ce qui prévient les OOM kills en production.
+ * 
+ * @param fileKey - Clé S3 du fichier
+ * @param destPath - Chemin local où écrire le fichier
+ * @returns Taille du fichier téléchargé en bytes
+ */
+export async function downloadFileFromS3ToFile(fileKey: string, destPath: string): Promise<number> {
+  console.log(`[S3Direct] Streaming download: ${fileKey} → ${destPath}`);
+  const startTime = Date.now();
+
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+  });
+
+  const response = await s3Client.send(command);
+
+  if (!response.Body) {
+    throw new Error(`S3 GetObject returned empty body for key: ${fileKey}`);
+  }
+
+  const contentLength = response.ContentLength || 0;
+  console.log(`[S3Direct] Content-Length: ${(contentLength / 1024 / 1024).toFixed(1)} MB`);
+
+  // Stream S3 body directement vers le fichier
+  const writeStream = fs.createWriteStream(destPath);
+  const s3Stream = response.Body as Readable;
+
+  let bytesWritten = 0;
+  let lastLogTime = Date.now();
+
+  // Wrapper pour suivre la progression
+  s3Stream.on('data', (chunk: Buffer) => {
+    bytesWritten += chunk.length;
+    const now = Date.now();
+    // Log toutes les 5 secondes
+    if (now - lastLogTime > 5000) {
+      const percent = contentLength > 0 ? ((bytesWritten / contentLength) * 100).toFixed(1) : '?';
+      const elapsed = ((now - startTime) / 1000).toFixed(1);
+      console.log(`[S3Direct] Download progress: ${(bytesWritten / 1024 / 1024).toFixed(1)} MB (${percent}%) in ${elapsed}s`);
+      lastLogTime = now;
+    }
+  });
+
+  await pipeline(s3Stream, writeStream);
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  const fileSize = fs.statSync(destPath).size;
+  console.log(`[S3Direct] Download complete: ${(fileSize / 1024 / 1024).toFixed(1)} MB in ${elapsed}s`);
+
+  return fileSize;
 }
 
 /**

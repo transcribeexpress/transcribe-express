@@ -1057,3 +1057,17 @@
 - [x] Modifier audioProcessor.ts pour télécharger via AWS SDK (GetObject)
 - [x] Ajouté downloadFileFromS3() dans s3Direct.ts
 - [x] Validé : 176/176 tests passent, 0 erreur TypeScript
+
+---
+
+## 🐛 Bug critique — Transcription bloquée silencieusement (29 mars 2026)
+
+- [x] Upload et traitement fonctionnent mais aucune transcription après 10 min
+- [x] Cause identifiée : OOM kill en production (fichier 550 Mo chargé en mémoire comme Buffer)
+- [x] Pipeline V3 streaming : S3 → streaming disque → FFmpeg lit disque → FLAC (~3 Mo en mémoire)
+- [x] Empreinte mémoire réduite de ~550 Mo à ~10 Mo
+- [x] Ajouté timeout global 10 min + timeout FFmpeg 5 min
+- [x] Ajouté logging détaillé avec timestamps pour chaque étape
+- [x] Worker marque la transcription en erreur même en cas de crash inattendu
+- [x] Test pipeline complet réussi : 150 Mo MP4 → 2.7 Mo FLAC → transcription 97.5s en 13s total
+- [x] 176/176 tests passent, 0 erreur TypeScript

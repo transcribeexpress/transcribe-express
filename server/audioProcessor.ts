@@ -1,11 +1,12 @@
 /**
  * Module audioProcessor — Extraction et conversion audio côté serveur
  * 
- * Responsabilités :
- * 1. Télécharger un fichier depuis S3 (URL publique)
- * 2. Détecter le format (MOV, MP4, AVI, MKV, audio natif)
- * 3. Extraire la piste audio et convertir en FLAC 16kHz mono (format optimal Groq)
- * 4. Retourner le buffer audio prêt pour la transcription
+ * Pipeline optimisé pour les gros fichiers (streaming, pas de chargement en mémoire) :
+ * 1. Télécharger depuis S3 en streaming vers le disque (pas de Buffer en mémoire)
+ * 2. FFmpeg lit depuis le disque et écrit le FLAC sur le disque
+ * 3. Lire le FLAC résultant (petit fichier ~2-10 Mo) en mémoire pour la transcription
+ * 
+ * Empreinte mémoire : ~10 Mo max au lieu de ~550 Mo pour un fichier vidéo 4K
  * 
  * Formats vidéo supportés en entrée : MOV, MP4, AVI, MKV, WEBM
  * Formats audio supportés en entrée : MP3, WAV, M4A, OGG, FLAC, WEBM
@@ -14,12 +15,11 @@
 
 import { spawn } from 'child_process';
 import ffmpegPath from 'ffmpeg-static';
-import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { randomBytes } from 'crypto';
-import { downloadFileFromS3 } from './s3Direct';
+import { downloadFileFromS3ToFile } from './s3Direct';
 
 // Types MIME supportés (vidéo + audio)
 export const SUPPORTED_VIDEO_MIMES = [
@@ -49,13 +49,12 @@ export const SUPPORTED_EXTENSIONS = [
   'mp3', 'wav', 'm4a', 'ogg', 'flac',  // audio
 ];
 
-// Pas de limite de taille côté serveur
-// L'upload se fait directement vers S3 via URL pré-signée (pas de passage par le proxy)
-// Le serveur télécharge ensuite depuis S3 pour le traitement
-
 // Limite de taille pour l'audio extrait envoyé directement à Groq (sans chunking)
 export const MAX_AUDIO_CHUNK_SIZE_MB = 20;
 export const MAX_AUDIO_CHUNK_SIZE_BYTES = MAX_AUDIO_CHUNK_SIZE_MB * 1024 * 1024;
+
+// Timeout global pour le pipeline (10 minutes)
+const PIPELINE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface AudioProcessingResult {
   success: true;
@@ -70,7 +69,7 @@ export interface AudioProcessingResult {
 export interface AudioProcessingError {
   success: false;
   error: string;
-  code: 'DOWNLOAD_FAILED' | 'CONVERSION_FAILED' | 'UNSUPPORTED_FORMAT' | 'NO_AUDIO_TRACK';
+  code: 'DOWNLOAD_FAILED' | 'CONVERSION_FAILED' | 'UNSUPPORTED_FORMAT' | 'NO_AUDIO_TRACK' | 'TIMEOUT';
 }
 
 export type AudioProcessingOutput = AudioProcessingResult | AudioProcessingError;
@@ -110,7 +109,7 @@ function createTempFilePath(extension: string): string {
 }
 
 /**
- * Nettoyer les fichiers temporaires
+ * Nettoyer les fichiers temporaires de manière sûre
  */
 async function cleanupTempFiles(...filePaths: string[]): Promise<void> {
   for (const filePath of filePaths) {
@@ -125,7 +124,7 @@ async function cleanupTempFiles(...filePaths: string[]): Promise<void> {
 }
 
 /**
- * Télécharger un fichier depuis une URL vers un buffer
+ * Télécharger un fichier depuis une URL vers un buffer (fallback pour petits fichiers)
  */
 export async function downloadFileFromUrl(url: string): Promise<Buffer> {
   const response = await fetch(url);
@@ -136,74 +135,80 @@ export async function downloadFileFromUrl(url: string): Promise<Buffer> {
 }
 
 /**
- * Obtenir la durée d'un fichier audio/vidéo via FFprobe
+ * Obtenir la durée d'un fichier audio/vidéo via FFmpeg
+ * Utilise FFmpeg -i pour extraire la durée depuis stderr
  */
 async function getMediaDuration(inputPath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const ffprobePath = ffmpegPath!.replace(/ffmpeg$/, 'ffprobe');
-    // Utiliser ffmpeg lui-même si ffprobe n'existe pas
-    const probePath = fs.existsSync(ffprobePath) ? ffprobePath : ffmpegPath!;
-    
+  return new Promise((resolve) => {
     const args = [
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
-      inputPath,
+      '-i', inputPath,
+      '-f', 'null',
+      '-'
     ];
 
-    const proc = spawn(probePath, args);
-    let stdout = '';
+    const proc = spawn(ffmpegPath!, args);
     let stderr = '';
 
-    proc.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
-    proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
 
-    proc.on('close', (code) => {
-      if (code === 0 && stdout.trim()) {
-        const duration = parseFloat(stdout.trim());
-        if (isFinite(duration) && duration > 0) {
-          resolve(duration);
+    proc.on('close', () => {
+      // Extraire la durée depuis la sortie FFmpeg
+      const durationMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+)\.(\d+)/);
+      if (durationMatch) {
+        const hours = parseInt(durationMatch[1]);
+        const minutes = parseInt(durationMatch[2]);
+        const seconds = parseInt(durationMatch[3]);
+        const centiseconds = parseInt(durationMatch[4]);
+        const totalSeconds = hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
+        if (isFinite(totalSeconds) && totalSeconds > 0) {
+          resolve(totalSeconds);
           return;
         }
       }
-      // Fallback : essayer avec ffmpeg -i
       resolve(0);
     });
 
     proc.on('error', () => resolve(0));
+
+    // Timeout de 30 secondes pour la détection de durée
+    setTimeout(() => {
+      try { proc.kill(); } catch {}
+      resolve(0);
+    }, 30000);
   });
 }
 
 /**
  * Extraire et convertir l'audio d'un fichier en FLAC 16kHz mono via FFmpeg
  * 
- * Pipeline : input (MOV/MP4/audio) → FFmpeg → FLAC 16kHz mono
+ * Pipeline : input file (sur disque) → FFmpeg → FLAC 16kHz mono (sur disque)
+ * Pas de chargement en mémoire du fichier source.
  * 
- * Pourquoi FLAC 16kHz mono ?
- * - Groq recommande ce format pour une latence optimale
- * - Compression sans perte (qualité préservée)
- * - 16kHz est le taux d'échantillonnage de Whisper (pas de perte de qualité)
- * - Mono car Whisper ne traite qu'un canal
- * - Réduit considérablement la taille (ex: vidéo 4K 160Mo → audio ~8Mo)
+ * @param inputPath - Chemin du fichier source sur le disque
+ * @param originalSizeBytes - Taille originale pour le logging
+ * @returns AudioProcessingOutput avec le buffer FLAC résultant
  */
-export async function extractAndConvertAudio(
-  inputBuffer: Buffer,
-  inputExtension: string
+export async function extractAndConvertAudioFromFile(
+  inputPath: string,
+  originalSizeBytes: number
 ): Promise<AudioProcessingOutput> {
-  const inputPath = createTempFilePath(inputExtension);
   const outputPath = createTempFilePath('flac');
 
   try {
-    // 1. Écrire le buffer d'entrée dans un fichier temporaire
-    fs.writeFileSync(inputPath, inputBuffer);
-
-    // 2. Obtenir la durée du fichier source
+    // 1. Obtenir la durée du fichier source
+    console.log(`[AudioProcessor] Getting media duration...`);
     const duration = await getMediaDuration(inputPath);
+    console.log(`[AudioProcessor] Duration: ${duration.toFixed(1)}s`);
 
-    // 3. Exécuter FFmpeg pour extraire et convertir l'audio
+    // 2. Exécuter FFmpeg pour extraire et convertir l'audio
+    console.log(`[AudioProcessor] Starting FFmpeg conversion...`);
+    const ffmpegStart = Date.now();
+
     await new Promise<void>((resolve, reject) => {
       const args = [
-        '-i', inputPath,           // Fichier d'entrée
+        '-i', inputPath,           // Fichier d'entrée (sur disque)
         '-vn',                     // Pas de vidéo (extraction audio seule)
         '-acodec', 'flac',         // Codec de sortie : FLAC
         '-ar', '16000',            // Taux d'échantillonnage : 16kHz
@@ -213,8 +218,6 @@ export async function extractAndConvertAudio(
         outputPath,
       ];
 
-      console.log(`[AudioProcessor] Running FFmpeg: ${ffmpegPath} ${args.join(' ')}`);
-
       const proc = spawn(ffmpegPath!, args);
       let stderr = '';
 
@@ -223,6 +226,9 @@ export async function extractAndConvertAudio(
       });
 
       proc.on('close', (code) => {
+        const elapsed = ((Date.now() - ffmpegStart) / 1000).toFixed(1);
+        console.log(`[AudioProcessor] FFmpeg finished in ${elapsed}s with code ${code}`);
+
         if (code === 0) {
           resolve();
         } else {
@@ -240,9 +246,15 @@ export async function extractAndConvertAudio(
       proc.on('error', (err) => {
         reject(new Error(`FFmpeg spawn error: ${err.message}`));
       });
+
+      // Timeout FFmpeg : 5 minutes max
+      setTimeout(() => {
+        try { proc.kill('SIGKILL'); } catch {}
+        reject(new Error('FFmpeg timeout after 5 minutes'));
+      }, 5 * 60 * 1000);
     });
 
-    // 4. Lire le fichier de sortie
+    // 3. Lire le fichier FLAC résultant (petit fichier, ~2-10 Mo)
     if (!fs.existsSync(outputPath)) {
       return {
         success: false,
@@ -261,7 +273,7 @@ export async function extractAndConvertAudio(
       };
     }
 
-    console.log(`[AudioProcessor] Conversion réussie: ${(inputBuffer.length / 1024 / 1024).toFixed(1)}MB → ${(audioBuffer.length / 1024 / 1024).toFixed(1)}MB (FLAC 16kHz mono)`);
+    console.log(`[AudioProcessor] Conversion réussie: ${(originalSizeBytes / 1024 / 1024).toFixed(1)}MB → ${(audioBuffer.length / 1024 / 1024).toFixed(1)}MB (FLAC 16kHz mono)`);
 
     return {
       success: true,
@@ -269,7 +281,7 @@ export async function extractAndConvertAudio(
       mimeType: 'audio/flac',
       extension: 'flac',
       durationSeconds: duration,
-      originalSizeBytes: inputBuffer.length,
+      originalSizeBytes,
       processedSizeBytes: audioBuffer.length,
     };
 
@@ -289,16 +301,43 @@ export async function extractAndConvertAudio(
       code: 'CONVERSION_FAILED',
     };
   } finally {
-    // 5. Nettoyer les fichiers temporaires
-    await cleanupTempFiles(inputPath, outputPath);
+    // Nettoyer le fichier FLAC de sortie (le fichier d'entrée est nettoyé par l'appelant)
+    await cleanupTempFiles(outputPath);
   }
 }
 
 /**
- * Pipeline complet : télécharger un fichier depuis S3 via AWS SDK, extraire l'audio, convertir en FLAC
+ * Legacy : Extraire et convertir depuis un Buffer en mémoire
+ * Gardé pour compatibilité avec le chunker qui travaille déjà avec des buffers
+ */
+export async function extractAndConvertAudio(
+  inputBuffer: Buffer,
+  inputExtension: string
+): Promise<AudioProcessingOutput> {
+  const inputPath = createTempFilePath(inputExtension);
+
+  try {
+    // Écrire le buffer d'entrée dans un fichier temporaire
+    fs.writeFileSync(inputPath, inputBuffer);
+    return await extractAndConvertAudioFromFile(inputPath, inputBuffer.length);
+  } finally {
+    await cleanupTempFiles(inputPath);
+  }
+}
+
+/**
+ * Pipeline complet V3 : S3 streaming → disque → FFmpeg → FLAC
  * 
- * C'est le point d'entrée principal utilisé par le worker de transcription.
- * Utilise le fileKey pour télécharger via AWS SDK (avec credentials) au lieu de l'URL publique.
+ * OPTIMISÉ POUR LA MÉMOIRE :
+ * - Le fichier source est streamé depuis S3 directement vers le disque (pas de Buffer)
+ * - FFmpeg lit depuis le disque et écrit sur le disque
+ * - Seul le FLAC résultant (~2-10 Mo) est chargé en mémoire
+ * - Empreinte mémoire : ~10 Mo au lieu de ~550 Mo
+ * 
+ * @param fileUrl - URL publique du fichier (fallback)
+ * @param fileName - Nom original du fichier
+ * @param mimeType - Type MIME du fichier
+ * @param fileKey - Clé S3 du fichier (méthode préférée)
  */
 export async function processMediaFile(
   fileUrl: string,
@@ -306,7 +345,8 @@ export async function processMediaFile(
   mimeType: string,
   fileKey?: string
 ): Promise<AudioProcessingOutput> {
-  console.log(`[AudioProcessor] Processing: ${fileName} (${mimeType})`);
+  const startTime = Date.now();
+  console.log(`[AudioProcessor] ========== START: ${fileName} (${mimeType}) ==========`);
 
   // 1. Valider le format
   if (!isSupportedFormat(mimeType, fileName)) {
@@ -317,30 +357,54 @@ export async function processMediaFile(
     };
   }
 
-  // 2. Télécharger le fichier depuis S3
-  let fileBuffer: Buffer;
-  try {
-    if (fileKey) {
-      // Méthode préférée : télécharger via AWS SDK (avec credentials, pas de 403)
-      console.log(`[AudioProcessor] Downloading via AWS SDK: ${fileKey}`);
-      fileBuffer = await downloadFileFromS3(fileKey);
-    } else {
-      // Fallback : télécharger via URL publique (pour compatibilité)
-      console.log(`[AudioProcessor] Downloading via public URL: ${fileUrl}`);
-      fileBuffer = await downloadFileFromUrl(fileUrl);
-    }
-    console.log(`[AudioProcessor] Downloaded: ${(fileBuffer.length / 1024 / 1024).toFixed(1)} MB`);
-  } catch (error: any) {
-    return {
-      success: false,
-      error: `Impossible de télécharger le fichier: ${error.message}`,
-      code: 'DOWNLOAD_FAILED',
-    };
-  }
-
-  // 3. Déterminer l'extension d'entrée
+  // 2. Préparer le chemin temporaire pour le fichier source
   const inputExtension = fileName.split('.').pop()?.toLowerCase() || 'mp4';
+  const inputPath = createTempFilePath(inputExtension);
 
-  // 4. Extraire et convertir l'audio
-  return await extractAndConvertAudio(fileBuffer, inputExtension);
+  try {
+    // 3. Télécharger le fichier depuis S3 en streaming vers le disque
+    let fileSizeBytes: number;
+    try {
+      if (fileKey) {
+        // Méthode préférée : streaming S3 → disque (pas de Buffer en mémoire)
+        console.log(`[AudioProcessor] Streaming download via AWS SDK: ${fileKey}`);
+        fileSizeBytes = await downloadFileFromS3ToFile(fileKey, inputPath);
+      } else {
+        // Fallback : télécharger via URL publique en mémoire puis écrire
+        console.log(`[AudioProcessor] Downloading via public URL: ${fileUrl}`);
+        const buffer = await downloadFileFromUrl(fileUrl);
+        fs.writeFileSync(inputPath, buffer);
+        fileSizeBytes = buffer.length;
+      }
+      console.log(`[AudioProcessor] Downloaded: ${(fileSizeBytes / 1024 / 1024).toFixed(1)} MB to ${inputPath}`);
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Impossible de télécharger le fichier: ${error.message}`,
+        code: 'DOWNLOAD_FAILED',
+      };
+    }
+
+    // 4. Vérifier le timeout global
+    const elapsed = Date.now() - startTime;
+    if (elapsed > PIPELINE_TIMEOUT_MS) {
+      return {
+        success: false,
+        error: `Pipeline timeout après ${(elapsed / 1000).toFixed(0)}s`,
+        code: 'TIMEOUT',
+      };
+    }
+
+    // 5. Extraire et convertir l'audio (lit depuis le disque, pas de Buffer source en mémoire)
+    const result = await extractAndConvertAudioFromFile(inputPath, fileSizeBytes);
+
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[AudioProcessor] ========== END: ${fileName} (${totalElapsed}s) ==========`);
+
+    return result;
+
+  } finally {
+    // 6. Nettoyer le fichier source temporaire
+    await cleanupTempFiles(inputPath);
+  }
 }
