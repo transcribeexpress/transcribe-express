@@ -993,3 +993,29 @@
 - [x] Valider le rendu sur toutes les pages
 
 **Objectif :** Intégrer le nouveau logo Magenta/Cyan avec fond blanc transparent sur toutes les pages
+
+---
+
+## 🚀 Évolution A — Support MOV + Extraction audio automatique (29 mars 2026)
+
+- [x] Installer ffmpeg-static comme dépendance serveur
+- [x] Créer le module server/audioProcessor.ts (extraction audio, conversion MOV→audio)
+- [x] Mettre à jour le pipeline upload pour accepter MOV, AVI, MKV en plus des formats existants
+- [x] Extraire automatiquement la piste audio en FLAC 16kHz mono avant transcription
+- [x] Augmenter la limite de taille frontend de 16 Mo à 500 Mo
+- [x] Mettre à jour l'UI Upload pour afficher les nouveaux formats acceptés
+
+## 🚀 Évolution B — Chunking automatique pour fichiers volumineux (29 mars 2026)
+
+- [x] Créer le module server/audioChunker.ts (découpe audio en segments avec chevauchement)
+- [x] Implémenter la transcription parallèle des chunks via Groq API
+- [x] Réassembler les transcriptions avec déduplication aux jonctions
+- [x] Gérer la progression côté serveur et la remonter au frontend
+- [x] Mettre à jour l'UX de progression pour afficher l'avancement chunk par chunk
+
+## 🔍 Vérification de cohérence (29 mars 2026)
+
+- [x] Audit du code serveur : suppression du code mort et des interférences
+- [x] Audit du code frontend : cohérence des limites, formats, messages d'erreur
+- [x] Écriture des tests Vitest pour audioProcessor et audioChunker
+- [x] Validation end-to-end du pipeline complet

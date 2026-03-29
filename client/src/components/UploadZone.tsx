@@ -1,16 +1,23 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, X, AlertCircle } from 'lucide-react';
+import { Upload, File, X, AlertCircle, Film, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isVideoFile } from '@/utils/audioValidation';
 
-const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB (limite Groq API)
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 Mo (V2)
 const ACCEPTED_FORMATS = {
   'audio/mpeg': ['.mp3'],
   'audio/wav': ['.wav'],
   'audio/mp4': ['.m4a'],
+  'audio/x-m4a': ['.m4a'],
   'audio/ogg': ['.ogg'],
+  'audio/flac': ['.flac'],
+  'audio/webm': ['.webm'],
   'video/mp4': ['.mp4'],
   'video/webm': ['.webm'],
+  'video/quicktime': ['.mov'],
+  'video/x-msvideo': ['.avi'],
+  'video/x-matroska': ['.mkv'],
 };
 
 interface UploadZoneProps {
@@ -34,9 +41,9 @@ export function UploadZone({
     if (rejectedFiles.length > 0) {
       const rejection = rejectedFiles[0];
       if (rejection.errors[0]?.code === 'file-too-large') {
-        setError(`Le fichier est trop volumineux. Taille maximale : ${Math.floor(maxSize / 1024 / 1024)}MB`);
+        setError(`Le fichier est trop volumineux. Taille maximale : ${Math.floor(maxSize / 1024 / 1024)} Mo`);
       } else if (rejection.errors[0]?.code === 'file-invalid-type') {
-        setError('Format de fichier non supporté. Formats acceptés : MP3, WAV, M4A, OGG, MP4, WEBM');
+        setError('Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM');
       } else {
         setError('Erreur lors de la sélection du fichier');
       }
@@ -67,9 +74,11 @@ export function UploadZone({
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
   };
+
+  const isVideo = selectedFile ? isVideoFile(selectedFile) : false;
 
   return (
     <div className="w-full">
@@ -107,17 +116,31 @@ export function UploadZone({
               </p>
             </div>
 
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>Formats acceptés : MP3, WAV, M4A, OGG, MP4, WEBM</p>
-              <p>Taille maximale : {Math.floor(maxSize / 1024 / 1024)}MB</p>
+            <div className="text-xs text-gray-500 space-y-1.5">
+              <div className="flex items-center gap-2 justify-center">
+                <Music className="w-3.5 h-3.5" />
+                <span>Audio : MP3, WAV, M4A, OGG, FLAC, WEBM</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <Film className="w-3.5 h-3.5" />
+                <span>Vidéo : MP4, MOV, AVI, MKV, WEBM</span>
+              </div>
+              <p className="text-gray-600 mt-1">Taille max : {Math.floor(maxSize / 1024 / 1024)} Mo • Durée max : 120 min</p>
             </div>
           </div>
         )}
 
         {selectedFile && !error && (
           <div className="flex items-center space-x-4 w-full max-w-md">
-            <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-[#34D5BE]/20 flex items-center justify-center">
-              <File className="w-6 h-6 text-[#34D5BE]" />
+            <div className={cn(
+              'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
+              isVideo ? 'bg-[#BE34D5]/20' : 'bg-[#34D5BE]/20'
+            )}>
+              {isVideo ? (
+                <Film className="w-6 h-6 text-[#BE34D5]" />
+              ) : (
+                <Music className="w-6 h-6 text-[#34D5BE]" />
+              )}
             </div>
             
             <div className="flex-1 min-w-0">
@@ -126,6 +149,9 @@ export function UploadZone({
               </p>
               <p className="text-xs text-gray-400">
                 {formatFileSize(selectedFile.size)}
+                {isVideo && (
+                  <span className="ml-2 text-[#BE34D5]">• Vidéo — l'audio sera extrait automatiquement</span>
+                )}
               </p>
             </div>
 

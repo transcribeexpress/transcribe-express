@@ -300,7 +300,16 @@ export default function Upload() {
           <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
             <h3 className="font-medium mb-2">Formats acceptés</h3>
             <p className="text-sm text-muted-foreground">
-              MP3, WAV, M4A, OGG, MP4, WEBM • Taille maximale : 16MB • Durée maximale : 60 min
+              Audio : MP3, WAV, M4A, OGG, FLAC, WEBM
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Vidéo : MP4, MOV, AVI, MKV, WEBM
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Taille maximale : 500 Mo • Durée maximale : 120 min
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-2">
+              L'audio est extrait automatiquement des fichiers vidéo. Les fichiers volumineux sont découpés et transcrits en parallèle.
             </p>
           </div>
         )}
