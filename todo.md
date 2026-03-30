@@ -1100,3 +1100,34 @@
 - [x] Modifier le Dashboard/TranscriptionList pour ajouter le lien vers /progress/:id
 - [x] Upload.tsx redirige automatiquement vers /progress/:id après le lancement
 - [x] 176/176 tests passent, 0 erreur TypeScript
+
+---
+
+## 🚀 Architecture hybride — Extraction audio côté client (FFmpeg WASM)
+
+### Phase 1 : Module FFmpeg WASM côté client
+- [x] Installer @ffmpeg/ffmpeg 0.12.15 et @ffmpeg/util 0.12.2 (version single-thread pour compatibilité maximale)
+- [x] Créer client/src/utils/audioExtractor.ts — module d'extraction audio via FFmpeg WASM
+- [x] Supporter stream copy (pas de ré-encodage) pour extraction quasi-instantanée
+- [x] Gérer le chargement du module WASM avec indicateur de progression (5 stages)
+- [x] Détecter la compatibilité navigateur (isFFmpegSupported) et proposer un fallback
+
+### Phase 2 : Intégration dans Upload.tsx
+- [x] Fichiers vidéo (MP4, MOV, AVI, MKV, WebM) → extraction audio côté client → upload audio
+- [x] Fichiers audio (MP3, WAV, FLAC, OGG, M4A) → upload direct sans extraction
+- [x] Fallback automatique si FFmpeg WASM échoue → upload vidéo brute + extraction serveur
+- [x] Afficher la progression de l'extraction audio avec UI dédiée (barre + message + info compression)
+- [x] Pipeline V4 avec 3 stages visuels : extracting → uploading → confirming
+
+### Phase 3 : Adaptation serveur
+- [x] Le serveur détecte si le fichier reçu est audio (extraction client) ou vidéo (fallback)
+- [x] Mode A (Audio Direct) : transcription directe sans FFmpeg pour fichiers < 20 Mo
+- [x] Mode B (Vidéo Complète) : pipeline existant FFmpeg + chunking pour les vidéos (fallback)
+- [x] Worker V5 avec routage automatique basé sur l'extension du fichier uploadé
+
+### Phase 4 : Validation et nettoyage
+- [x] Tests Vitest pour le module audioExtractor (27 tests)
+- [x] Tests Vitest pour le worker V5 (21 tests)
+- [x] Vérification TypeScript 0 erreur
+- [x] 224/224 tests passent (17 fichiers)
+- [ ] Test end-to-end avec fichier MOV et MP4 (à valider par l'utilisateur)
