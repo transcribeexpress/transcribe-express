@@ -41,8 +41,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { UploadSkeleton } from "@/components/UploadSkeleton";
 import { toast } from "@/components/Toast";
 
-const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_d91b011d.png";
-const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png";
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png";
+const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/transcribe_express_logo_minimal_dark_291fc88b.webp";
 
 /** Étapes du pipeline côté client */
 type ClientPipelineStage = 

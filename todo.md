@@ -1161,3 +1161,13 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] 0 erreur TypeScript
 - [x] 5 nouveaux tests CDN/CORS (toBlobURL, ESM, jsdelivr, version 0.12.10)
 - [ ] Test end-to-end avec fichier MP4 (à valider par l'utilisateur)
+
+---
+
+## 🎨 UX — Page de progression : logo néon et wordmark
+
+- [x] Uploader neon_symbol_transparent.png via manus-upload-file --webdev
+- [x] Uploader transcribe_express_logo_minimal_dark.webp via manus-upload-file --webdev
+- [x] Intégrer le logo néon dans la page Progress.tsx (remplacer le placeholder)
+- [x] Intégrer le wordmark image dans la page Progress.tsx (remplacer le texte)
+- [x] Vérifier la cohérence visuelle avec le reste du SaaS — mis à jour sur 7 pages (Home, Login, Dashboard, Upload, Progress, Profile, Settings)

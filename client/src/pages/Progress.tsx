@@ -34,8 +34,10 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 
 
-// Logo URL
-const LOGO_URL = "https://manus-storage.oss-cn-beijing.aliyuncs.com/user-file/c0e7a360-3a3e-4e2c-b52c-d3e30dff7f3b.png";
+// Logo néon symbol
+const NEON_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png";
+// Wordmark image
+const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/transcribe_express_logo_minimal_dark_291fc88b.webp";
 
 /**
  * Définition des étapes du pipeline
@@ -168,13 +170,8 @@ export default function ProgressPage() {
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="Logo" className="h-8 w-8 mix-blend-screen" />
-            <span className="font-bold text-lg tracking-tight">
-              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">
-                TRANSCRIBE
-              </span>{" "}
-              <span className="text-foreground">EXPRESS</span>
-            </span>
+            <img src={NEON_LOGO_URL} alt="Transcribe Express" className="h-9 w-9" />
+            <img src={WORDMARK_URL} alt="Transcribe Express" className="h-6 object-contain" />
           </Link>
         </div>
       </nav>

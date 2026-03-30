@@ -10,12 +10,12 @@ export default function Home() {
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_d91b011d.png"
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png"
               alt="Transcribe Express Logo"
               className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0" style={{ mixBlendMode: 'screen' }}
             />
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/assets/transcribe-express-wordmark-transparent-e5f6g7h8.png"
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/transcribe_express_logo_minimal_dark_291fc88b.webp"
               alt="Transcribe Express"
               className="h-10 sm:h-12 md:h-14 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain"
             />
