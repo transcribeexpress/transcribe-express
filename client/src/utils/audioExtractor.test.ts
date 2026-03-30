@@ -1,7 +1,12 @@
 /**
  * Tests pour le module audioExtractor.ts — Extraction audio côté client via FFmpeg WASM
  * 
- * Ces tests vérifient les fonctions utilitaires pures (détection de format, support navigateur).
+ * Ces tests vérifient :
+ * 1. Les fonctions utilitaires pures (détection de format, support navigateur)
+ * 2. La logique de routage pipeline (vidéo → extraction, audio → direct, autre → rejet)
+ * 3. Les exports du module
+ * 4. La configuration CDN (toBlobURL, ESM, jsdelivr)
+ * 
  * L'extraction FFmpeg WASM elle-même ne peut pas être testée dans Vitest (pas de navigateur réel).
  */
 
@@ -13,6 +18,8 @@ import {
 } from './audioExtractor';
 
 describe('audioExtractor module', () => {
+  // ─── needsAudioExtraction ──────────────────────────────────────────
+
   describe('needsAudioExtraction', () => {
     it('should return true for MP4 video files', () => {
       const file = new File([''], 'video.mp4', { type: 'video/mp4' });
@@ -80,6 +87,8 @@ describe('audioExtractor module', () => {
     });
   });
 
+  // ─── isDirectAudioFile ─────────────────────────────────────────────
+
   describe('isDirectAudioFile', () => {
     it('should return true for MP3 files', () => {
       const file = new File([''], 'audio.mp3', { type: 'audio/mpeg' });
@@ -112,7 +121,6 @@ describe('audioExtractor module', () => {
     });
 
     it('should return false for WebM (classified as video for extraction)', () => {
-      // WebM est dans VIDEO_EXTENSIONS car il peut contenir de la vidéo
       const file = new File([''], 'video.webm', { type: 'video/webm' });
       expect(isDirectAudioFile(file)).toBe(false);
     });
@@ -123,6 +131,8 @@ describe('audioExtractor module', () => {
     });
   });
 
+  // ─── isFFmpegSupported ─────────────────────────────────────────────
+
   describe('isFFmpegSupported', () => {
     it('should return a boolean', () => {
       const result = isFFmpegSupported();
@@ -130,13 +140,12 @@ describe('audioExtractor module', () => {
     });
 
     it('should return true in Node.js/Vitest environment (WebAssembly available)', () => {
-      // Dans l'environnement Vitest, WebAssembly est disponible
-      // mais Worker peut ne pas l'être selon la config
       const result = isFFmpegSupported();
-      // On vérifie juste que ça ne crash pas
       expect(result).toBeDefined();
     });
   });
+
+  // ─── Module exports ────────────────────────────────────────────────
 
   describe('module exports', () => {
     it('should export all expected functions', async () => {
@@ -149,11 +158,12 @@ describe('audioExtractor module', () => {
     });
 
     it('should export AudioExtractionResult type (via function return)', async () => {
-      // Vérifie que extractAudioFromVideo retourne le bon type
       const mod = await import('./audioExtractor');
       expect(typeof mod.extractAudioFromVideo).toBe('function');
     });
   });
+
+  // ─── Pipeline routing logic ────────────────────────────────────────
 
   describe('pipeline routing logic', () => {
     it('video files should need extraction and not be direct audio', () => {
@@ -197,6 +207,73 @@ describe('audioExtractor module', () => {
         expect(needsAudioExtraction(file)).toBe(false);
         expect(isDirectAudioFile(file)).toBe(false);
       }
+    });
+  });
+
+  // ─── CDN Configuration validation ─────────────────────────────────
+
+  describe('CDN and CORS configuration', () => {
+    it('should use toBlobURL from @ffmpeg/util (import check)', async () => {
+      // Vérifie que toBlobURL est bien importé et disponible
+      const utilMod = await import('@ffmpeg/util');
+      expect(typeof utilMod.toBlobURL).toBe('function');
+      expect(typeof utilMod.fetchFile).toBe('function');
+    });
+
+    it('should use ESM format for Vite compatibility', async () => {
+      // Le module audioExtractor doit utiliser ESM (dist/esm) et non UMD (dist/umd)
+      // On vérifie indirectement en lisant le code source
+      const fs = await import('fs');
+      const path = await import('path');
+      const sourceCode = fs.readFileSync(
+        path.resolve(__dirname, './audioExtractor.ts'),
+        'utf-8'
+      );
+      
+      // Doit contenir 'dist/esm' (format ESM pour Vite)
+      expect(sourceCode).toContain('dist/esm');
+      // Ne doit PAS contenir 'dist/umd' (ancien format incompatible avec Vite)
+      expect(sourceCode).not.toContain('dist/umd');
+    });
+
+    it('should use jsdelivr CDN instead of unpkg', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const sourceCode = fs.readFileSync(
+        path.resolve(__dirname, './audioExtractor.ts'),
+        'utf-8'
+      );
+      
+      // Doit utiliser jsdelivr (plus fiable)
+      expect(sourceCode).toContain('cdn.jsdelivr.net');
+      // Ne doit PAS utiliser unpkg (problèmes CORS)
+      expect(sourceCode).not.toContain('unpkg.com');
+    });
+
+    it('should use toBlobURL for CORS bypass', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const sourceCode = fs.readFileSync(
+        path.resolve(__dirname, './audioExtractor.ts'),
+        'utf-8'
+      );
+      
+      // Doit importer toBlobURL
+      expect(sourceCode).toContain('toBlobURL');
+      // Doit utiliser toBlobURL dans la fonction de chargement
+      expect(sourceCode).toContain('await toBlobURL(');
+    });
+
+    it('should use @ffmpeg/core version 0.12.10', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const sourceCode = fs.readFileSync(
+        path.resolve(__dirname, './audioExtractor.ts'),
+        'utf-8'
+      );
+      
+      // Doit utiliser la version 0.12.10 (dernière stable)
+      expect(sourceCode).toContain('0.12.10');
     });
   });
 });

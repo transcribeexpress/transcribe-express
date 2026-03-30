@@ -1131,3 +1131,33 @@
 - [x] Vérification TypeScript 0 erreur
 - [x] 224/224 tests passent (17 fichiers)
 - [ ] Test end-to-end avec fichier MOV et MP4 (à valider par l'utilisateur)
+
+---
+
+## 🐛 Bug critique — Extraction audio côté client ne fonctionne pas
+
+**Rapport utilisateur :** Test croisé sur 3 navigateurs (Chrome, Safari, iOS) avec vidéo MP4 160 Mo.
+Les 3 navigateurs utilisent le fallback serveur au lieu de l'extraction WASM côté client.
+La progression serveur s'arrête à 15% avec un temps de traitement très long.
+
+### Diagnostic
+- [x] Analyser audioExtractor.ts pour identifier les causes d'échec WASM
+- [x] Vérifier isFFmpegSupported() — détection navigateur OK, le problème est CORS
+- [x] Vérifier les headers COOP/COEP — PAS NÉCESSAIRE en mode single-thread
+- [x] Analyser le flux Upload.tsx — le fallback se déclenche car FFmpeg.load() échoue (CORS)
+- [x] Vérifier la version FFmpeg WASM — core 0.12.6 obsolète, mis à jour vers 0.12.10
+
+### Corrections
+- [x] Corriger le module audioExtractor.ts — 3 corrections critiques :
+  - toBlobURL() pour contourner CORS (cause principale)
+  - Format ESM au lieu de UMD (requis par Vite)
+  - jsdelivr CDN au lieu de unpkg (plus fiable)
+- [x] Upload.tsx — pas de modification nécessaire (le flux était correct)
+- [x] Vérifié : single-thread ne nécessite PAS SharedArrayBuffer
+- [x] Logs de diagnostic ajoutés à chaque étape du pipeline
+
+### Validation
+- [x] Tests Vitest mis à jour — 229/229 tests passent (17 fichiers)
+- [x] 0 erreur TypeScript
+- [x] 5 nouveaux tests CDN/CORS (toBlobURL, ESM, jsdelivr, version 0.12.10)
+- [ ] Test end-to-end avec fichier MP4 (à valider par l'utilisateur)
