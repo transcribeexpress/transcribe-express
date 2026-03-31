@@ -1178,3 +1178,9 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 
 - [x] Dashboard : bouton suppression (icône corbeille) — mutation tRPC + AlertDialog de confirmation ajoutés dans TranscriptionList.tsx
 - [x] Progress mobile : header restructuré en 2 lignes — ligne 1 (logo + retour), ligne 2 (titre + nom fichier tronqué), responsive sans débordement
+
+---
+
+## 🐛 Bug UX — Header mobile Results.tsx
+
+- [x] Results mobile : header restructuré en 2 lignes — ligne 1 (retour+supprimer), ligne 2 (titre tronqué+numéro transcription), responsive sans débordement

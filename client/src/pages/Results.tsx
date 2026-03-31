@@ -165,29 +165,23 @@ export default function Results() {
     >
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Retour
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold">{transcription.fileName}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Transcription #{transcription.id}
-                </p>
-              </div>
-            </div>
+        <div className="container py-2">
+          {/* Ligne 1 : navigation + action */}
+          <div className="flex items-center justify-between h-12">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="gap-1.5 shrink-0">
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Retour au dashboard</span>
+                <span className="sm:hidden">Retour</span>
+              </Button>
+            </Link>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="destructive"
                   size="sm"
                   disabled={isDeleting}
-                  className="gap-2"
+                  className="gap-2 shrink-0"
                 >
                   <Trash2 className="w-4 h-4" />
                   Supprimer
@@ -212,6 +206,15 @@ export default function Results() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </div>
+          {/* Ligne 2 : titre de la transcription sur sa propre ligne */}
+          <div className="pb-2 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {transcription.fileName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Transcription #{transcription.id}
+            </p>
           </div>
         </div>
       </header>
