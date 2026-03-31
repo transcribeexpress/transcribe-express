@@ -1171,3 +1171,10 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Intégrer le logo néon dans la page Progress.tsx (remplacer le placeholder)
 - [x] Intégrer le wordmark image dans la page Progress.tsx (remplacer le texte)
 - [x] Vérifier la cohérence visuelle avec le reste du SaaS — mis à jour sur 7 pages (Home, Login, Dashboard, Upload, Progress, Profile, Settings)
+
+---
+
+## 🐛 Bugs UX — Sprint correctif
+
+- [x] Dashboard : bouton suppression (icône corbeille) — mutation tRPC + AlertDialog de confirmation ajoutés dans TranscriptionList.tsx
+- [x] Progress mobile : header restructuré en 2 lignes — ligne 1 (logo + retour), ligne 2 (titre + nom fichier tronqué), responsive sans débordement

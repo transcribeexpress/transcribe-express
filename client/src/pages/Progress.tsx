@@ -168,21 +168,49 @@ export default function ProgressPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Navbar */}
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container flex items-center justify-between h-16">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <img src={NEON_LOGO_URL} alt="Transcribe Express" className="h-9 w-9" />
-            <img src={WORDMARK_URL} alt="Transcribe Express" className="h-6 object-contain" />
-          </Link>
+        <div className="container py-2">
+          {/* Ligne 1 : logo + actions */}
+          <div className="flex items-center justify-between h-12">
+            <Link href="/dashboard" className="flex items-center gap-3 shrink-0">
+              <img src={NEON_LOGO_URL} alt="Transcribe Express" className="h-8 w-8" />
+              <img src={WORDMARK_URL} alt="Transcribe Express" className="h-5 object-contain hidden sm:block" />
+            </Link>
+            {/* Bouton retour visible sur mobile à droite du logo */}
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors sm:hidden"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span>Dashboard</span>
+            </Link>
+            {/* Bouton retour desktop */}
+            <Link
+              href="/dashboard"
+              className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              Retour au dashboard
+            </Link>
+          </div>
+          {/* Ligne 2 : titre de la transcription (toujours sur sa propre ligne) */}
+          {transcription && (
+            <div className="pb-2 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {isTerminal ? (
+                  transcription.status === "completed" ? "✓ Transcription terminée" :
+                  transcription.status === "cancelled" ? "⊘ Transcription annulée" :
+                  "✕ Erreur de transcription"
+                ) : "⟳ Transcription en cours"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {transcription.fileName}
+              </p>
+            </div>
+          )}
         </div>
       </nav>
 
       <div className="container max-w-3xl py-8">
-        {/* Retour */}
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          Retour au dashboard
-        </Link>
-
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-8 w-64" />
@@ -201,16 +229,16 @@ export default function ProgressPage() {
           </Card>
         ) : (
           <>
-            {/* En-tête */}
+            {/* En-tête principal (contenu de page, pas navbar) */}
             <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2">
+              <h1 className="text-2xl font-bold mb-2 break-words">
                 {isTerminal ? (
                   transcription.status === "completed" ? "Transcription terminée" :
                   transcription.status === "cancelled" ? "Transcription annulée" :
                   "Erreur de transcription"
                 ) : "Transcription en cours"}
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground break-all">
                 {transcription.fileName}
               </p>
             </div>
