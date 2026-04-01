@@ -14,18 +14,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Download, Copy, Trash2, FileText, Clock, Calendar, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { generateTXT, generateSRT, generateVTT, downloadFile, getFileNameWithoutExtension } from "@/lib/exportFormats";
 import { motion } from "framer-motion";
 import { ResultsSkeleton } from "@/components/ResultsSkeleton";
 import { toast } from "@/components/Toast";
 import { useClerkSync } from "@/hooks/useClerkSync";
+import { TranscriptionEditor } from "@/components/TranscriptionEditor";
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Texte courant de l'éditeur (peut différer de transcription.editedText si non encore sauvegardé)
+  const currentEditorTextRef = useRef<string | null>(null);
   const { isSessionReady, isSyncing } = useClerkSync();
 
   // Mutation pour supprimer une transcription
@@ -64,10 +67,17 @@ export default function Results() {
     return <ResultsSkeleton />;
   }
 
-  // Fonctions d'export
+  // Fonctions d'export — utilisent editedText si disponible, sinon transcriptText
+  const getExportText = () =>
+    currentEditorTextRef.current ??
+    transcription?.editedText ??
+    transcription?.transcriptText ??
+    "";
+
   const handleExportTXT = () => {
     if (!transcription?.transcriptText) return;
-    const content = generateTXT(transcription);
+    const exportTranscription = { ...transcription, transcriptText: getExportText() };
+    const content = generateTXT(exportTranscription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.txt`;
     downloadFile(content, fileName, "text/plain");
     toast.success("Export TXT réussi", {
@@ -77,7 +87,8 @@ export default function Results() {
 
   const handleExportSRT = () => {
     if (!transcription?.transcriptText) return;
-    const content = generateSRT(transcription);
+    const exportTranscription = { ...transcription, transcriptText: getExportText() };
+    const content = generateSRT(exportTranscription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.srt`;
     downloadFile(content, fileName, "text/plain");
     toast.success("Export SRT réussi", {
@@ -87,7 +98,8 @@ export default function Results() {
 
   const handleExportVTT = () => {
     if (!transcription?.transcriptText) return;
-    const content = generateVTT(transcription);
+    const exportTranscription = { ...transcription, transcriptText: getExportText() };
+    const content = generateVTT(exportTranscription);
     const fileName = `${getFileNameWithoutExtension(transcription.fileName)}.vtt`;
     downloadFile(content, fileName, "text/vtt");
     toast.success("Export VTT réussi", {
@@ -95,12 +107,13 @@ export default function Results() {
     });
   };
 
-  // Fonction pour copier le texte dans le presse-papiers
+  // Copier le texte courant (inclut les éditions non sauvegardées)
   const handleCopy = async () => {
-    if (!transcription?.transcriptText) return;
+    const textToCopy = getExportText();
+    if (!textToCopy) return;
     
     try {
-      await navigator.clipboard.writeText(transcription.transcriptText);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast.success("Texte copié", {
@@ -347,19 +360,31 @@ export default function Results() {
             </CardContent>
           </Card>
 
-          {/* Card 3 : Transcription (Prévisualisation) */}
+          {/* Card 3 : Éditeur de transcription */}
           <Card className="lg:col-span-3">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <CardTitle>Transcription</CardTitle>
-                  <CardDescription>Prévisualisation du texte transcrit</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    Transcription
+                    {transcription.editedText && transcription.editedText !== transcription.transcriptText && (
+                      <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        Modifiée
+                      </span>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {transcription.status === "completed"
+                      ? "Cliquez dans le texte pour corriger les erreurs"
+                      : "Prévisualisation du texte transcrit"}
+                  </CardDescription>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCopy}
                   disabled={!transcription.transcriptText}
+                  className="shrink-0"
                 >
                   {copied ? (
                     <>
@@ -377,11 +402,21 @@ export default function Results() {
             </CardHeader>
             <CardContent>
               {transcription.transcriptText ? (
-                <div className="bg-muted/30 rounded-lg p-6 max-h-[600px] overflow-y-auto">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                    {transcription.transcriptText}
-                  </p>
-                </div>
+                transcription.status === "completed" ? (
+                  <TranscriptionEditor
+                    transcriptionId={transcription.id}
+                    originalText={transcription.transcriptText}
+                    editedText={transcription.editedText}
+                    segmentsData={transcription.segmentsData}
+                    onTextChange={(text) => { currentEditorTextRef.current = text; }}
+                  />
+                ) : (
+                  <div className="bg-muted/30 rounded-lg p-6 max-h-[600px] overflow-y-auto">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">
+                      {transcription.transcriptText}
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="bg-muted/30 rounded-lg p-12 text-center">
                   <p className="text-muted-foreground">

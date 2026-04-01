@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus } from "./db";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists } from "./s3Direct";
@@ -169,6 +169,36 @@ export const appRouter = router({
           processingStep: 'cancelled',
           processingProgress: 0,
         });
+
+        return { success: true };
+      }),
+
+    /**
+     * Mettre à jour le texte édité d'une transcription
+     * Préserve le texte original (transcriptText) intact
+     * Passer editedText = null pour restaurer l'original
+     */
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        editedText: z.string().nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const transcription = await getTranscriptionById(input.id);
+
+        if (!transcription) {
+          throw new Error("Transcription not found");
+        }
+
+        if (transcription.userId !== ctx.user.openId) {
+          throw new Error("Access denied");
+        }
+
+        if (transcription.status !== 'completed') {
+          throw new Error("Seules les transcriptions terminées peuvent être éditées");
+        }
+
+        await updateTranscriptionEdited(input.id, input.editedText);
 
         return { success: true };
       }),

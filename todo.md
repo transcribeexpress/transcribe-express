@@ -1184,3 +1184,41 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 ## 🐛 Bug UX — Header mobile Results.tsx
 
 - [x] Results mobile : header restructuré en 2 lignes — ligne 1 (retour+supprimer), ligne 2 (titre tronqué+numéro transcription), responsive sans débordement
+
+---
+
+## ✏️ Éditeur de transcription — Fonctionnalité majeure
+
+### Phase 1 : Schéma BDD
+- [x] Ajouter colonne `editedText TEXT NULL` — ajoutée via script SQL direct (migration sécurisée)
+- [x] Ajouter colonne `segmentsData JSON NULL` pour stocker les scores de confiance Whisper
+- [x] Migration appliquée avec succès sans perte de données
+
+### Phase 2 : Backend
+- [x] Procédure tRPC `transcriptions.update` ajoutée dans routers.ts
+- [x] Fonctions `updateTranscriptionEdited` et `updateTranscriptionSegments` dans db.ts
+- [x] `getById` retourne déjà `editedText` et `segmentsData` (SELECT *)
+
+### Phase 3 : Composant TranscriptionEditor
+- [x] Créé `client/src/components/TranscriptionEditor.tsx`
+- [x] Éditeur textarea avec auto-resize
+- [x] Auto-sauvegarde avec debounce 2s (mutation silencieuse)
+- [x] Indicateur d'état : "Sauvegardé" / "Sauvegarde..." / "Non sauvegardé" / "Erreur"
+- [x] Bouton "Restaurer l'original" avec AlertDialog de confirmation
+- [x] Compteur de mots et durée estimée de lecture (200 mots/min)
+
+### Phase 4 : Rechercher et remplacer + mise en évidence
+- [x] Panneau Rechercher/Remplacer (Ctrl+H) avec compteur d'occurrences et remplacement global
+- [x] Mise en évidence des segments à faible confiance (avg_logprob < -0.5) avec score %
+- [x] Tooltip sur les segments affichant le score de confiance et le timestamp
+
+### Phase 5 : Intégration Results.tsx
+- [x] TranscriptionEditor remplace la zone de texte statique dans Results.tsx
+- [x] `generateTXT/SRT/VTT` utilisent `editedText` si disponible, sinon `transcriptText`
+- [x] Badge "Modifiée" sur la card si editedText est différent de transcriptText
+- [x] Copier utilise aussi le texte édité
+
+### Phase 6 : Tests et validation
+- [x] 229/229 tests Vitest passent (17 fichiers)
+- [x] 0 erreur TypeScript
+- [x] Checkpoint et push GitHub à effectuer

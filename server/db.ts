@@ -191,6 +191,47 @@ export async function updateTranscriptionProgress(
 }
 
 /**
+ * Mettre à jour le texte édité d'une transcription
+ * Préserve le texte original (transcriptText) intact
+ */
+export async function updateTranscriptionEdited(
+  id: number,
+  editedText: string | null
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db
+    .update(transcriptions)
+    .set({ editedText })
+    .where(eq(transcriptions.id, id));
+
+  return { success: true };
+}
+
+/**
+ * Mettre à jour les segments Whisper (scores de confiance) d'une transcription
+ */
+export async function updateTranscriptionSegments(
+  id: number,
+  segmentsData: string
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db
+    .update(transcriptions)
+    .set({ segmentsData })
+    .where(eq(transcriptions.id, id));
+
+  return { success: true };
+}
+
+/**
  * Supprimer une transcription par son ID
  */
 export async function deleteTranscription(id: number) {

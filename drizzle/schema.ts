@@ -51,6 +51,10 @@ export const transcriptions = mysqlTable("transcriptions", {
   /** Pourcentage de progression globale (0-100) */
   processingProgress: int("processingProgress").default(0),
   transcriptText: text("transcriptText"),
+  /** Texte édité par l'utilisateur — si renseigné, utilisé pour les exports à la place de transcriptText */
+  editedText: text("editedText"),
+  /** Segments Whisper sérialisés en JSON — contient les scores de confiance par segment */
+  segmentsData: text("segmentsData"),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
