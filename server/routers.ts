@@ -4,8 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
-import { storageDelete, storageGet } from "./storage";
-import { generatePresignedUploadUrl, verifyFileExists } from "./s3Direct";
+import { storageDelete } from "./storage";
+import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
 import { z } from "zod";
 
@@ -221,16 +221,26 @@ export const appRouter = router({
         }
 
         if (!transcription.fileKey) {
-          return { url: null };
+          console.warn(`[getAudioUrl] No fileKey for transcription ${input.id}`);
+          return { url: null, reason: 'no_file_key' };
         }
 
+        console.log(`[getAudioUrl] Fetching URL for key: ${transcription.fileKey}`);
+
         try {
-          const { url } = await storageGet(transcription.fileKey);
-          return { url };
+          // Utiliser l'AWS SDK directement (même bucket que l'upload pré-signé)
+          // URL valide 1 heure pour la lecture audio
+          const url = await generatePresignedDownloadUrl(transcription.fileKey, 3600);
+          if (!url) {
+            console.warn(`[getAudioUrl] generatePresignedDownloadUrl returned empty url for transcription ${input.id}`);
+            return { url: null, reason: 'empty_url' };
+          }
+          console.log(`[getAudioUrl] Success for transcription ${input.id}, url length: ${url.length}`);
+          return { url, reason: 'ok' };
         } catch (error) {
           // Le fichier peut avoir été supprimé de S3
-          console.warn(`[getAudioUrl] File not found for transcription ${input.id}:`, error);
-          return { url: null };
+          console.warn(`[getAudioUrl] S3 error for transcription ${input.id}:`, error);
+          return { url: null, reason: 'storage_error' };
         }
       }),
 

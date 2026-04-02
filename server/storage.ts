@@ -38,7 +38,17 @@ async function buildDownloadUrl(
     method: "GET",
     headers: buildAuthHeaders(apiKey),
   });
-  return (await response.json()).url;
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Storage download URL failed (${response.status} ${response.statusText}): ${message}`
+    );
+  }
+  const json = await response.json();
+  if (!json.url) {
+    throw new Error(`Storage download URL response missing 'url' field`);
+  }
+  return json.url;
 }
 
 function ensureTrailingSlash(value: string): string {

@@ -1240,3 +1240,10 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 ### Problème 3 : Bouton croix pour réinitialiser le champ de recherche
 - [x] Bouton X ajouté dans le champ de recherche (visible uniquement quand le champ n'est pas vide)
 - [x] Clic sur X → efface searchTerm + remet le focus sur le champ
+
+---
+
+## 🐛 Bugs éditeur — Sprint 3 post-correction
+
+- [x] Champ Remplacer effacé quand on clique sur X — setReplaceTerm("") ajouté dans handleClearSearch
+- [x] Lecture audio corrigée — cause racine : deux systèmes S3 distincts (storageGet Forge vs AWS SDK). Fix : getAudioUrl utilise maintenant generatePresignedDownloadUrl (AWS SDK direct) au lieu de storageGet (API Forge). URL pré-signée valide 1h. Gestion d'erreur améliorée avec bouton Réessayer.

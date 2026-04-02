@@ -365,6 +365,7 @@ export function TranscriptionEditor({
 
   const handleClearSearch = () => {
     setSearchTerm("");
+    setReplaceTerm("");
     setMatchCount(0);
     setCurrentMatch(0);
     searchInputRef.current?.focus();
@@ -555,9 +556,25 @@ export function TranscriptionEditor({
                   </div>
                 )}
 
-                {!audioUrlQuery.isLoading && !audioUrl && (
+                {!audioUrlQuery.isLoading && audioUrlQuery.isError && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-xs text-red-400">
+                      Impossible de charger l'audio. Vérifiez votre connexion.
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-cyan-400 hover:text-cyan-300"
+                      onClick={() => audioUrlQuery.refetch()}
+                    >
+                      Réessayer
+                    </Button>
+                  </div>
+                )}
+
+                {!audioUrlQuery.isLoading && !audioUrlQuery.isError && !audioUrl && (
                   <div className="text-xs text-muted-foreground py-2">
-                    Le fichier audio n'est plus disponible (supprimé de S3 après 7 jours).
+                    Le fichier audio n'est plus disponible (expiré ou supprimé).
                   </div>
                 )}
 
