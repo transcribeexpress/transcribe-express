@@ -15,6 +15,22 @@ export interface TranscribeBufferResult {
   text: string;
   language: string;
   duration: number;
+  segments?: WhisperSegment[];
+}
+
+export interface WhisperSegment {
+  id: number;
+  start: number;
+  end: number;
+  text: string;
+  avg_logprob?: number;
+  no_speech_prob?: number;
+  words?: Array<{
+    word: string;
+    start: number;
+    end: number;
+    probability?: number;
+  }>;
 }
 
 /**
@@ -90,7 +106,7 @@ export async function transcribeAudioBuffer(
     text: string;
     language: string;
     duration: number;
-    segments?: any[];
+    segments?: WhisperSegment[];
   };
 
   if (!result.text || typeof result.text !== 'string') {
@@ -101,5 +117,6 @@ export async function transcribeAudioBuffer(
     text: result.text,
     language: result.language || language,
     duration: result.duration || 0,
+    segments: result.segments || [],
   };
 }

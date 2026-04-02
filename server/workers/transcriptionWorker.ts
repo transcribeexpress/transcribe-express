@@ -21,7 +21,7 @@
  * Supporte l'annulation : vérifie le statut en BDD avant chaque étape.
  */
 
-import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress } from '../db';
+import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments } from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
 import { processMediaFile, isAudioFormat } from '../audioProcessor';
 import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions } from '../audioChunker';
@@ -267,6 +267,15 @@ async function processAudioDirect(
     transcriptText = retryResult.result.text;
     detectedLanguage = retryResult.result.language;
     totalDuration = retryResult.result.duration || 0;
+    // Stocker les segments Whisper pour la mise en évidence de confiance
+    if (retryResult.result.segments && retryResult.result.segments.length > 0) {
+      try {
+        await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
+        log(`Stored ${retryResult.result.segments.length} Whisper segments`);
+      } catch (e) {
+        log(`Warning: could not store segments: ${e}`);
+      }
+    }
 
     await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
   }
@@ -429,6 +438,15 @@ async function processVideoFull(
     transcriptText = retryResult.result.text;
     detectedLanguage = retryResult.result.language;
     totalDuration = retryResult.result.duration || totalDuration;
+    // Stocker les segments Whisper pour la mise en évidence de confiance
+    if (retryResult.result.segments && retryResult.result.segments.length > 0) {
+      try {
+        await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
+        log(`Stored ${retryResult.result.segments.length} Whisper segments`);
+      } catch (e) {
+        log(`Warning: could not store segments: ${e}`);
+      }
+    }
 
     await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
   }

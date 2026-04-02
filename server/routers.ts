@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
-import { storageDelete } from "./storage";
+import { storageDelete, storageGet } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
 import { z } from "zod";
@@ -201,6 +201,37 @@ export const appRouter = router({
         await updateTranscriptionEdited(input.id, input.editedText);
 
         return { success: true };
+      }),
+
+    /**
+     * Obtenir l'URL de lecture du fichier audio depuis S3
+     * Utilisé par le mode audio/texte synchronisé dans l'éditeur
+     */
+    getAudioUrl: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const transcription = await getTranscriptionById(input.id);
+
+        if (!transcription) {
+          throw new Error("Transcription not found");
+        }
+
+        if (transcription.userId !== ctx.user.openId) {
+          throw new Error("Access denied");
+        }
+
+        if (!transcription.fileKey) {
+          return { url: null };
+        }
+
+        try {
+          const { url } = await storageGet(transcription.fileKey);
+          return { url };
+        } catch (error) {
+          // Le fichier peut avoir été supprimé de S3
+          console.warn(`[getAudioUrl] File not found for transcription ${input.id}:`, error);
+          return { url: null };
+        }
       }),
 
     stats: protectedProcedure.query(async ({ ctx }) => {

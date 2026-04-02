@@ -1222,3 +1222,21 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] 229/229 tests Vitest passent (17 fichiers)
 - [x] 0 erreur TypeScript
 - [x] Checkpoint et push GitHub à effectuer
+
+---
+
+## 🐛 Corrections éditeur — Sprint 3 corrections
+
+### Problème 1 : Mise en évidence des mots à faible confiance (non visible)
+- [x] Worker Mode A et Mode B stockent maintenant result.segments dans segmentsData
+- [x] TranscriptionEditor lit segmentsData et affiche le panneau amber avec score de confiance %
+
+### Problème 2 : Mode synchronisé audio/texte (non implémenté)
+- [x] Procédure tRPC getAudioUrl ajoutée (storageGet + vérification propriétaire)
+- [x] Lecteur audio HTML5 complet dans TranscriptionEditor (play/pause, seek, volume, liste segments)
+- [x] Synchronisation temps réel : segment actif mis en évidence pendant la lecture
+- [x] Clic sur segment → seek audio vers ce timestamp
+
+### Problème 3 : Bouton croix pour réinitialiser le champ de recherche
+- [x] Bouton X ajouté dans le champ de recherche (visible uniquement quand le champ n'est pas vide)
+- [x] Clic sur X → efface searchTerm + remet le focus sur le champ
