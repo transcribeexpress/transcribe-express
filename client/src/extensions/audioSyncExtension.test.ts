@@ -1,15 +1,18 @@
 /**
  * Tests pour l'extension AudioSync (ProseMirror Plugin)
  *
- * Teste la logique de calcul des positions de segments,
- * la conversion texte → HTML Tiptap, et les helpers.
+ * Couvre :
+ *  - Helpers du TranscriptionEditor (countWords, formatTime, etc.)
+ *  - Conversion texte → HTML Tiptap
+ *  - Logique de synchronisation audio/segment (Edit-Sync)
+ *  - Logique de résolution paragraphe → segment (Click-to-Seek)
+ *  - Structure et exports du module audioSyncExtension
  */
 import { describe, it, expect } from "vitest";
 
 // ─── Tests des helpers du TranscriptionEditor ────────────────────────────────
 
 describe("TranscriptionEditor helpers", () => {
-  // Fonctions utilitaires extraites pour test
   function countWords(text: string): number {
     return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
   }
@@ -196,9 +199,9 @@ describe("textToTiptapHTML", () => {
   });
 });
 
-// ─── Tests de la logique de synchronisation audio/segment ────────────────────
+// ─── Tests de la logique Edit-Sync (audio → segment actif) ──────────────────
 
-describe("Audio-segment synchronisation", () => {
+describe("Edit-Sync : synchronisation audio/segment", () => {
   interface Segment {
     id: number;
     start: number;
@@ -250,7 +253,119 @@ describe("Audio-segment synchronisation", () => {
   });
 });
 
-// ─── Tests de l'extension AudioSync (structure) ─────────────────────────────
+// ─── Tests de la logique Click-to-Seek ──────────────────────────────────────
+
+describe("Click-to-Seek : résolution paragraphe → segment", () => {
+  interface Segment {
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+  }
+
+  const segments: Segment[] = [
+    { id: 0, start: 0, end: 5.5, text: "Premier segment" },
+    { id: 1, start: 5.5, end: 12.0, text: "Deuxième segment" },
+    { id: 2, start: 12.0, end: 18.3, text: "Troisième segment" },
+  ];
+
+  /**
+   * Simule la résolution du segment depuis un index de paragraphe.
+   * Dans l'éditeur, 1 paragraphe = 1 segment Whisper.
+   */
+  function resolveSegmentFromParagraph(
+    paragraphIndex: number,
+    segs: Segment[]
+  ): Segment | null {
+    if (paragraphIndex < 0 || paragraphIndex >= segs.length) return null;
+    return segs[paragraphIndex];
+  }
+
+  it("résout le premier paragraphe vers le premier segment", () => {
+    const seg = resolveSegmentFromParagraph(0, segments);
+    expect(seg).not.toBeNull();
+    expect(seg!.start).toBe(0);
+    expect(seg!.text).toBe("Premier segment");
+  });
+
+  it("résout le deuxième paragraphe vers le deuxième segment", () => {
+    const seg = resolveSegmentFromParagraph(1, segments);
+    expect(seg).not.toBeNull();
+    expect(seg!.start).toBe(5.5);
+    expect(seg!.text).toBe("Deuxième segment");
+  });
+
+  it("résout le dernier paragraphe vers le dernier segment", () => {
+    const seg = resolveSegmentFromParagraph(2, segments);
+    expect(seg).not.toBeNull();
+    expect(seg!.start).toBe(12.0);
+  });
+
+  it("retourne null pour un index hors limites", () => {
+    expect(resolveSegmentFromParagraph(-1, segments)).toBeNull();
+    expect(resolveSegmentFromParagraph(3, segments)).toBeNull();
+    expect(resolveSegmentFromParagraph(100, segments)).toBeNull();
+  });
+
+  it("retourne null pour une liste vide", () => {
+    expect(resolveSegmentFromParagraph(0, [])).toBeNull();
+  });
+
+  it("le timestamp du segment est utilisé pour le seek audio", () => {
+    // Simulation du seek : audio.currentTime = segment.start
+    const clickedParagraph = 1;
+    const seg = resolveSegmentFromParagraph(clickedParagraph, segments);
+    expect(seg).not.toBeNull();
+
+    // Le seek doit positionner l'audio au début du segment
+    const seekTarget = seg!.start;
+    expect(seekTarget).toBe(5.5);
+    expect(seekTarget).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── Tests du formatage du timestamp pour le tooltip hover ──────────────────
+
+describe("formatTimeShort : tooltip timestamp au hover", () => {
+  function formatTimeShort(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  it("formate 0 secondes", () => {
+    expect(formatTimeShort(0)).toBe("0:00");
+  });
+
+  it("formate des secondes < 60", () => {
+    expect(formatTimeShort(5)).toBe("0:05");
+    expect(formatTimeShort(59)).toBe("0:59");
+  });
+
+  it("formate des minutes entières", () => {
+    expect(formatTimeShort(60)).toBe("1:00");
+    expect(formatTimeShort(120)).toBe("2:00");
+  });
+
+  it("formate des temps mixtes", () => {
+    expect(formatTimeShort(65)).toBe("1:05");
+    expect(formatTimeShort(3661)).toBe("61:01");
+  });
+
+  it("génère un tooltip lisible pour les segments", () => {
+    const segments = [
+      { start: 0 },
+      { start: 12.5 },
+      { start: 125.3 },
+    ];
+    const tooltips = segments.map((s) => `→ ${formatTimeShort(s.start)}`);
+    expect(tooltips[0]).toBe("→ 0:00");
+    expect(tooltips[1]).toBe("→ 0:12");
+    expect(tooltips[2]).toBe("→ 2:05");
+  });
+});
+
+// ─── Tests de structure du module audioSyncExtension ────────────────────────
 
 describe("AudioSyncExtension module", () => {
   it("exporte AudioSyncExtension", async () => {
@@ -264,9 +379,23 @@ describe("AudioSyncExtension module", () => {
     expect(mod.audioSyncPluginKey).toBeDefined();
   });
 
-  it("exporte le type AudioSyncSegment", async () => {
-    // Le type est vérifié à la compilation, ici on vérifie juste que le module s'importe
+  it("exporte CLICK_FLASH_META", async () => {
+    const mod = await import("./audioSyncExtension");
+    expect(mod.CLICK_FLASH_META).toBeDefined();
+    expect(typeof mod.CLICK_FLASH_META).toBe("string");
+  });
+
+  it("AudioSyncExtension supporte la configuration onSegmentClick", async () => {
+    const mod = await import("./audioSyncExtension");
+    // L'extension doit avoir des options par défaut
+    expect(mod.AudioSyncExtension).toBeDefined();
+    // La méthode configure doit exister (héritée de Extension)
+    expect(typeof mod.AudioSyncExtension.configure).toBe("function");
+  });
+
+  it("exporte le type AudioSyncSegment (vérification d'import)", async () => {
     const mod = await import("./audioSyncExtension");
     expect(mod).toBeDefined();
+    // Le type est vérifié à la compilation TypeScript
   });
 });

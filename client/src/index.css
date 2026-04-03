@@ -261,3 +261,74 @@
     background: oklch(0.75 0.15 180 / 0.25);
   }
 }
+
+/* ─── Click-to-Seek : styles des paragraphes cliquables ────────────────────── */
+
+/* Paragraphes avec segment Whisper associé : curseur pointer + hover subtil */
+.tiptap p.seekable-paragraph {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+
+.tiptap p.seekable-paragraph:hover {
+  background: oklch(0.75 0.15 180 / 0.06);
+}
+
+/* Indicateur de timestamp au hover : petit badge à gauche */
+.tiptap p.seekable-paragraph::before {
+  content: attr(title);
+  position: absolute;
+  left: -2.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  color: oklch(0.75 0.15 180 / 0);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.15s ease;
+  line-height: 1;
+}
+
+.tiptap p.seekable-paragraph:hover::before {
+  color: oklch(0.75 0.15 180 / 0.55);
+}
+
+/* Flash de confirmation après un clic (seek) */
+@keyframes seek-flash {
+  0% {
+    background: oklch(0.75 0.15 180 / 0);
+    box-shadow: none;
+  }
+  20% {
+    background: oklch(0.75 0.15 180 / 0.22);
+    box-shadow: 0 0 0 2px oklch(0.75 0.15 180 / 0.35);
+  }
+  100% {
+    background: oklch(0.75 0.15 180 / 0);
+    box-shadow: none;
+  }
+}
+
+.tiptap p.seek-flash-segment {
+  animation: seek-flash 0.6s ease-out forwards;
+  border-radius: 4px;
+}
+
+/* Indicateur éditeur : élargir le padding gauche quand des segments sont disponibles */
+.tiptap.has-segments {
+  padding-left: 2.5rem;
+}
+
+/* Sur mobile : masquer le timestamp au hover (pas de hover sur tactile) */
+@media (max-width: 640px) {
+  .tiptap p.seekable-paragraph::before {
+    display: none;
+  }
+  .tiptap p.seekable-paragraph:hover {
+    background: oklch(0.75 0.15 180 / 0.08);
+  }
+}

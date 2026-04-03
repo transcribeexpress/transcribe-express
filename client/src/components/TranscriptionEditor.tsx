@@ -45,6 +45,7 @@ import {
   AudioSyncExtension,
   audioSyncPluginKey,
   type AudioSyncSegment,
+  type AudioSyncOptions,
 } from "@/extensions/audioSyncExtension";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,6 +184,12 @@ export function TranscriptionEditor({
   // Edit-Sync : auto-scroll activé
   const [editSyncEnabled, setEditSyncEnabled] = useState(true);
 
+  // Click-to-Seek : index du dernier segment cliqué (pour le toast)
+  const [lastClickedSegment, setLastClickedSegment] = useState<number>(-1);
+
+  // Ref stable pour le callback onSegmentClick (évite de recréer les extensions)
+  const onSegmentClickRef = useRef<AudioSyncOptions["onSegmentClick"]>(null);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -192,6 +199,7 @@ export function TranscriptionEditor({
   const initialText = editedText ?? originalText;
 
   // Mémoriser les extensions Tiptap
+  // AudioSyncExtension est configuré avec un callback stable via ref
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -210,9 +218,14 @@ export function TranscriptionEditor({
       Placeholder.configure({
         placeholder: "Le texte de la transcription apparaîtra ici...",
       }),
-      AudioSyncExtension,
+      AudioSyncExtension.configure({
+        // Utiliser une ref stable pour éviter de recréer l'extension à chaque render
+        onSegmentClick: (segmentIndex: number, segment: AudioSyncSegment) => {
+          onSegmentClickRef.current?.(segmentIndex, segment);
+        },
+      }),
     ],
-    []
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Initialiser l'éditeur Tiptap
@@ -221,6 +234,7 @@ export function TranscriptionEditor({
     content: textToTiptapHTML(initialText, allSegments.length > 0 ? allSegments : undefined),
     editorProps: {
       attributes: {
+        // La classe 'has-segments' active le padding gauche pour les timestamps hover
         class:
           "prose prose-sm prose-invert max-w-none focus:outline-none min-h-[200px] p-4 text-sm leading-relaxed",
         spellcheck: "true",
@@ -291,6 +305,18 @@ export function TranscriptionEditor({
       );
     }
   }, [editedText, originalText, editor, allSegments, isDirty]);
+
+  // Ajouter/retirer la classe 'has-segments' sur l'éditeur
+  // pour activer le padding gauche des timestamps au hover
+  useEffect(() => {
+    if (!editor) return;
+    const el = editor.view.dom as HTMLElement;
+    if (allSegments.length > 0) {
+      el.classList.add("has-segments");
+    } else {
+      el.classList.remove("has-segments");
+    }
+  }, [editor, allSegments]);
 
   // Comptage des occurrences de recherche
   useEffect(() => {
@@ -433,7 +459,7 @@ export function TranscriptionEditor({
   };
 
   // Cliquer sur un segment → aller à ce timestamp
-  const seekToSegment = (segment: WhisperSegment) => {
+  const seekToSegment = useCallback((segment: WhisperSegment) => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = segment.start;
@@ -442,7 +468,45 @@ export function TranscriptionEditor({
       audio.play().catch(() => {});
       setIsAudioPlaying(true);
     }
-  };
+  }, [isAudioPlaying]);
+
+  // Click-to-Seek depuis l'éditeur Tiptap
+  // Ce callback est mis à jour dans la ref stable pour éviter de recréer l'extension
+  useEffect(() => {
+    onSegmentClickRef.current = (segmentIndex: number, segment: AudioSyncSegment) => {
+      const audio = audioRef.current;
+      if (!audio) {
+        // Si le lecteur audio n'est pas ouvert, l'ouvrir d'abord
+        setShowAudioPlayer(true);
+        // Petit délai pour laisser le temps au lecteur de s'initialiser
+        setTimeout(() => {
+          const a = audioRef.current;
+          if (!a) return;
+          a.currentTime = segment.start;
+          setAudioCurrentTime(segment.start);
+        }, 300);
+        return;
+      }
+
+      // Seek vers le timestamp du segment
+      audio.currentTime = segment.start;
+      setAudioCurrentTime(segment.start);
+      setLastClickedSegment(segmentIndex);
+
+      // Ouvrir le lecteur audio si fermé
+      setShowAudioPlayer(true);
+
+      // Démarrer la lecture automatiquement
+      if (!isAudioPlaying) {
+        audio.play().catch(() => {
+          toast.error("Impossible de lire l'audio", {
+            description: "Cliquez sur Play pour démarrer la lecture.",
+          });
+        });
+        setIsAudioPlaying(true);
+      }
+    };
+  }, [isAudioPlaying]);
 
   // ─── Handlers éditeur ───────────────────────────────────────────────────────
 
@@ -1100,7 +1164,7 @@ export function TranscriptionEditor({
             {wordCount.toLocaleString("fr-FR")} mots · {readingTime} de lecture
           </span>
           <span className="text-xs opacity-60 hidden sm:block">
-            Ctrl+S sauvegarder · Ctrl+H rechercher
+            Ctrl+S sauvegarder · Ctrl+H rechercher · Clic sur paragraphe → seek audio
           </span>
         </div>
       </div>

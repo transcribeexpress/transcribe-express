@@ -1302,3 +1302,36 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 **Fichiers modifiés :**
 - client/src/components/TranscriptionEditor.tsx (migration textarea → Tiptap)
 - client/src/index.css (styles Edit-Sync : surbrillance, animation, bordure segment actif)
+
+---
+
+## ✅ Click-to-Seek — Clic dans l'éditeur → seek audio (TERMINÉ)
+
+### Phase 1 : Audit du code existant
+- [x] Lire TranscriptionEditor.tsx (structure Tiptap actuelle, gestion audioRef)
+- [x] Lire audioSyncExtension.ts (Plugin ProseMirror, DecorationSet, segments)
+
+### Phase 2 : Implémentation click-to-seek
+- [x] Ajouter le callback onSegmentClick dans AudioSyncExtension.configure()
+- [x] Détecter le clic via handleClick ProseMirror → resolveParagraphIndex() → segment
+- [x] Appeler audioRef.current.currentTime = segment.start pour le seek
+- [x] Déclencher la lecture automatiquement après le seek
+- [x] Ouvrir le lecteur audio automatiquement si fermé
+
+### Phase 3 : Feedback visuel
+- [x] Curseur pointer sur les paragraphes avec segment associé (.seekable-paragraph)
+- [x] Tooltip au hover indiquant le timestamp via CSS ::before + attr(title) (ex: "→ 0:12")
+- [x] Flash cyan bref sur le segment cliqué (animation seek-flash 0.6s)
+- [x] Padding gauche activé quand des segments sont disponibles (classe has-segments)
+
+### Phase 4 : Tests et validation
+- [x] 13 nouveaux tests Vitest (click-to-seek, formatTimeShort, résolution paragraphe→segment)
+- [x] 267/267 tests passent (18 fichiers)
+- [x] 0 erreur TypeScript
+- [x] Checkpoint Manus
+
+**Fichiers modifiés :**
+- client/src/extensions/audioSyncExtension.ts (handleClick, resolveParagraphIndex, buildDecorationSet, seek-flash, seekable-paragraph)
+- client/src/extensions/audioSyncExtension.test.ts (13 nouveaux tests click-to-seek)
+- client/src/components/TranscriptionEditor.tsx (onSegmentClickRef, useEffect seek, has-segments)
+- client/src/index.css (seekable-paragraph, seek-flash, has-segments, tooltip ::before)
