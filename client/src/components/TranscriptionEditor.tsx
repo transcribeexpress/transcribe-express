@@ -1,4 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +41,11 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AudioSyncExtension,
+  audioSyncPluginKey,
+  type AudioSyncSegment,
+} from "@/extensions/audioSyncExtension";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +105,42 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Convertit du texte brut en HTML pour Tiptap.
+ * Chaque segment Whisper devient un paragraphe <p>.
+ * Si pas de segments, chaque ligne du texte brut devient un <p>.
+ */
+function textToTiptapHTML(
+  text: string,
+  segments?: WhisperSegment[]
+): string {
+  if (segments && segments.length > 0) {
+    // Un paragraphe par segment Whisper
+    return segments
+      .map((seg) => {
+        const escaped = seg.text
+          .trim()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        return `<p>${escaped}</p>`;
+      })
+      .join("");
+  }
+
+  // Fallback : découper par lignes
+  const lines = text.split("\n");
+  return lines
+    .map((line) => {
+      const escaped = line
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      return `<p>${escaped || "<br>"}</p>`;
+    })
+    .join("");
+}
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function TranscriptionEditor({
@@ -107,9 +151,10 @@ export function TranscriptionEditor({
   onTextChange,
 }: TranscriptionEditorProps) {
   // État de l'éditeur
-  const [currentText, setCurrentText] = useState<string>(editedText ?? originalText);
   const [isDirty, setIsDirty] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
+  const [saveStatus, setSaveStatus] = useState<
+    "saved" | "saving" | "unsaved" | "error"
+  >("saved");
   const [isEditing, setIsEditing] = useState(false);
 
   // Rechercher/Remplacer
@@ -121,7 +166,9 @@ export function TranscriptionEditor({
 
   // Segments Whisper
   const [showLowConfidence, setShowLowConfidence] = useState(true);
-  const [lowConfidenceSegments, setLowConfidenceSegments] = useState<WhisperSegment[]>([]);
+  const [lowConfidenceSegments, setLowConfidenceSegments] = useState<
+    WhisperSegment[]
+  >([]);
   const [allSegments, setAllSegments] = useState<WhisperSegment[]>([]);
 
   // Lecteur audio synchronisé
@@ -133,10 +180,68 @@ export function TranscriptionEditor({
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState<number>(-1);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Edit-Sync : auto-scroll activé
+  const [editSyncEnabled, setEditSyncEnabled] = useState(true);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // Texte initial pour Tiptap
+  const initialText = editedText ?? originalText;
+
+  // Mémoriser les extensions Tiptap
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        // Désactiver les fonctionnalités de formatage riche non nécessaires
+        bold: false,
+        italic: false,
+        strike: false,
+        code: false,
+        codeBlock: false,
+        blockquote: false,
+        bulletList: false,
+        orderedList: false,
+        heading: false,
+        horizontalRule: false,
+      }),
+      Placeholder.configure({
+        placeholder: "Le texte de la transcription apparaîtra ici...",
+      }),
+      AudioSyncExtension,
+    ],
+    []
+  );
+
+  // Initialiser l'éditeur Tiptap
+  const editor = useEditor({
+    extensions,
+    content: textToTiptapHTML(initialText, allSegments.length > 0 ? allSegments : undefined),
+    editorProps: {
+      attributes: {
+        class:
+          "prose prose-sm prose-invert max-w-none focus:outline-none min-h-[200px] p-4 text-sm leading-relaxed",
+        spellcheck: "true",
+        lang: "fr",
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      const text = ed.getText();
+      setIsDirty(true);
+      setSaveStatus("unsaved");
+      onTextChange?.(text);
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setSaveStatus("saving");
+        updateMutation.mutate({ id: transcriptionId, editedText: text });
+      }, 2000);
+    },
+    onFocus: () => setIsEditing(true),
+    onBlur: () => setIsEditing(false),
+  });
 
   // Mutation tRPC pour sauvegarder
   const updateMutation = trpc.transcriptions.update.useMutation({
@@ -155,7 +260,7 @@ export function TranscriptionEditor({
     { id: transcriptionId },
     {
       enabled: showAudioPlayer,
-      staleTime: 5 * 60 * 1000, // 5 min (URL signée valide)
+      staleTime: 5 * 60 * 1000,
       retry: false,
     }
   );
@@ -174,54 +279,92 @@ export function TranscriptionEditor({
     }
   }, [segmentsData]);
 
-  // Synchroniser si le texte externe change
+  // Synchroniser le contenu si le texte externe change (ex: après restauration)
   useEffect(() => {
+    if (!editor) return;
     const incoming = editedText ?? originalText;
-    setCurrentText(incoming);
-    setIsDirty(false);
-    setSaveStatus("saved");
-  }, [editedText, originalText]);
-
-  // Auto-resize du textarea
-  const autoResize = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${ta.scrollHeight}px`;
-  }, []);
-
-  useEffect(() => {
-    autoResize();
-  }, [currentText, autoResize]);
+    const currentEditorText = editor.getText();
+    // Ne mettre à jour que si le contenu a réellement changé (pas à cause de notre propre édition)
+    if (incoming !== currentEditorText && !isDirty) {
+      editor.commands.setContent(
+        textToTiptapHTML(incoming, allSegments.length > 0 ? allSegments : undefined)
+      );
+    }
+  }, [editedText, originalText, editor, allSegments, isDirty]);
 
   // Comptage des occurrences de recherche
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    if (!searchTerm.trim() || !editor) {
       setMatchCount(0);
       setCurrentMatch(0);
       return;
     }
     try {
-      const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-      const matches = currentText.match(regex);
+      const text = editor.getText();
+      const regex = new RegExp(
+        searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "gi"
+      );
+      const matches = text.match(regex);
       setMatchCount(matches ? matches.length : 0);
       setCurrentMatch(matches && matches.length > 0 ? 1 : 0);
     } catch {
       setMatchCount(0);
     }
-  }, [searchTerm, currentText]);
+  }, [searchTerm, editor]);
 
-  // Synchronisation audio → segment actif
+  // ─── Edit-Sync : synchronisation audio → surbrillance segment actif ────────
+
+  // Trouver le segment actif basé sur le currentTime audio
   useEffect(() => {
-    if (!isAudioPlaying || allSegments.length === 0) return;
+    if (allSegments.length === 0) return;
 
     const idx = allSegments.findIndex(
       (seg) => audioCurrentTime >= seg.start && audioCurrentTime < seg.end
     );
+
     if (idx !== currentSegmentIndex) {
       setCurrentSegmentIndex(idx);
     }
-  }, [audioCurrentTime, allSegments, isAudioPlaying, currentSegmentIndex]);
+  }, [audioCurrentTime, allSegments, currentSegmentIndex]);
+
+  // Mettre à jour la décoration Tiptap quand le segment actif change
+  useEffect(() => {
+    if (!editor || allSegments.length === 0) return;
+
+    const { tr } = editor.state;
+    tr.setMeta(audioSyncPluginKey, {
+      segmentIndex: currentSegmentIndex,
+      segments: allSegments.map((s) => ({
+        id: s.id,
+        start: s.start,
+        end: s.end,
+        text: s.text,
+      })) as AudioSyncSegment[],
+    });
+    editor.view.dispatch(tr);
+  }, [currentSegmentIndex, editor, allSegments]);
+
+  // Auto-scroll vers le segment actif
+  useEffect(() => {
+    if (
+      !editSyncEnabled ||
+      currentSegmentIndex < 0 ||
+      !editorContainerRef.current
+    )
+      return;
+
+    // Chercher l'élément mark.active-segment-highlight dans le DOM de l'éditeur
+    const highlightEl = editorContainerRef.current.querySelector(
+      ".active-segment-highlight"
+    );
+    if (highlightEl) {
+      highlightEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [currentSegmentIndex, editSyncEnabled]);
 
   // ─── Handlers audio ─────────────────────────────────────────────────────────
 
@@ -239,7 +382,7 @@ export function TranscriptionEditor({
 
   const handleAudioEnded = () => {
     setIsAudioPlaying(false);
-    setCurrentSegmentIndex(-1);
+    // Garder la surbrillance sur le dernier segment (ne pas reset à -1)
   };
 
   const togglePlayPause = () => {
@@ -248,6 +391,7 @@ export function TranscriptionEditor({
     if (isAudioPlaying) {
       audio.pause();
       setIsAudioPlaying(false);
+      // Maintenir la surbrillance à la pause (ne pas toucher currentSegmentIndex)
     } else {
       audio.play().catch(() => {
         toast.error("Impossible de lire l'audio", {
@@ -302,28 +446,19 @@ export function TranscriptionEditor({
 
   // ─── Handlers éditeur ───────────────────────────────────────────────────────
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newText = e.target.value;
-    setCurrentText(newText);
-    setIsDirty(true);
-    setSaveStatus("unsaved");
-    onTextChange?.(newText);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setSaveStatus("saving");
-      updateMutation.mutate({ id: transcriptionId, editedText: newText });
-    }, 2000);
-  };
-
   const handleSaveNow = () => {
+    if (!editor) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const text = editor.getText();
     setSaveStatus("saving");
-    updateMutation.mutate({ id: transcriptionId, editedText: currentText });
+    updateMutation.mutate({ id: transcriptionId, editedText: text });
   };
 
   const handleRestore = () => {
-    setCurrentText(originalText);
+    if (!editor) return;
+    editor.commands.setContent(
+      textToTiptapHTML(originalText, allSegments.length > 0 ? allSegments : undefined)
+    );
     setIsDirty(true);
     setSaveStatus("saving");
     updateMutation.mutate(
@@ -341,18 +476,32 @@ export function TranscriptionEditor({
   };
 
   const handleReplaceAll = () => {
-    if (!searchTerm.trim()) return;
+    if (!searchTerm.trim() || !editor) return;
+
     try {
-      const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-      const newText = currentText.replace(regex, replaceTerm);
-      const count = (currentText.match(regex) || []).length;
-      setCurrentText(newText);
+      const text = editor.getText();
+      const regex = new RegExp(
+        searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "gi"
+      );
+      const newText = text.replace(regex, replaceTerm);
+      const count = (text.match(regex) || []).length;
+
+      // Reconstruire le contenu Tiptap avec le texte remplacé
+      editor.commands.setContent(
+        textToTiptapHTML(newText, undefined)
+      );
       setIsDirty(true);
       setSaveStatus("unsaved");
       onTextChange?.(newText);
-      toast.success(`${count} remplacement${count > 1 ? "s" : ""} effectué${count > 1 ? "s" : ""}`, {
-        description: `"${searchTerm}" → "${replaceTerm}"`,
-      });
+
+      toast.success(
+        `${count} remplacement${count > 1 ? "s" : ""} effectué${count > 1 ? "s" : ""}`,
+        {
+          description: `"${searchTerm}" → "${replaceTerm}"`,
+        }
+      );
+
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         setSaveStatus("saving");
@@ -371,25 +520,47 @@ export function TranscriptionEditor({
     searchInputRef.current?.focus();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "h") {
-      e.preventDefault();
-      setShowSearch(true);
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault();
-      handleSaveNow();
-    }
-  };
+  // Raccourcis clavier globaux
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "h") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveNow();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [editor]);
 
   // ─── Indicateur de statut de sauvegarde ─────────────────────────────────────
 
   const SaveStatusIndicator = () => {
     const configs = {
-      saved: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: "Sauvegardé", color: "text-emerald-500" },
-      saving: { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, label: "Sauvegarde...", color: "text-amber-500" },
-      unsaved: { icon: <Edit3 className="w-3.5 h-3.5" />, label: "Non sauvegardé", color: "text-orange-500" },
-      error: { icon: <AlertTriangle className="w-3.5 h-3.5" />, label: "Erreur", color: "text-red-500" },
+      saved: {
+        icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+        label: "Sauvegardé",
+        color: "text-emerald-500",
+      },
+      saving: {
+        icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+        label: "Sauvegarde...",
+        color: "text-amber-500",
+      },
+      unsaved: {
+        icon: <Edit3 className="w-3.5 h-3.5" />,
+        label: "Non sauvegardé",
+        color: "text-orange-500",
+      },
+      error: {
+        icon: <AlertTriangle className="w-3.5 h-3.5" />,
+        label: "Erreur",
+        color: "text-red-500",
+      },
     };
     const { icon, label, color } = configs[saveStatus];
     return (
@@ -402,6 +573,7 @@ export function TranscriptionEditor({
 
   // ─── Calculs dérivés ─────────────────────────────────────────────────────────
 
+  const currentText = editor?.getText() ?? initialText;
   const wordCount = countWords(currentText);
   const readingTime = estimateReadingTime(wordCount);
   const isModified = currentText !== originalText;
@@ -412,14 +584,16 @@ export function TranscriptionEditor({
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-3">
-
         {/* ── Barre d'outils ── */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Gauche : statut + badges */}
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <SaveStatusIndicator />
             {isModified && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 bg-purple-500/10 text-purple-400 border-purple-500/20">
+              <Badge
+                variant="secondary"
+                className="text-xs px-1.5 py-0 h-5 bg-purple-500/10 text-purple-400 border-purple-500/20"
+              >
                 Modifié
               </Badge>
             )}
@@ -436,11 +610,18 @@ export function TranscriptionEditor({
                   >
                     <AlertTriangle className="w-3 h-3" />
                     <span>{lowConfidenceSegments.length} à vérifier</span>
-                    {showLowConfidence ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {showLowConfidence ? (
+                      <EyeOff className="w-3 h-3" />
+                    ) : (
+                      <Eye className="w-3 h-3" />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{showLowConfidence ? "Masquer" : "Afficher"} les passages à faible confiance</p>
+                  <p>
+                    {showLowConfidence ? "Masquer" : "Afficher"} les passages à
+                    faible confiance
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -460,7 +641,12 @@ export function TranscriptionEditor({
                   <Music2 className="w-3.5 h-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{showAudioPlayer ? "Masquer" : "Afficher"} le lecteur audio synchronisé</p></TooltipContent>
+              <TooltipContent>
+                <p>
+                  {showAudioPlayer ? "Masquer" : "Afficher"} le lecteur audio
+                  synchronisé
+                </p>
+              </TooltipContent>
             </Tooltip>
 
             {/* Rechercher/Remplacer */}
@@ -475,7 +661,9 @@ export function TranscriptionEditor({
                   <Search className="w-3.5 h-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Rechercher / Remplacer (Ctrl+H)</p></TooltipContent>
+              <TooltipContent>
+                <p>Rechercher / Remplacer (Ctrl+H)</p>
+              </TooltipContent>
             </Tooltip>
 
             {/* Sauvegarder */}
@@ -492,7 +680,9 @@ export function TranscriptionEditor({
                   <span className="hidden sm:inline text-xs">Sauvegarder</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Sauvegarder (Ctrl+S)</p></TooltipContent>
+              <TooltipContent>
+                <p>Sauvegarder (Ctrl+S)</p>
+              </TooltipContent>
             </Tooltip>
 
             {/* Restaurer l'original */}
@@ -501,19 +691,31 @@ export function TranscriptionEditor({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-muted-foreground hover:text-foreground">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
+                      >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-xs">Restaurer</span>
+                        <span className="hidden sm:inline text-xs">
+                          Restaurer
+                        </span>
                       </Button>
                     </AlertDialogTrigger>
                   </TooltipTrigger>
-                  <TooltipContent><p>Restaurer le texte original</p></TooltipContent>
+                  <TooltipContent>
+                    <p>Restaurer le texte original</p>
+                  </TooltipContent>
                 </Tooltip>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Restaurer le texte original ?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      Restaurer le texte original ?
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Toutes vos modifications seront supprimées et le texte original de la transcription sera restauré. Cette action est irréversible.
+                      Toutes vos modifications seront supprimées et le texte
+                      original de la transcription sera restauré. Cette action
+                      est irréversible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -541,11 +743,43 @@ export function TranscriptionEditor({
               <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Music2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="text-xs font-medium text-cyan-400">Lecture synchronisée</span>
+                  <span className="text-xs font-medium text-cyan-400">
+                    Lecture synchronisée
+                  </span>
                   {allSegments.length > 0 && (
                     <span className="text-xs text-muted-foreground">
-                      · Le texte suit la lecture audio
+                      · Edit-Sync actif
                     </span>
+                  )}
+                  {/* Toggle Edit-Sync auto-scroll */}
+                  {allSegments.length > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setEditSyncEnabled(!editSyncEnabled)}
+                          className={`ml-auto flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                            editSyncEnabled
+                              ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                              : "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {editSyncEnabled ? (
+                            <Eye className="w-3 h-3" />
+                          ) : (
+                            <EyeOff className="w-3 h-3" />
+                          )}
+                          <span className="hidden sm:inline">
+                            Défilement auto
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {editSyncEnabled ? "Désactiver" : "Activer"} le
+                          défilement automatique pendant la lecture
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
 
@@ -572,11 +806,14 @@ export function TranscriptionEditor({
                   </div>
                 )}
 
-                {!audioUrlQuery.isLoading && !audioUrlQuery.isError && !audioUrl && (
-                  <div className="text-xs text-muted-foreground py-2">
-                    Le fichier audio n'est plus disponible (expiré ou supprimé).
-                  </div>
-                )}
+                {!audioUrlQuery.isLoading &&
+                  !audioUrlQuery.isError &&
+                  !audioUrl && (
+                    <div className="text-xs text-muted-foreground py-2">
+                      Le fichier audio n'est plus disponible (expiré ou
+                      supprimé).
+                    </div>
+                  )}
 
                 {audioUrl && (
                   <>
@@ -620,18 +857,23 @@ export function TranscriptionEditor({
                           className="h-8 w-8 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
                           onClick={togglePlayPause}
                         >
-                          {isAudioPlaying
-                            ? <Pause className="w-4 h-4" />
-                            : <Play className="w-4 h-4" />
-                          }
+                          {isAudioPlaying ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
                         </Button>
 
                         {/* Volume */}
-                        <button onClick={toggleMute} className="text-muted-foreground hover:text-foreground transition-colors">
-                          {audioMuted || audioVolume === 0
-                            ? <VolumeX className="w-3.5 h-3.5" />
-                            : <Volume2 className="w-3.5 h-3.5" />
-                          }
+                        <button
+                          onClick={toggleMute}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {audioMuted || audioVolume === 0 ? (
+                            <VolumeX className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
                         </button>
                         <input
                           type="range"
@@ -644,11 +886,14 @@ export function TranscriptionEditor({
                         />
 
                         {/* Segment actif */}
-                        {currentSegmentIndex >= 0 && allSegments[currentSegmentIndex] && (
-                          <span className="text-xs text-cyan-400/70 italic truncate ml-auto max-w-[200px]">
-                            "{allSegments[currentSegmentIndex].text.trim()}"
-                          </span>
-                        )}
+                        {currentSegmentIndex >= 0 &&
+                          allSegments[currentSegmentIndex] && (
+                            <span className="text-xs text-cyan-400/70 italic truncate ml-auto max-w-[200px]">
+                              "
+                              {allSegments[currentSegmentIndex].text.trim()}
+                              "
+                            </span>
+                          )}
                       </div>
                     </div>
                   </>
@@ -674,7 +919,9 @@ export function TranscriptionEditor({
                           <span className="shrink-0 text-cyan-500/60 w-10 text-right">
                             {formatTime(seg.start)}
                           </span>
-                          <span className={`line-clamp-1 ${isLowConfidence(seg) ? "text-amber-400/80" : ""}`}>
+                          <span
+                            className={`line-clamp-1 ${isLowConfidence(seg) ? "text-amber-400/80" : ""}`}
+                          >
                             {seg.text.trim()}
                           </span>
                         </button>
@@ -699,7 +946,9 @@ export function TranscriptionEditor({
             >
               <div className="bg-muted/50 border border-border rounded-lg p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Rechercher / Remplacer</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Rechercher / Remplacer
+                  </span>
                   <button
                     onClick={() => setShowSearch(false)}
                     className="text-muted-foreground hover:text-foreground"
@@ -723,7 +972,9 @@ export function TranscriptionEditor({
                       {/* Compteur d'occurrences */}
                       {searchTerm && (
                         <span className="text-xs text-muted-foreground">
-                          {matchCount > 0 ? `${currentMatch}/${matchCount}` : "0"}
+                          {matchCount > 0
+                            ? `${currentMatch}/${matchCount}`
+                            : "0"}
                         </span>
                       )}
                       {/* Bouton croix pour vider le champ */}
@@ -776,16 +1027,21 @@ export function TranscriptionEditor({
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="text-xs font-medium text-amber-400">
-                    {lowConfidenceSegments.length} passage{lowConfidenceSegments.length > 1 ? "s" : ""} à vérifier
+                    {lowConfidenceSegments.length} passage
+                    {lowConfidenceSegments.length > 1 ? "s" : ""} à vérifier
                   </span>
                 </div>
                 <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto">
                   {lowConfidenceSegments.map((seg) => (
                     <div key={seg.id} className="flex items-start gap-2">
                       <button
-                        onClick={() => audioUrl ? seekToSegment(seg) : undefined}
+                        onClick={() =>
+                          audioUrl ? seekToSegment(seg) : undefined
+                        }
                         className={`text-xs text-amber-500/70 shrink-0 mt-0.5 ${audioUrl ? "hover:text-amber-400 cursor-pointer" : "cursor-default"}`}
-                        title={audioUrl ? "Cliquer pour écouter ce passage" : ""}
+                        title={
+                          audioUrl ? "Cliquer pour écouter ce passage" : ""
+                        }
                       >
                         {formatTime(seg.start)}
                       </button>
@@ -812,43 +1068,40 @@ export function TranscriptionEditor({
           )}
         </AnimatePresence>
 
-        {/* ── Zone d'édition principale ── */}
-        <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={currentText}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setIsEditing(true)}
-            onBlur={() => setIsEditing(false)}
-            placeholder="Le texte de la transcription apparaîtra ici..."
-            className={`w-full min-h-[200px] p-4 text-sm leading-relaxed bg-background border rounded-lg resize-none focus:outline-none transition-colors ${
+        {/* ── Zone d'édition principale (Tiptap) ── */}
+        <div className="relative" ref={editorContainerRef}>
+          <div
+            className={`w-full bg-background border rounded-lg transition-colors overflow-y-auto max-h-[600px] ${
               isEditing
                 ? "border-ring ring-1 ring-ring"
                 : "border-border hover:border-ring/50"
             }`}
-            style={{ overflow: "hidden" }}
-            spellCheck
-            lang="fr"
-          />
+          >
+            <EditorContent editor={editor} />
+          </div>
           {/* Indicateur de focus discret */}
           {isEditing && (
             <div className="absolute top-2 right-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           )}
-          {/* Segment actif en lecture */}
-          {isAudioPlaying && currentSegmentIndex >= 0 && allSegments[currentSegmentIndex] && (
-            <div className="absolute bottom-2 right-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            </div>
-          )}
+          {/* Indicateur Edit-Sync actif */}
+          {currentSegmentIndex >= 0 &&
+            allSegments[currentSegmentIndex] && (
+              <div className="absolute bottom-2 right-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              </div>
+            )}
         </div>
 
         {/* ── Pied de page : compteur de mots ── */}
         <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-          <span>{wordCount.toLocaleString("fr-FR")} mots · {readingTime} de lecture</span>
-          <span className="text-xs opacity-60 hidden sm:block">Ctrl+S sauvegarder · Ctrl+H rechercher</span>
+          <span>
+            {wordCount.toLocaleString("fr-FR")} mots · {readingTime} de lecture
+          </span>
+          <span className="text-xs opacity-60 hidden sm:block">
+            Ctrl+S sauvegarder · Ctrl+H rechercher
+          </span>
         </div>
       </div>
     </TooltipProvider>

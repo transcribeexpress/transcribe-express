@@ -1247,3 +1247,58 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 
 - [x] Champ Remplacer effacé quand on clique sur X — setReplaceTerm("") ajouté dans handleClearSearch
 - [x] Lecture audio corrigée — cause racine : deux systèmes S3 distincts (storageGet Forge vs AWS SDK). Fix : getAudioUrl utilise maintenant generatePresignedDownloadUrl (AWS SDK direct) au lieu de storageGet (API Forge). URL pré-signée valide 1h. Gestion d'erreur améliorée avec bouton Réessayer.
+
+---
+
+## ✅ Edit-Sync — Éditeur Tiptap avec surbrillance synchronisée audio/texte (TERMINÉ)
+
+### Phase 1 : Audit et préparation
+- [x] Auditer TranscriptionEditor.tsx actuel (fonctionnalités à migrer)
+- [x] Auditer Results.tsx (intégration, exports, props passées)
+- [x] Vérifier la structure des segments Whisper en BDD (segmentsData)
+
+### Phase 2 : Recherche Tiptap
+- [x] Rechercher les extensions de décoration Tiptap (Decoration, Mark)
+- [x] Identifier la meilleure approche pour la surbrillance dynamique temps réel
+
+### Phase 3 : Éditeur Tiptap de base
+- [x] Installer @tiptap/react, @tiptap/starter-kit, @tiptap/extension-highlight, @tiptap/core, @tiptap/pm
+- [x] Créer le composant TiptapEditor avec le contenu texte existant
+- [x] Configurer l'éditeur en mode éditable avec style cohérent
+
+### Phase 4 : Extension de décoration segment actif
+- [x] Créer l'extension Tiptap AudioSyncExtension (audioSyncExtension.ts)
+- [x] Appliquer la surbrillance dynamique via ProseMirror Plugin + DecorationSet
+- [x] Style de surbrillance cohérent avec le design néon du SaaS (cyan pulse animation)
+
+### Phase 5 : Synchronisation audio/texte
+- [x] Connecter audio.timeupdate → détection du segment actif → mise à jour décoration
+- [x] Défilement automatique (scrollIntoView smooth center) vers le segment actif
+- [x] Maintien de la surbrillance quand l'utilisateur appuie sur pause
+- [x] Toggle défilement automatique dans le panneau audio
+
+### Phase 6 : Migration des fonctionnalités existantes
+- [x] Auto-sauvegarde avec debounce 2s
+- [x] Rechercher/Remplacer avec compteur d'occurrences et bouton X
+- [x] Bouton Restaurer l'original avec AlertDialog
+- [x] Compteur de mots et durée estimée de lecture
+- [x] Panneau segments à faible confiance
+
+### Phase 7 : Intégration Results.tsx
+- [x] TranscriptionEditor migré vers Tiptap — même interface props, compatible Results.tsx
+- [x] Exports TXT/SRT/VTT fonctionnent via editor.getText() + onTextChange callback
+- [x] Cohérence mobile/desktop préservée
+
+### Phase 8 : Tests et validation
+- [x] 25 tests Vitest pour audioSyncExtension (helpers, HTML conversion, sync logique)
+- [x] 0 erreur TypeScript
+- [x] 254/254 tests passent (18 fichiers)
+- [x] Checkpoint et push GitHub
+
+**Fichiers créés :**
+- client/src/extensions/audioSyncExtension.ts (extension ProseMirror pour surbrillance)
+- client/src/extensions/audioSyncExtension.test.ts (25 tests)
+
+**Fichiers modifiés :**
+- client/src/components/TranscriptionEditor.tsx (migration textarea → Tiptap)
+- client/src/index.css (styles Edit-Sync : surbrillance, animation, bordure segment actif)

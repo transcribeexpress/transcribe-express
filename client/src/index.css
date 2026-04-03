@@ -200,3 +200,64 @@
     }
   }
 }
+
+/* ─── Tiptap Editor Styles ─────────────────────────────────────────────────── */
+
+/* Éditeur Tiptap : styles de base */
+.tiptap {
+  outline: none;
+}
+
+.tiptap p {
+  margin-bottom: 0.25rem;
+}
+
+.tiptap p:last-child {
+  margin-bottom: 0;
+}
+
+/* Placeholder Tiptap */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+  opacity: 0.5;
+}
+
+/* ─── Edit-Sync : surbrillance du segment actif ────────────────────────────── */
+
+.active-segment-highlight {
+  background: oklch(0.75 0.15 180 / 0.18);
+  border-radius: 3px;
+  padding: 1px 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.3s ease;
+}
+
+/* Animation subtile pour le segment actif */
+@keyframes segment-pulse {
+  0%, 100% { background: oklch(0.75 0.15 180 / 0.18); }
+  50% { background: oklch(0.75 0.15 180 / 0.28); }
+}
+
+.active-segment-highlight {
+  animation: segment-pulse 2s ease-in-out infinite;
+}
+
+/* Bordure gauche pour repérer le segment actif */
+.tiptap p:has(.active-segment-highlight) {
+  border-left: 2px solid oklch(0.75 0.15 180 / 0.5);
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+  transition: border-color 0.3s ease, padding-left 0.3s ease;
+}
+
+/* Sur mobile : surbrillance plus visible */
+@media (max-width: 640px) {
+  .active-segment-highlight {
+    background: oklch(0.75 0.15 180 / 0.25);
+  }
+}
