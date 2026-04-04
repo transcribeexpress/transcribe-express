@@ -7,13 +7,15 @@
  *
  *  2. Click-to-Seek : cliquer sur un paragraphe dans l'éditeur
  *     → identifie le segment Whisper correspondant
- *     → appelle onSegmentClick(segmentIndex) pour positionner l'audio
+ *     → appelle onSegmentClick(segmentIndex, segment) pour positionner l'audio
+ *     → flash visuel via meta CLICK_FLASH_META (transaction séparée, sans toucher segmentIndex)
  *
- * Architecture :
- *  - ProseMirror Plugin avec DecorationSet pour la surbrillance (sans re-render React)
- *  - handleClick ProseMirror pour intercepter les clics et résoudre le segment
- *  - Decoration.node sur le paragraphe actif pour l'indicateur hover
- *  - Callback onSegmentClick injecté via les options de l'extension
+ * Correction du bug "repart à zéro" :
+ *  - Le handleClick NE dispatche PLUS de transaction avec audioSyncPluginKey
+ *    (cela écrasait le segmentIndex courant avant que le seek React ait eu le temps de s'appliquer)
+ *  - Le flash visuel utilise exclusivement CLICK_FLASH_META, indépendant de l'état audio
+ *  - L'état du plugin (segmentIndex, segments) n'est modifié QUE par les transactions
+ *    venant de TranscriptionEditor (via audioSyncPluginKey meta)
  */
 
 import { Extension } from "@tiptap/core";
@@ -36,6 +38,12 @@ interface AudioSyncMeta {
   segments: AudioSyncSegment[];
 }
 
+/** Meta pour le flash de clic : indépendant de l'état audio */
+interface ClickFlashMeta {
+  /** Index du paragraphe cliqué (-1 = reset) */
+  clickedIndex: number;
+}
+
 interface AudioSyncPluginState {
   decorationSet: DecorationSet;
   segmentIndex: number;
@@ -45,22 +53,20 @@ interface AudioSyncPluginState {
   clickedSegmentIndex: number;
 }
 
-// ─── Clé du plugin ────────────────────────────────────────────────────────────
+// ─── Clés du plugin ───────────────────────────────────────────────────────────
 
 export const audioSyncPluginKey = new PluginKey<AudioSyncPluginState>(
   "audioSync"
 );
 
-// ─── Meta pour le flash de clic ───────────────────────────────────────────────
-
+/** Clé séparée pour le flash de clic — ne touche PAS à l'état audio */
 export const CLICK_FLASH_META = "audioSyncClickFlash";
 
-// ─── Calcul des positions du segment actif ───────────────────────────────────
+// ─── Helpers de position ─────────────────────────────────────────────────────
 
 /**
  * Calcule les positions (from, to) d'un segment dans le document ProseMirror.
- *
- * Stratégie 1 : mapper par index de paragraphe (1 paragraphe = 1 segment).
+ * Stratégie 1 : index de paragraphe (1 paragraphe = 1 segment).
  * Stratégie 2 (fallback) : recherche textuelle si le document a été édité.
  */
 function findSegmentPositions(
@@ -143,7 +149,6 @@ function findParagraphNodePositions(
     if (found) return;
     if (node.type.name === "paragraph") {
       if (idx === paragraphIndex) {
-        // Decoration.node prend les positions du nœud entier (offset, offset + nodeSize)
         found = { from: offset, to: offset + node.nodeSize };
       }
       idx++;
@@ -157,7 +162,7 @@ function findParagraphNodePositions(
  * Résout l'index du paragraphe cliqué à partir d'une position ProseMirror.
  * Retourne -1 si le clic n'est pas dans un paragraphe.
  */
-function resolveParagraphIndex(doc: any, pos: number): number {
+export function resolveParagraphIndex(doc: any, pos: number): number {
   let idx = 0;
   let found = -1;
 
@@ -212,8 +217,7 @@ function buildDecorationSet(
     }
   }
 
-  // 3. Décoration de nœud : indicateur hover sur tous les paragraphes avec segment
-  //    (uniquement si des segments sont disponibles)
+  // 3. Décoration de nœud : curseur pointer + tooltip timestamp sur tous les paragraphes
   if (segments.length > 0) {
     let pIdx = 0;
     doc.forEach((node: any, offset: number) => {
@@ -233,7 +237,7 @@ function buildDecorationSet(
   return DecorationSet.create(doc, decorations);
 }
 
-function formatTimeShort(seconds: number): string {
+export function formatTimeShort(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
@@ -244,8 +248,7 @@ function formatTimeShort(seconds: number): string {
 export interface AudioSyncOptions {
   /**
    * Callback appelé quand l'utilisateur clique sur un paragraphe.
-   * Reçoit l'index du segment Whisper correspondant.
-   * Retourner false pour annuler le comportement par défaut.
+   * Reçoit l'index du segment Whisper et le segment lui-même.
    */
   onSegmentClick: ((segmentIndex: number, segment: AudioSyncSegment) => void) | null;
 }
@@ -260,7 +263,6 @@ export const AudioSyncExtension = Extension.create<AudioSyncOptions>({
   },
 
   addProseMirrorPlugins() {
-    // Capturer la référence aux options pour le closure du plugin
     const extensionOptions = this.options;
 
     return [
@@ -280,51 +282,48 @@ export const AudioSyncExtension = Extension.create<AudioSyncOptions>({
           },
 
           apply(tr, pluginState): AudioSyncPluginState {
-            // Meta audioSync : mise à jour du segment actif (depuis l'audio)
-            const meta = tr.getMeta(audioSyncPluginKey) as
+            // ── Meta audioSync : mise à jour depuis l'audio (TranscriptionEditor) ──
+            const audioMeta = tr.getMeta(audioSyncPluginKey) as
               | AudioSyncMeta
               | undefined;
 
-            // Meta flash : reset du flash après animation
-            const flashMeta = tr.getMeta(CLICK_FLASH_META) as
-              | { reset: boolean }
-              | undefined;
-
-            if (meta !== undefined) {
-              const { segmentIndex, segments } = meta;
-              const clickedIdx = flashMeta?.reset
-                ? -1
-                : pluginState.clickedSegmentIndex;
-
+            if (audioMeta !== undefined) {
+              // Préserver le flash en cours si présent
+              const clickedIdx = pluginState.clickedSegmentIndex;
               return {
                 decorationSet: buildDecorationSet(
                   tr.doc,
-                  segmentIndex,
-                  segments,
+                  audioMeta.segmentIndex,
+                  audioMeta.segments,
                   clickedIdx
                 ),
-                segmentIndex,
-                segments,
+                segmentIndex: audioMeta.segmentIndex,
+                segments: audioMeta.segments,
                 clickedSegmentIndex: clickedIdx,
               };
             }
 
-            // Reset du flash
-            if (flashMeta?.reset) {
+            // ── Meta flash : déclenché par le clic (indépendant de l'audio) ──
+            const flashMeta = tr.getMeta(CLICK_FLASH_META) as
+              | ClickFlashMeta
+              | undefined;
+
+            if (flashMeta !== undefined) {
+              const newClickedIdx = flashMeta.clickedIndex;
               return {
                 decorationSet: buildDecorationSet(
                   tr.doc,
                   pluginState.segmentIndex,
                   pluginState.segments,
-                  -1
+                  newClickedIdx
                 ),
                 segmentIndex: pluginState.segmentIndex,
                 segments: pluginState.segments,
-                clickedSegmentIndex: -1,
+                clickedSegmentIndex: newClickedIdx,
               };
             }
 
-            // Document modifié par l'utilisateur → mapper les décorations
+            // ── Document modifié par l'utilisateur → reconstruire les décorations ──
             if (tr.docChanged && pluginState.segments.length > 0) {
               return {
                 decorationSet: buildDecorationSet(
@@ -351,9 +350,15 @@ export const AudioSyncExtension = Extension.create<AudioSyncOptions>({
           },
 
           // ── Click-to-Seek ───────────────────────────────────────────────
+          //
+          // IMPORTANT : ce handler NE dispatche PAS de transaction audioSyncPluginKey.
+          // Il dispatche UNIQUEMENT CLICK_FLASH_META pour le flash visuel.
+          // Le seek audio est géré exclusivement par onSegmentClick → React.
+          // Cela évite le bug "repart à zéro" causé par un dispatch qui écrasait
+          // le segmentIndex courant avant que le seek React ait eu le temps de s'appliquer.
 
           handleClick(view, pos, event) {
-            // Ignorer les clics sur les contrôles UI (boutons, inputs, etc.)
+            // Ignorer les clics sur les contrôles UI
             const target = event.target as HTMLElement;
             if (
               target.tagName === "BUTTON" ||
@@ -376,44 +381,24 @@ export const AudioSyncExtension = Extension.create<AudioSyncOptions>({
 
             const segment = pluginState.segments[paragraphIdx];
 
-            // Appeler le callback onSegmentClick
+            // 1. Appeler le callback React pour le seek audio
             if (extensionOptions.onSegmentClick) {
               extensionOptions.onSegmentClick(paragraphIdx, segment);
             }
 
-            // Appliquer le flash visuel sur le paragraphe cliqué
-            const { tr } = view.state;
-            const currentSegIdx = pluginState.segmentIndex;
-            const currentSegs = pluginState.segments;
-
-            // Construire un nouveau DecorationSet avec le flash
-            const newDecorationSet = buildDecorationSet(
-              tr.doc,
-              currentSegIdx,
-              currentSegs,
-              paragraphIdx
-            );
-
-            const flashTr = view.state.tr;
-            flashTr.setMeta(audioSyncPluginKey, {
-              segmentIndex: currentSegIdx,
-              segments: currentSegs,
-            });
-
-            // Dispatcher une transaction pour déclencher le flash
-            // On utilise un mécanisme séparé pour éviter les conflits avec l'état audio
+            // 2. Déclencher le flash visuel via CLICK_FLASH_META uniquement
+            //    (ne touche PAS à segmentIndex ni à segments dans l'état du plugin)
             view.dispatch(
-              view.state.tr.setMeta(audioSyncPluginKey, {
-                segmentIndex: currentSegIdx,
-                segments: currentSegs,
+              view.state.tr.setMeta(CLICK_FLASH_META, {
+                clickedIndex: paragraphIdx,
               })
             );
 
-            // Reset du flash après 600ms
+            // 3. Reset du flash après 600ms
             setTimeout(() => {
               if (view.isDestroyed) return;
               view.dispatch(
-                view.state.tr.setMeta(CLICK_FLASH_META, { reset: true })
+                view.state.tr.setMeta(CLICK_FLASH_META, { clickedIndex: -1 })
               );
             }, 600);
 

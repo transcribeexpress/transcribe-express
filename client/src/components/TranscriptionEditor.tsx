@@ -471,39 +471,60 @@ export function TranscriptionEditor({
   }, [isAudioPlaying]);
 
   // Click-to-Seek depuis l'éditeur Tiptap
-  // Ce callback est mis à jour dans la ref stable pour éviter de recréer l'extension
+  // Ce callback est mis à jour dans une ref stable pour éviter de recréer les extensions Tiptap.
+  //
+  // Correction du bug "repart à zéro" :
+  //  - On utilise l'événement 'seeked' pour confirmer que le seek est terminé
+  //    avant de mettre à jour audioCurrentTime (React).
+  //  - Cela évite la race condition où 'timeupdate' se déclenchait avec currentTime=0
+  //    pendant que le seek était encore en cours.
   useEffect(() => {
     onSegmentClickRef.current = (segmentIndex: number, segment: AudioSyncSegment) => {
+      // Ouvrir le lecteur audio si fermé (avant tout)
+      setShowAudioPlayer(true);
+      setLastClickedSegment(segmentIndex);
+
       const audio = audioRef.current;
       if (!audio) {
-        // Si le lecteur audio n'est pas ouvert, l'ouvrir d'abord
-        setShowAudioPlayer(true);
-        // Petit délai pour laisser le temps au lecteur de s'initialiser
-        setTimeout(() => {
+        // Le lecteur vient d'être ouvert : attendre qu'il soit monté dans le DOM
+        const waitForAudio = () => {
           const a = audioRef.current;
           if (!a) return;
           a.currentTime = segment.start;
-          setAudioCurrentTime(segment.start);
-        }, 300);
+          // Mettre à jour React après que le seek est confirmé par l'événement 'seeked'
+          const onSeeked = () => {
+            setAudioCurrentTime(a.currentTime);
+            a.removeEventListener("seeked", onSeeked);
+          };
+          a.addEventListener("seeked", onSeeked);
+        };
+        setTimeout(waitForAudio, 300);
         return;
       }
 
       // Seek vers le timestamp du segment
+      // On écoute 'seeked' pour mettre à jour React SEULEMENT quand le seek est terminé,
+      // évitant ainsi que 'timeupdate' écrase la valeur avec currentTime=0.
+      const onSeeked = () => {
+        setAudioCurrentTime(audio.currentTime);
+        audio.removeEventListener("seeked", onSeeked);
+      };
+      audio.addEventListener("seeked", onSeeked);
       audio.currentTime = segment.start;
-      setAudioCurrentTime(segment.start);
-      setLastClickedSegment(segmentIndex);
 
-      // Ouvrir le lecteur audio si fermé
-      setShowAudioPlayer(true);
-
-      // Démarrer la lecture automatiquement
+      // Démarrer la lecture automatiquement si en pause
       if (!isAudioPlaying) {
-        audio.play().catch(() => {
-          toast.error("Impossible de lire l'audio", {
-            description: "Cliquez sur Play pour démarrer la lecture.",
+        // Attendre que le seek soit terminé avant de lancer la lecture
+        const playAfterSeek = () => {
+          audio.play().catch(() => {
+            toast.error("Impossible de lire l'audio", {
+              description: "Cliquez sur Play pour démarrer la lecture.",
+            });
           });
-        });
-        setIsAudioPlaying(true);
+          setIsAudioPlaying(true);
+          audio.removeEventListener("seeked", playAfterSeek);
+        };
+        audio.addEventListener("seeked", playAfterSeek);
       }
     };
   }, [isAudioPlaying]);
