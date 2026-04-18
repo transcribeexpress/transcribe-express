@@ -140,7 +140,7 @@ export default function Login() {
               {/* Retour aux options OAuth */}
               <button
                 onClick={() => setAuthMode("oauth")}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+                className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 font-medium transition-colors mb-2"
               >
                 <Chrome className="w-3 h-3" />
                 Autres options de connexion
@@ -156,7 +156,7 @@ export default function Login() {
               {/* Retour aux options OAuth */}
               <button
                 onClick={() => setAuthMode("oauth")}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+                className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 font-medium transition-colors mb-2"
               >
                 <Chrome className="w-3 h-3" />
                 Autres options de connexion
