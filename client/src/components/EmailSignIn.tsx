@@ -1,10 +1,11 @@
 /**
  * EmailSignIn - Formulaire de connexion par email et mot de passe
- * 
- * Utilise Clerk useSignIn pour gérer :
- * - Connexion email + mot de passe
- * - Vérification OTP si nécessaire
- * - Réinitialisation de mot de passe
+ *
+ * Gère tous les statuts Clerk :
+ * - "complete"            → session créée, redirection dashboard
+ * - "needs_first_factor"  → Clerk demande un code OTP envoyé par email
+ * - "needs_second_factor" → MFA activé (TOTP / SMS)
+ * - Réinitialisation de mot de passe via code email
  */
 
 import { useState } from "react";
@@ -13,9 +14,14 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 
-type EmailSignInMode = "signin" | "forgot_password" | "reset_code";
+type EmailSignInMode =
+  | "signin"
+  | "otp_first_factor"
+  | "otp_second_factor"
+  | "forgot_password"
+  | "reset_code";
 
 interface EmailSignInProps {
   onSwitchToSignUp: () => void;
@@ -28,6 +34,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
   const [mode, setMode] = useState<EmailSignInMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +43,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // ─── Connexion email + mot de passe ──────────────────────────────────────
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signIn) return;
@@ -52,8 +60,29 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         setLocation("/dashboard");
+      } else if (result.status === "needs_first_factor") {
+        // Clerk demande une vérification supplémentaire (OTP email)
+        // On tente de déclencher l'envoi du code OTP par email
+        try {
+          await signIn.prepareFirstFactor({
+            strategy: "email_code",
+            emailAddressId: result.supportedFirstFactors?.find(
+              (f) => f.strategy === "email_code"
+            )?.emailAddressId ?? "",
+          });
+        } catch {
+          // Si prepareFirstFactor échoue (ex: stratégie non disponible), on ignore
+          // Le code a peut-être déjà été envoyé automatiquement par Clerk
+        }
+        setSuccessMessage(`Un code de vérification a été envoyé à ${email}`);
+        setMode("otp_first_factor");
+      } else if (result.status === "needs_second_factor") {
+        // MFA activé sur le compte
+        setSuccessMessage("Entrez le code de votre application d'authentification.");
+        setMode("otp_second_factor");
       } else {
-        setError("Une vérification supplémentaire est requise.");
+        // Statut inattendu — afficher un message générique
+        setError(`Statut inattendu : ${result.status}. Veuillez réessayer.`);
       }
     } catch (err: unknown) {
       const clerkError = err as { errors?: Array<{ message: string; code: string }> };
@@ -64,6 +93,9 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
         setError("Mot de passe incorrect. Veuillez réessayer.");
       } else if (code === "form_identifier_not_found") {
         setError("Aucun compte trouvé avec cet email.");
+      } else if (code === "session_exists") {
+        // Session déjà active → rediriger directement
+        setLocation("/dashboard");
       } else {
         setError(message || "Une erreur est survenue. Veuillez réessayer.");
       }
@@ -72,6 +104,78 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
     }
   };
 
+  // ─── Vérification OTP (first factor) ─────────────────────────────────────
+  const handleOtpFirstFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signIn) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: "email_code",
+        code: otpCode,
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        setLocation("/dashboard");
+      } else if (result.status === "needs_second_factor") {
+        setSuccessMessage("Entrez le code de votre application d'authentification.");
+        setMode("otp_second_factor");
+      } else {
+        setError("Vérification incomplète. Veuillez réessayer.");
+      }
+    } catch (err: unknown) {
+      const clerkError = err as { errors?: Array<{ message: string; code: string }> };
+      const code = clerkError.errors?.[0]?.code;
+      if (code === "form_code_incorrect") {
+        setError("Code incorrect. Vérifiez votre email et réessayez.");
+      } else if (code === "verification_expired") {
+        setError("Le code a expiré. Retournez à la connexion pour en recevoir un nouveau.");
+      } else {
+        setError(clerkError.errors?.[0]?.message || "Erreur de vérification.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ─── Vérification OTP (second factor / MFA) ──────────────────────────────
+  const handleOtpSecondFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signIn) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: "totp",
+        code: otpCode,
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setError("Vérification MFA incomplète. Veuillez réessayer.");
+      }
+    } catch (err: unknown) {
+      const clerkError = err as { errors?: Array<{ message: string; code: string }> };
+      const code = clerkError.errors?.[0]?.code;
+      if (code === "form_code_incorrect") {
+        setError("Code MFA incorrect. Vérifiez votre application et réessayez.");
+      } else {
+        setError(clerkError.errors?.[0]?.message || "Erreur de vérification MFA.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ─── Mot de passe oublié ──────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signIn) return;
@@ -94,6 +198,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
     }
   };
 
+  // ─── Réinitialisation du mot de passe ────────────────────────────────────
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signIn) return;
@@ -111,6 +216,9 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         setLocation("/dashboard");
+      } else if (result.status === "needs_second_factor") {
+        setSuccessMessage("Entrez le code de votre application d'authentification.");
+        setMode("otp_second_factor");
       }
     } catch (err: unknown) {
       const clerkError = err as { errors?: Array<{ message: string; code: string }> };
@@ -125,7 +233,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
     }
   };
 
-  // --- Mode : Connexion ---
+  // ─── Rendu : Connexion ────────────────────────────────────────────────────
   if (mode === "signin") {
     return (
       <form onSubmit={handleSignIn} className="space-y-4">
@@ -217,7 +325,133 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
     );
   }
 
-  // --- Mode : Mot de passe oublié ---
+  // ─── Rendu : OTP first factor (vérification email) ───────────────────────
+  if (mode === "otp_first_factor") {
+    return (
+      <form onSubmit={handleOtpFirstFactor} className="space-y-4">
+        <div className="text-center space-y-1 mb-4">
+          <div className="flex justify-center mb-3">
+            <ShieldCheck className="w-8 h-8 text-primary" />
+          </div>
+          <p className="text-sm font-medium">Vérification de votre identité</p>
+          {successMessage && (
+            <p className="text-xs text-muted-foreground">{successMessage}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="otp-code" className="text-sm font-medium">
+            Code de vérification
+          </Label>
+          <Input
+            id="otp-code"
+            type="text"
+            inputMode="numeric"
+            placeholder="123456"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="h-11 text-center tracking-widest text-lg bg-background/50 border-border/60 focus:border-primary"
+            maxLength={6}
+            required
+            autoFocus
+            autoComplete="one-time-code"
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isSubmitting || !isLoaded || otpCode.length < 6}
+          className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-medium"
+        >
+          {isSubmitting ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : (
+            <ShieldCheck className="w-4 h-4 mr-2" />
+          )}
+          {isSubmitting ? "Vérification..." : "Vérifier le code"}
+        </Button>
+
+        <button
+          type="button"
+          onClick={() => { setMode("signin"); setError(null); setOtpCode(""); setSuccessMessage(null); }}
+          className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← Retour à la connexion
+        </button>
+      </form>
+    );
+  }
+
+  // ─── Rendu : OTP second factor (MFA) ─────────────────────────────────────
+  if (mode === "otp_second_factor") {
+    return (
+      <form onSubmit={handleOtpSecondFactor} className="space-y-4">
+        <div className="text-center space-y-1 mb-4">
+          <div className="flex justify-center mb-3">
+            <ShieldCheck className="w-8 h-8 text-primary" />
+          </div>
+          <p className="text-sm font-medium">Authentification à deux facteurs</p>
+          {successMessage && (
+            <p className="text-xs text-muted-foreground">{successMessage}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="mfa-code" className="text-sm font-medium">
+            Code d'authentification
+          </Label>
+          <Input
+            id="mfa-code"
+            type="text"
+            inputMode="numeric"
+            placeholder="123456"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="h-11 text-center tracking-widest text-lg bg-background/50 border-border/60 focus:border-primary"
+            maxLength={6}
+            required
+            autoFocus
+            autoComplete="one-time-code"
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isSubmitting || !isLoaded || otpCode.length < 6}
+          className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-medium"
+        >
+          {isSubmitting ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : (
+            <ShieldCheck className="w-4 h-4 mr-2" />
+          )}
+          {isSubmitting ? "Vérification..." : "Confirmer"}
+        </Button>
+
+        <button
+          type="button"
+          onClick={() => { setMode("signin"); setError(null); setOtpCode(""); setSuccessMessage(null); }}
+          className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← Retour à la connexion
+        </button>
+      </form>
+    );
+  }
+
+  // ─── Rendu : Mot de passe oublié ─────────────────────────────────────────
   if (mode === "forgot_password") {
     return (
       <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -275,7 +509,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
     );
   }
 
-  // --- Mode : Saisie du code de réinitialisation ---
+  // ─── Rendu : Saisie du code de réinitialisation ───────────────────────────
   return (
     <form onSubmit={handleResetPassword} className="space-y-4">
       <div className="text-center space-y-1 mb-4">
@@ -292,12 +526,14 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
         <Input
           id="reset-code"
           type="text"
+          inputMode="numeric"
           placeholder="123456"
           value={resetCode}
-          onChange={(e) => setResetCode(e.target.value)}
+          onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           className="h-11 text-center tracking-widest text-lg bg-background/50 border-border/60 focus:border-primary"
           maxLength={6}
           required
+          autoComplete="one-time-code"
         />
       </div>
 
