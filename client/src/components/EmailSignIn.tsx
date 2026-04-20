@@ -62,17 +62,48 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
         setLocation("/dashboard");
       } else if (result.status === "needs_first_factor") {
         // Clerk demande une vérification supplémentaire (OTP email)
-        // On tente de déclencher l'envoi du code OTP par email
-        try {
-          await signIn.prepareFirstFactor({
-            strategy: "email_code",
-            emailAddressId: result.supportedFirstFactors?.find(
-              (f) => f.strategy === "email_code"
-            )?.emailAddressId ?? "",
-          });
-        } catch {
-          // Si prepareFirstFactor échoue (ex: stratégie non disponible), on ignore
-          // Le code a peut-être déjà été envoyé automatiquement par Clerk
+        // Récupérer le emailAddressId depuis supportedFirstFactors
+        const emailFactor = result.supportedFirstFactors?.find(
+          (f): f is typeof f & { emailAddressId: string } =>
+            f.strategy === "email_code" && "emailAddressId" in f && typeof (f as { emailAddressId?: string }).emailAddressId === "string"
+        );
+
+        if (!emailFactor?.emailAddressId) {
+          // Fallback : tenter de récupérer depuis userData ou relancer un create email_code
+          try {
+            // Relancer signIn.create avec strategy email_code pour forcer l'envoi
+            await signIn.create({
+              strategy: "email_code",
+              identifier: email,
+            });
+          } catch (fallbackErr: unknown) {
+            const fe = fallbackErr as { errors?: Array<{ message: string }> };
+            setError(
+              fe.errors?.[0]?.message ||
+              "Impossible d'envoyer le code de vérification. Vérifiez votre email."
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        } else {
+          try {
+            await signIn.prepareFirstFactor({
+              strategy: "email_code",
+              emailAddressId: emailFactor.emailAddressId,
+            });
+          } catch (prepErr: unknown) {
+            const pe = prepErr as { errors?: Array<{ message: string; code: string }> };
+            const peCode = pe.errors?.[0]?.code;
+            // Ignorer l'erreur "already_prepared" — le code a déjà été envoyé
+            if (peCode !== "verification_already_verified" && peCode !== "verification_already_prepared") {
+              setError(
+                pe.errors?.[0]?.message ||
+                "Impossible d'envoyer le code de vérification. Veuillez réessayer."
+              );
+              setIsSubmitting(false);
+              return;
+            }
+          }
         }
         setSuccessMessage(`Un code de vérification a été envoyé à ${email}`);
         setMode("otp_first_factor");
