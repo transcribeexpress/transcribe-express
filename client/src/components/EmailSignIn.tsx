@@ -57,6 +57,17 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
         password,
       });
 
+      // === DIAGNOSTIC TEMPORAIRE ===
+      console.log("[Clerk DEBUG] signIn.create result:", JSON.stringify({
+        status: result.status,
+        supportedFirstFactors: result.supportedFirstFactors,
+        supportedSecondFactors: result.supportedSecondFactors,
+        firstFactorVerification: result.firstFactorVerification,
+        identifier: result.identifier,
+        createdSessionId: result.createdSessionId,
+      }, null, 2));
+      // === FIN DIAGNOSTIC ===
+
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         setLocation("/dashboard");
