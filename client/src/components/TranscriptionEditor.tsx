@@ -38,6 +38,9 @@ import {
   Volume2,
   VolumeX,
   Music2,
+  SkipBack,
+  SkipForward,
+  Keyboard,
 } from "lucide-react";
 import { toast } from "@/components/Toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -611,22 +614,104 @@ export function TranscriptionEditor({
     searchInputRef.current?.focus();
   };
 
-  // Raccourcis clavier globaux
+  // ─── Contrôles audio : skip ±5s ───────────────────────────────────────────
+
+  const skipAudio = useCallback((delta: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + delta));
+    audio.currentTime = newTime;
+    setAudioCurrentTime(newTime);
+  }, []);
+
+  // ─── Détection écran tactile ─────────────────────────────────────────────────
+
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      setIsTouchDevice(
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia("(pointer: coarse)").matches
+      );
+    };
+    check();
+    // Re-check on resize (tablet orientation change)
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // ─── Feedback haptique (mobile) ──────────────────────────────────────────────
+
+  const hapticFeedback = useCallback(() => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(15);
+    }
+  }, []);
+
+  // ─── Raccourcis clavier globaux ──────────────────────────────────────────────
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+H → Rechercher/Remplacer
       if ((e.ctrlKey || e.metaKey) && e.key === "h") {
         e.preventDefault();
         setShowSearch(true);
+        return;
       }
+      // Ctrl+S → Sauvegarder
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         handleSaveNow();
+        return;
+      }
+
+      // ── Raccourcis audio (uniquement quand le lecteur est ouvert) ──
+      if (!showAudioPlayer || !audioRef.current) return;
+
+      // Vérifier si l'utilisateur est en train de taper dans un champ de saisie
+      const target = e.target as HTMLElement;
+      const isTyping =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.getAttribute("role") === "textbox" ||
+        target.isContentEditable;
+
+      // Ctrl+Espace → Play/Pause (fonctionne même en mode édition)
+      if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+        return;
+      }
+
+      // Si l'utilisateur tape dans l'éditeur, ne pas intercepter Espace/Flèches
+      if (isTyping) return;
+
+      // Espace → Play/Pause (hors mode édition)
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+        return;
+      }
+
+      // ← → Reculer de 5 secondes
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        skipAudio(-5);
+        return;
+      }
+
+      // → → Avancer de 5 secondes
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        skipAudio(5);
+        return;
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editor]);
+  }, [editor, showAudioPlayer, skipAudio]);
 
   // ─── Indicateur de statut de sauvegarde ─────────────────────────────────────
 
@@ -1185,14 +1270,83 @@ export function TranscriptionEditor({
             )}
         </div>
 
-        {/* ── Pied de page : compteur de mots ── */}
+        {/* ── Contrôles tactiles flottants (mobile/tablette) ── */}
+        <AnimatePresence>
+          {showAudioPlayer && audioUrl && isTouchDevice && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="sticky bottom-0 z-20 pt-2"
+            >
+              <div className="audio-touch-controls flex items-center justify-center gap-1 bg-background/95 backdrop-blur-md border border-cyan-500/20 rounded-xl p-2 shadow-lg shadow-cyan-500/5">
+                {/* Reculer 5s */}
+                <button
+                  onClick={() => { hapticFeedback(); skipAudio(-5); }}
+                  className="touch-control-btn flex items-center justify-center w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 active:bg-cyan-500/25 active:scale-95 transition-all"
+                  aria-label="Reculer de 5 secondes"
+                >
+                  <SkipBack className="w-5 h-5" />
+                </button>
+
+                {/* Play/Pause */}
+                <button
+                  onClick={() => { hapticFeedback(); togglePlayPause(); }}
+                  className="touch-control-btn flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-300 active:from-cyan-500/35 active:to-purple-500/35 active:scale-95 transition-all border border-cyan-500/20"
+                  aria-label={isAudioPlaying ? "Pause" : "Lecture"}
+                >
+                  {isAudioPlaying ? (
+                    <Pause className="w-6 h-6" />
+                  ) : (
+                    <Play className="w-6 h-6 ml-0.5" />
+                  )}
+                </button>
+
+                {/* Avancer 5s */}
+                <button
+                  onClick={() => { hapticFeedback(); skipAudio(5); }}
+                  className="touch-control-btn flex items-center justify-center w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 active:bg-cyan-500/25 active:scale-95 transition-all"
+                  aria-label="Avancer de 5 secondes"
+                >
+                  <SkipForward className="w-5 h-5" />
+                </button>
+
+                {/* Indicateur de temps compact */}
+                <div className="flex flex-col items-center ml-2 min-w-[52px]">
+                  <span className="text-xs font-mono text-cyan-400">
+                    {formatTime(audioCurrentTime)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    / {formatTime(audioDuration)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Pied de page : compteur de mots + raccourcis ── */}
         <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
           <span>
             {wordCount.toLocaleString("fr-FR")} mots · {readingTime} de lecture
           </span>
-          <span className="text-xs opacity-60 hidden sm:block">
-            Ctrl+S sauvegarder · Ctrl+H rechercher · Clic sur paragraphe → seek audio
-          </span>
+          {/* Desktop : afficher les raccourcis clavier */}
+          {!isTouchDevice && (
+            <span className="text-xs opacity-60 hidden sm:flex items-center gap-1">
+              <Keyboard className="w-3 h-3" />
+              {showAudioPlayer
+                ? "Espace play/pause · ←→ ±5s · Ctrl+␣ en édition"
+                : "Ctrl+S sauvegarder · Ctrl+H rechercher"}
+            </span>
+          )}
+          {/* Mobile : indication tactile */}
+          {isTouchDevice && showAudioPlayer && audioUrl && (
+            <span className="text-xs opacity-60 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              Contrôles tactiles actifs
+            </span>
+          )}
         </div>
       </div>
     </TooltipProvider>

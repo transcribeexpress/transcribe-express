@@ -332,3 +332,82 @@
     background: oklch(0.75 0.15 180 / 0.08);
   }
 }
+
+/* ─── Contrôles tactiles audio flottants (mobile/tablette) ─────────────────── */
+
+/* Zone de touch élargie pour les boutons de contrôle audio */
+.touch-control-btn {
+  /* Cible tactile minimale de 44×44px recommandée par Apple/Google */
+  min-width: 44px;
+  min-height: 44px;
+  /* Supprimer le délai de 300ms sur mobile */
+  touch-action: manipulation;
+  /* Désactiver le callout iOS au long-press */
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Animation de pression (feedback visuel immédiat) */
+.touch-control-btn:active {
+  transform: scale(0.92);
+}
+
+/* Barre de contrôles tactiles : safe area pour iPhone avec notch */
+.audio-touch-controls {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Sur tablette (portrait/paysage) : agrandir légèrement les boutons */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .touch-control-btn {
+    min-width: 52px;
+    min-height: 52px;
+  }
+}
+
+/* Indicateur de raccourci clavier (desktop) */
+.keyboard-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Badge kbd pour les raccourcis */
+kbd.shortcut-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  height: 1.2rem;
+  font-size: 0.65rem;
+  font-family: ui-monospace, monospace;
+  background: oklch(0.25 0.01 240);
+  border: 1px solid oklch(0.35 0.01 240);
+  border-radius: 3px;
+  color: oklch(0.7 0.01 240);
+  line-height: 1;
+}
+
+/* Animation skip : flash directionnel sur le segment actif */
+@keyframes skip-backward-flash {
+  0%   { box-shadow: -4px 0 0 oklch(0.75 0.15 180 / 0.6); }
+  100% { box-shadow: -4px 0 0 oklch(0.75 0.15 180 / 0); }
+}
+
+@keyframes skip-forward-flash {
+  0%   { box-shadow: 4px 0 0 oklch(0.75 0.15 180 / 0.6); }
+  100% { box-shadow: 4px 0 0 oklch(0.75 0.15 180 / 0); }
+}
+
+.tiptap p.skip-backward-flash {
+  animation: skip-backward-flash 0.4s ease-out forwards;
+  border-radius: 4px;
+}
+
+.tiptap p.skip-forward-flash {
+  animation: skip-forward-flash 0.4s ease-out forwards;
+  border-radius: 4px;
+}

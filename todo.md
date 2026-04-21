@@ -1335,3 +1335,38 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - client/src/extensions/audioSyncExtension.test.ts (13 nouveaux tests click-to-seek)
 - client/src/components/TranscriptionEditor.tsx (onSegmentClickRef, useEffect seek, has-segments)
 - client/src/index.css (seekable-paragraph, seek-flash, has-segments, tooltip ::before)
+
+---
+
+## ✅ Raccourcis clavier de lecture + Contrôles tactiles mobile/tablette (TERMINÉ)
+
+### Desktop — Raccourcis clavier
+- [x] Espace pour play/pause (hors mode édition, sans insérer d'espace)
+- [x] Ctrl+Espace pour play/pause (même en mode édition actif)
+- [x] ← pour reculer de 5 secondes
+- [x] → pour avancer de 5 secondes
+- [x] Gestion du focus : raccourcis actifs uniquement quand le lecteur audio est visible
+- [x] Indicateur visuel des raccourcis dans le pied de page de l'éditeur
+
+### Mobile/Tablette — Contrôles tactiles flottants
+- [x] Barre de contrôle flottante sticky visible quand le lecteur audio est actif
+- [x] Boutons tactiles : ⏪ -5s | ▶️/⏸ Play/Pause | ⏩ +5s
+- [x] Design cohérent avec le thème neon du SaaS (cyan/purple gradient)
+- [x] Indicateur de temps compact (currentTime / duration)
+- [x] Feedback haptique (vibration 15ms) au toucher si disponible
+- [x] Cible tactile ≥44×44px (Apple/Google guidelines)
+- [x] Safe area inset pour iPhone avec notch
+- [x] Touch-action: manipulation (supprime délai 300ms)
+
+### Tests et validation
+- [x] 26 nouveaux tests Vitest (skipAudio, isTypingElement, hapticFeedback, raccourcis)
+- [x] 293/293 tests passent (19 fichiers)
+- [x] 0 erreur TypeScript
+- [x] Checkpoint + push GitHub
+
+**Fichiers créés :**
+- client/src/components/TranscriptionEditor.keyboard.test.ts (26 tests)
+
+**Fichiers modifiés :**
+- client/src/components/TranscriptionEditor.tsx (skipAudio, isTouchDevice, hapticFeedback, raccourcis clavier, contrôles tactiles)
+- client/src/index.css (touch-control-btn, audio-touch-controls, skip-flash animations, keyboard-hint)
