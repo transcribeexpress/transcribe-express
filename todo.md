@@ -1370,3 +1370,13 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 **Fichiers modifiés :**
 - client/src/components/TranscriptionEditor.tsx (skipAudio, isTouchDevice, hapticFeedback, raccourcis clavier, contrôles tactiles)
 - client/src/index.css (touch-control-btn, audio-touch-controls, skip-flash animations, keyboard-hint)
+
+---
+
+## ✅ Bugs contrôles audio (CORRIGÉS)
+
+- [x] Bug 1 : Barre tactile flottante — useIsTouchDevice étendu avec `window.innerWidth < 1024` pour détecter les fenêtres desktop redimensionnées
+- [x] Bug 2 : Raccourci Espace — `isTyping` remplacé par `isNativeInput` (INPUT/TEXTAREA uniquement), Espace fonctionne même quand Tiptap a le focus
+- [x] togglePlayPause wrappé dans useCallback pour éviter les boucles infinies dans useEffect
+- [x] isEditing + togglePlayPause ajoutés aux dépendances du useEffect raccourcis clavier
+- [x] 293/293 tests passent, 0 erreur TypeScript

@@ -420,7 +420,7 @@ export function TranscriptionEditor({
     // Garder la surbrillance sur le dernier segment (ne pas reset à -1)
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (isAudioPlaying) {
@@ -435,7 +435,7 @@ export function TranscriptionEditor({
       });
       setIsAudioPlaying(true);
     }
-  };
+  }, [isAudioPlaying]);
 
   const toggleMute = () => {
     const audio = audioRef.current;
@@ -624,19 +624,22 @@ export function TranscriptionEditor({
     setAudioCurrentTime(newTime);
   }, []);
 
-  // ─── Détection écran tactile ─────────────────────────────────────────────────
-
+  // ─── Détection écran tactile / petite fenêtre ───────────────────────────────
+  // Affiche la barre flottante si :
+  //   - appareil tactile réel (smartphone / tablette), OU
+  //   - fenêtre < 1024px (navigateur desktop redimensionné en mode tablette)
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   useEffect(() => {
     const check = () => {
-      setIsTouchDevice(
+      const isTouch =
         "ontouchstart" in window ||
         navigator.maxTouchPoints > 0 ||
-        window.matchMedia("(pointer: coarse)").matches
-      );
+        window.matchMedia("(pointer: coarse)").matches;
+      const isSmallWindow = window.innerWidth < 1024;
+      setIsTouchDevice(isTouch || isSmallWindow);
     };
     check();
-    // Re-check on resize (tablet orientation change)
+    // Re-check à chaque redimensionnement (orientation tablette, DevTools responsive)
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
@@ -669,39 +672,46 @@ export function TranscriptionEditor({
       // ── Raccourcis audio (uniquement quand le lecteur est ouvert) ──
       if (!showAudioPlayer || !audioRef.current) return;
 
-      // Vérifier si l'utilisateur est en train de taper dans un champ de saisie
+      // Vérifier si l'utilisateur est en train de taper dans un champ INPUT/TEXTAREA natif
       const target = e.target as HTMLElement;
-      const isTyping =
+      const isNativeInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.getAttribute("role") === "textbox" ||
-        target.isContentEditable;
+        target.getAttribute("role") === "textbox";
 
-      // Ctrl+Espace → Play/Pause (fonctionne même en mode édition)
+      // isEditing = true quand l'éditeur Tiptap a le focus ET que l'utilisateur tape
+      // On utilise le state React isEditing (mis à jour par onFocus/onBlur de Tiptap)
+      // plutôt que target.isContentEditable pour distinguer le focus passif du focus actif
+      const isActivelyTyping = isNativeInput || (isEditing && target.isContentEditable);
+
+      // Ctrl+Espace → Play/Pause (fonctionne même en mode édition actif)
       if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
         e.preventDefault();
         togglePlayPause();
         return;
       }
 
-      // Si l'utilisateur tape dans l'éditeur, ne pas intercepter Espace/Flèches
-      if (isTyping) return;
-
-      // Espace → Play/Pause (hors mode édition)
-      if (e.code === "Space") {
+      // Espace → Play/Pause
+      // Bloqué seulement si l'utilisateur tape dans un INPUT/TEXTAREA natif
+      // Fonctionne même quand l'éditeur Tiptap a le focus (isEditing peut être true)
+      // car le lecteur audio synchronisé prend la priorité sur l'insertion d'espace
+      if (e.code === "Space" && !isNativeInput) {
         e.preventDefault();
         togglePlayPause();
         return;
       }
 
-      // ← → Reculer de 5 secondes
+      // ← → Skip ±5s — bloqué si l'utilisateur tape activement
+      if (isActivelyTyping) return;
+
+      // ← Reculer de 5 secondes
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         skipAudio(-5);
         return;
       }
 
-      // → → Avancer de 5 secondes
+      // → Avancer de 5 secondes
       if (e.key === "ArrowRight") {
         e.preventDefault();
         skipAudio(5);
@@ -711,7 +721,7 @@ export function TranscriptionEditor({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editor, showAudioPlayer, skipAudio]);
+  }, [editor, showAudioPlayer, skipAudio, isEditing, togglePlayPause]);
 
   // ─── Indicateur de statut de sauvegarde ─────────────────────────────────────
 
