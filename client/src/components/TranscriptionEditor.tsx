@@ -200,6 +200,12 @@ export function TranscriptionEditor({
   // Flag pour bloquer handleAudioTimeUpdate pendant un seek programmatique
   // Cela évite que timeupdate remette audioCurrentTime à 0 pendant le seek
   const isSeekingRef = useRef<boolean>(false);
+  // Flag : true une fois que les segments ont été appliqués au contenu Tiptap
+  // Évite de réappliquer le découpage à chaque re-render
+  const segmentsAppliedRef = useRef<boolean>(false);
+  // Timestamp cible en attente (quand le lecteur audio vient d'être ouvert)
+  // Appliqué dans onLoadedMetadata une fois la source audio chargée
+  const pendingSeekRef = useRef<number | null>(null);
 
   // Texte initial pour Tiptap
   const initialText = editedText ?? originalText;
@@ -312,6 +318,25 @@ export function TranscriptionEditor({
     }
   }, [editedText, originalText, editor, allSegments, isDirty]);
 
+  // ─── Découpage en paragraphes par segment Whisper ─────────────────────────
+  // Problème : useEditor() s'exécute AVANT que allSegments soit chargé (useEffect asynchrone).
+  // Le contenu initial est donc du texte brut en un seul bloc.
+  // Ce useEffect redécoupe le contenu en paragraphes dès que les segments arrivent.
+  // La condition !isDirty garantit qu'on ne réinitialise pas le travail de l'utilisateur.
+  // segmentsAppliedRef évite de réappliquer le découpage à chaque re-render.
+  useEffect(() => {
+    if (!editor || allSegments.length === 0) return;
+    if (segmentsAppliedRef.current) return; // Déjà appliqué
+    if (isDirty) return; // L'utilisateur a déjà modifié le texte, ne pas écraser
+
+    // Appliquer le découpage par segments
+    const incoming = editedText ?? originalText;
+    editor.commands.setContent(
+      textToTiptapHTML(incoming, allSegments)
+    );
+    segmentsAppliedRef.current = true;
+  }, [editor, allSegments, editedText, originalText, isDirty]);
+
   // Ajouter/retirer la classe 'has-segments' sur l'éditeur
   // pour activer le padding gauche des timestamps au hover
   useEffect(() => {
@@ -413,6 +438,32 @@ export function TranscriptionEditor({
     const audio = audioRef.current;
     if (!audio) return;
     setAudioDuration(audio.duration);
+
+    // Appliquer le seek en attente (déclenché quand le lecteur vient d'être ouvert
+    // et que la source audio n'était pas encore chargée lors du clic)
+    if (pendingSeekRef.current !== null) {
+      const targetTime = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+
+      isSeekingRef.current = true;
+      audio.addEventListener("seeked", function onSeeked() {
+        isSeekingRef.current = false;
+        setAudioCurrentTime(audio.currentTime);
+        audio.removeEventListener("seeked", onSeeked);
+      });
+      audio.currentTime = targetTime;
+
+      // Démarrer la lecture après le seek
+      audio.addEventListener("seeked", function playAfterSeek() {
+        audio.play().catch(() => {
+          toast.error("Impossible de lire l'audio", {
+            description: "Cliquez sur Play pour démarrer la lecture.",
+          });
+        });
+        setIsAudioPlaying(true);
+        audio.removeEventListener("seeked", playAfterSeek);
+      });
+    }
   };
 
   const handleAudioEnded = () => {
@@ -487,28 +538,28 @@ export function TranscriptionEditor({
   //    pour bloquer handleAudioTimeUpdate (qui était appelé par timeupdate avec currentTime=0)
   //  - isSeekingRef.current = false dans l'événement 'seeked' (seek terminé)
   //  - setAudioCurrentTime() est appelé DANS 'seeked', avec la vraie valeur finale
+  //
+  // Correction du bug "lecteur fermé" :
+  //  - Quand showAudioPlayer passe de false à true, l'élément <audio> n'est pas encore monté
+  //    ET l'URL S3 n'est pas encore chargée (requête tRPC asynchrone)
+  //  - On stocke le timestamp cible dans pendingSeekRef
+  //  - handleAudioLoadedMetadata l'applique quand la source est chargée (onLoadedMetadata)
   useEffect(() => {
     onSegmentClickRef.current = (segmentIndex: number, segment: AudioSyncSegment) => {
-      // Ouvrir le lecteur audio si fermé (avant tout)
-      setShowAudioPlayer(true);
       setLastClickedSegment(segmentIndex);
 
       const audio = audioRef.current;
-      if (!audio) {
-        // Le lecteur vient d'être ouvert : attendre qu'il soit monté dans le DOM
-        setTimeout(() => {
-          const a = audioRef.current;
-          if (!a) return;
-          isSeekingRef.current = true;
-          a.addEventListener("seeked", function onSeeked() {
-            isSeekingRef.current = false;
-            setAudioCurrentTime(a.currentTime);
-            a.removeEventListener("seeked", onSeeked);
-          });
-          a.currentTime = segment.start;
-        }, 300);
+
+      if (!audio || !audio.src || audio.src === window.location.href) {
+        // Le lecteur est fermé ou la source n'est pas encore chargée :
+        // Stocker le timestamp cible → sera appliqué dans onLoadedMetadata
+        pendingSeekRef.current = segment.start;
+        setShowAudioPlayer(true);
         return;
       }
+
+      // Ouvrir le lecteur si fermé (source déjà chargée)
+      setShowAudioPlayer(true);
 
       // Activer le flag AVANT le seek pour bloquer timeupdate
       isSeekingRef.current = true;

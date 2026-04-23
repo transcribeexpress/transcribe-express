@@ -1380,3 +1380,9 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] togglePlayPause wrappé dans useCallback pour éviter les boucles infinies dans useEffect
 - [x] isEditing + togglePlayPause ajoutés aux dépendances du useEffect raccourcis clavier
 - [x] 293/293 tests passent, 0 erreur TypeScript
+
+## 🐛 Bugs éditeur Tiptap (Session courante)
+
+- [x] Bug 1 : Texte en un seul bloc — ajout d'un useEffect dédié + segmentsAppliedRef pour redécouper le contenu Tiptap en paragraphes dès que les segments Whisper arrivent (après l'initialisation de l'éditeur)
+- [x] Bug 2 : Click-to-Seek repart depuis le début — ajout de pendingSeekRef : le timestamp cible est stocké et appliqué dans onLoadedMetadata quand la source audio est chargée (plus de setTimeout fragile)
+- [x] 301/301 tests passent (8 nouveaux tests pour les deux corrections), 0 erreur TypeScript

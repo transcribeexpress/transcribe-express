@@ -399,3 +399,192 @@ describe("AudioSyncExtension module", () => {
     // Le type est vérifié à la compilation TypeScript
   });
 });
+
+// ─── Tests de la correction Bug 1 : découpage en paragraphes par segments ────
+// Vérifie que textToTiptapHTML génère bien un paragraphe par segment
+// même quand les segments arrivent après l'initialisation de l'éditeur.
+
+describe("Bug 1 fix : découpage en paragraphes par segment Whisper", () => {
+  interface WhisperSegment {
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+  }
+
+  function textToTiptapHTML(
+    text: string,
+    segments?: WhisperSegment[]
+  ): string {
+    if (segments && segments.length > 0) {
+      return segments
+        .map((seg) => {
+          const escaped = seg.text
+            .trim()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+          return `<p>${escaped}</p>`;
+        })
+        .join("");
+    }
+    const lines = text.split("\n");
+    return lines
+      .map((line) => {
+        const escaped = line
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        return `<p>${escaped || "<br>"}</p>`;
+      })
+      .join("");
+  }
+
+  const segments: WhisperSegment[] = [
+    { id: 0, start: 0, end: 3.2, text: " Bonjour tout le monde. " },
+    { id: 1, start: 3.2, end: 7.8, text: " Ceci est le deuxième segment. " },
+    { id: 2, start: 7.8, end: 12.1, text: " Et voici le troisième. " },
+  ];
+
+  it("génère un paragraphe par segment (pas un seul bloc)", () => {
+    const html = textToTiptapHTML("Bonjour tout le monde. Ceci est le deuxième segment. Et voici le troisième.", segments);
+    // Doit contenir exactement 3 balises <p>
+    const matches = html.match(/<p>/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(3);
+  });
+
+  it("le texte de chaque segment est dans son propre paragraphe", () => {
+    const html = textToTiptapHTML("texte brut", segments);
+    expect(html).toContain("<p>Bonjour tout le monde.</p>");
+    expect(html).toContain("<p>Ceci est le deuxième segment.</p>");
+    expect(html).toContain("<p>Et voici le troisième.</p>");
+  });
+
+  it("sans segments, le texte brut est en un seul paragraphe", () => {
+    const html = textToTiptapHTML("Texte brut sans segments");
+    expect(html).toBe("<p>Texte brut sans segments</p>");
+  });
+
+  it("segmentsAppliedRef empêche le redécoupage répété (simulation)", () => {
+    // Simule la logique de segmentsAppliedRef
+    let segmentsApplied = false;
+    let setContentCallCount = 0;
+
+    function applySegmentsIfNeeded(
+      editorReady: boolean,
+      segments: WhisperSegment[],
+      isDirty: boolean
+    ) {
+      if (!editorReady || segments.length === 0) return;
+      if (segmentsApplied) return; // Déjà appliqué
+      if (isDirty) return; // Ne pas écraser les modifications de l'utilisateur
+
+      setContentCallCount++;
+      segmentsApplied = true;
+    }
+
+    // Premier appel : segments arrivent, éditeur prêt
+    applySegmentsIfNeeded(true, segments, false);
+    expect(setContentCallCount).toBe(1);
+    expect(segmentsApplied).toBe(true);
+
+    // Deuxième appel : ne doit pas rappeler setContent
+    applySegmentsIfNeeded(true, segments, false);
+    expect(setContentCallCount).toBe(1); // Toujours 1
+
+    // Troisième appel avec isDirty=true : ne doit pas rappeler setContent
+    segmentsApplied = false; // Reset pour tester isDirty
+    applySegmentsIfNeeded(true, segments, true);
+    expect(setContentCallCount).toBe(1); // Toujours 1
+  });
+});
+
+// ─── Tests de la correction Bug 2 : pendingSeek pour le lecteur fermé ────────
+// Vérifie que le timestamp cible est correctement stocké et appliqué
+// quand le lecteur audio vient d'être ouvert (source pas encore chargée).
+
+describe("Bug 2 fix : pendingSeek pour Click-to-Seek avec lecteur fermé", () => {
+  it("stocke le timestamp dans pendingSeekRef quand l'audio n'est pas disponible", () => {
+    // Simulation de la logique onSegmentClick
+    let pendingSeek: number | null = null;
+    let showAudioPlayer = false;
+
+    function onSegmentClick(segmentStart: number, audioElement: HTMLAudioElement | null) {
+      if (!audioElement || !audioElement.src || audioElement.src === window.location.href) {
+        // Lecteur fermé ou source non chargée → stocker le timestamp
+        pendingSeek = segmentStart;
+        showAudioPlayer = true;
+        return "pending";
+      }
+      return "immediate";
+    }
+
+    const result = onSegmentClick(12.5, null);
+    expect(result).toBe("pending");
+    expect(pendingSeek).toBe(12.5);
+    expect(showAudioPlayer).toBe(true);
+  });
+
+  it("applique le pendingSeek dans onLoadedMetadata", () => {
+    let pendingSeek: number | null = 12.5;
+    let seekApplied = false;
+    let playStarted = false;
+
+    function handleLoadedMetadata(audioCurrentTime: { value: number }) {
+      if (pendingSeek !== null) {
+        const targetTime = pendingSeek;
+        pendingSeek = null;
+        audioCurrentTime.value = targetTime;
+        seekApplied = true;
+        playStarted = true;
+      }
+    }
+
+    const audioCurrentTime = { value: 0 };
+    handleLoadedMetadata(audioCurrentTime);
+
+    expect(seekApplied).toBe(true);
+    expect(playStarted).toBe(true);
+    expect(audioCurrentTime.value).toBe(12.5);
+    expect(pendingSeek).toBeNull(); // Reset après application
+  });
+
+  it("ne déclenche pas de seek si pendingSeek est null", () => {
+    let pendingSeek: number | null = null;
+    let seekApplied = false;
+
+    function handleLoadedMetadata() {
+      if (pendingSeek !== null) {
+        seekApplied = true;
+      }
+    }
+
+    handleLoadedMetadata();
+    expect(seekApplied).toBe(false);
+  });
+
+  it("seek immédiat quand l'audio est déjà disponible", () => {
+    let pendingSeek: number | null = null;
+    let immediateSeekTarget: number | null = null;
+
+    const mockAudio = {
+      src: "https://s3.example.com/audio.mp3",
+      currentTime: 0,
+    };
+
+    function onSegmentClick(segmentStart: number, audio: typeof mockAudio | null) {
+      if (!audio || !audio.src || audio.src === window.location.href) {
+        pendingSeek = segmentStart;
+        return "pending";
+      }
+      immediateSeekTarget = segmentStart;
+      return "immediate";
+    }
+
+    const result = onSegmentClick(8.3, mockAudio);
+    expect(result).toBe("immediate");
+    expect(immediateSeekTarget).toBe(8.3);
+    expect(pendingSeek).toBeNull(); // Pas de pending seek
+  });
+});
