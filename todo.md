@@ -1386,3 +1386,10 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Bug 1 : Texte en un seul bloc — ajout d'un useEffect dédié + segmentsAppliedRef pour redécouper le contenu Tiptap en paragraphes dès que les segments Whisper arrivent (après l'initialisation de l'éditeur)
 - [x] Bug 2 : Click-to-Seek repart depuis le début — ajout de pendingSeekRef : le timestamp cible est stocké et appliqué dans onLoadedMetadata quand la source audio est chargée (plus de setTimeout fragile)
 - [x] 301/301 tests passent (8 nouveaux tests pour les deux corrections), 0 erreur TypeScript
+
+## 🎨 Améliorations UI Home (Session courante)
+
+- [x] Remplacement de la carte "Multi-langues" par "Éditeur Intelligent" (badge Exclusif, icône PenLine, copywriting différenciant)
+- [x] Ajout d'une section dédiée "Un éditeur pensé pour la précision" avec 6 fonctionnalités éditeur (Lecture synchronisée, Click-to-Seek, Surbrillance, Passages incertains, Recherche/Remplacement, Sauvegarde)
+- [x] Bandeau de preuve sociale avec citation + tags des fonctionnalités + CTA secondaire
+- [x] 301/301 tests passent, 0 erreur TypeScript
