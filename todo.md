@@ -1393,3 +1393,11 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Ajout d'une section dédiée "Un éditeur pensé pour la précision" avec 6 fonctionnalités éditeur (Lecture synchronisée, Click-to-Seek, Surbrillance, Passages incertains, Recherche/Remplacement, Sauvegarde)
 - [x] Bandeau de preuve sociale avec citation + tags des fonctionnalités + CTA secondaire
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🎯 Modals cliquables — Section "Pourquoi choisir Transcribe Express ?" (Session courante)
+
+- [x] Cartes cliquables avec signal visuel hover (icône ChevronRight, animation)
+- [x] 6 modals Dialog shadcn/ui avec contenu détaillé SEO/AEO optimisé (format Q&A)
+- [x] Touches de couleur cyan/violet dans les modals pour lisibilité
+- [x] Données structurées JSON-LD (FAQPage) injectées dans le rendu React
+- [x] 301/301 tests passent, 0 erreur TypeScript
