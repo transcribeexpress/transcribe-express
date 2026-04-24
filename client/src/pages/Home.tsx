@@ -226,7 +226,7 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-1">Surbrillance en temps réel</h3>
               <p className="text-sm text-muted-foreground">
-                Chaque paragraphe correspond à un segment Whisper horodaté.
+                Chaque paragraphe correspond à un segment horodaté.
                 L'éditeur défile automatiquement pour garder le segment actif
                 visible à l'écran.
               </p>
