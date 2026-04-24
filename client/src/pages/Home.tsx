@@ -157,7 +157,7 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold mb-2">Formats Multiples</h3>
             <p className="text-muted-foreground">
-              Support de MP3, WAV, M4A, OGG, MP4, WEBM et plus encore.
+              Support de MP3, WAV, M4A, MOV, MP4, WEBM et plus encore.
             </p>
           </div>
         </div>
