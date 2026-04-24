@@ -134,7 +134,7 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold mb-2">Export Flexible</h3>
             <p className="text-muted-foreground">
-              Exportez vos transcriptions en TXT, SRT ou JSON selon vos besoins.
+              Exportez vos transcriptions en TXT, SRT ou VTT selon vos besoins.
             </p>
           </div>
 
