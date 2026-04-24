@@ -121,8 +121,9 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold mb-2">Sécurisé</h3>
             <p className="text-muted-foreground">
-              Vos fichiers sont chiffrés et stockés en toute sécurité sur AWS
-              S3.
+              Vos données, fichiers et transcriptions sont protégés de bout en
+              bout : chiffrement, stockage sécurisé et accès strictement
+              personnel à tous vos outils.
             </p>
           </div>
 
