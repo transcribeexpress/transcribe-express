@@ -252,7 +252,7 @@ const FEATURE_MODALS: ModalContent[] = [
       {
         question: "Y a-t-il une limite de taille pour les fichiers uploadés ?",
         answer:
-          "La taille maximale par fichier est de 16 Mo, ce qui correspond à environ 1h30 d'audio en MP3 standard (128 kbps). Pour des enregistrements plus longs, nous recommandons de compresser le fichier ou de le découper en segments.",
+          "Transcribe Express extrait et traite l'audio directement depuis votre navigateur, ce qui supprime les contraintes de taille liées à l'upload. Vous pouvez soumettre des enregistrements longs sans avoir à compresser ou découper vos fichiers au préalable.",
       },
     ],
   },
