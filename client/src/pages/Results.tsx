@@ -299,7 +299,7 @@ export default function Results() {
           </Card>
 
           {/* Card 2 : Téléchargement */}
-          <Card className="lg:col-span-2">
+          <Card id="export" className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="w-5 h-5 text-[#34D5BE]" />

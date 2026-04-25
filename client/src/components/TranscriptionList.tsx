@@ -309,14 +309,16 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Télécharger"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/results/${transcription.id}#export`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Télécharger la transcription"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </>
                     )}
 
