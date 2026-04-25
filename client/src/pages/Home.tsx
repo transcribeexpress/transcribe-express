@@ -581,7 +581,7 @@ export default function Home() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           {activeModal && (
             <>
-              <DialogHeader className="pb-2">
+              <DialogHeader className="pb-2 pr-8">
                 <div className="flex items-center gap-3 mb-1">
                   <div
                     className={`w-10 h-10 rounded-xl ${activeModal.iconBg} flex items-center justify-center shrink-0`}

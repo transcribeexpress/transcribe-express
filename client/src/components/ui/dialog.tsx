@@ -130,16 +130,16 @@ function DialogContent({
         onEscapeKeyDown={handleEscapeKeyDown}
         {...props}
       >
-        {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-md border border-[#34D5BE]/40 bg-gradient-to-br from-[#BE34D5]/10 to-[#34D5BE]/10 p-1 opacity-70 transition-all hover:opacity-100 hover:border-[#34D5BE]/70 hover:from-[#BE34D5]/20 hover:to-[#34D5BE]/20 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 z-10 rounded-md border border-[#34D5BE]/40 bg-gradient-to-br from-[#BE34D5]/10 to-[#34D5BE]/10 p-1 opacity-70 transition-all hover:opacity-100 hover:border-[#34D5BE]/70 hover:from-[#BE34D5]/20 hover:to-[#34D5BE]/20 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
+        {children}
       </DialogPrimitive.Content>
     </DialogPortal>
   );
