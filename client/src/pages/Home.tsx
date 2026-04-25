@@ -346,7 +346,7 @@ export default function Home() {
               <button
                 key={feature.id}
                 onClick={() => setOpenModal(feature.id)}
-                className="group relative p-6 rounded-2xl border bg-card hover:shadow-lg hover:border-[#34D5BE]/30 transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group relative p-6 pb-6 hover:pb-12 rounded-2xl border bg-card hover:shadow-lg hover:border-[#34D5BE]/30 transition-all duration-300 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`En savoir plus sur ${feature.title}`}
               >
                 {/* Badge Exclusif pour l'éditeur */}
