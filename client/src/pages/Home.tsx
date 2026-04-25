@@ -335,7 +335,7 @@ export default function Home() {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Une solution complète pour tous vos besoins de transcription
             </p>
-            <p className="text-sm text-muted-foreground/60 mt-3 flex items-center justify-center gap-1">
+            <p className="text-sm text-[#BE34D5]/80 mt-3 flex items-center justify-center gap-1">
               <ChevronRight className="w-3.5 h-3.5" />
               Cliquez sur une carte pour en savoir plus
             </p>
