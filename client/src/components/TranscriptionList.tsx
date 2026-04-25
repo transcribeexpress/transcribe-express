@@ -235,7 +235,25 @@ export function TranscriptionList({ transcriptions, isLoading }: TranscriptionLi
             {data.map((transcription) => (
               <TableRow key={transcription.id}>
                 <TableCell className="font-medium">
-                  {transcription.fileName}
+                  {transcription.status === "completed" ? (
+                    <Link
+                      href={`/results/${transcription.id}`}
+                      className="hover:text-[#34D5BE] hover:underline underline-offset-4 transition-colors cursor-pointer"
+                      title="Voir la transcription"
+                    >
+                      {transcription.fileName}
+                    </Link>
+                  ) : (transcription.status === "pending" || transcription.status === "processing") ? (
+                    <Link
+                      href={`/progress/${transcription.id}`}
+                      className="hover:text-[#BE34D5] hover:underline underline-offset-4 transition-colors cursor-pointer"
+                      title="Voir la progression"
+                    >
+                      {transcription.fileName}
+                    </Link>
+                  ) : (
+                    <span>{transcription.fileName}</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDuration(transcription.duration)}
