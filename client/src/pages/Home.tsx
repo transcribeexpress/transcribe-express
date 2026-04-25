@@ -221,7 +221,7 @@ const FEATURE_MODALS: ModalContent[] = [
       {
         question: "Les horodatages sont-ils conservés dans les exports ?",
         answer:
-          "Oui. Les formats SRT et VTT intègrent nativement les horodatages dans leur structure. Le format TXT peut également inclure les timestamps en option pour faciliter la relecture et la révision.",
+          "Oui. Les formats SRT et VTT intègrent nativement les horodatages dans leur structure. Le format TXT est un format de texte brut ouvert qui vous offre la possibilité de le découper ou l'exporter selon vos besoins.",
       },
       {
         question: "L'horodatage fonctionne-t-il même après modification du texte ?",
