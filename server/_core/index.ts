@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { uploadRouter } from "../uploadRoute";
+import { chunkedUploadRouter } from "../chunkedUploadRoute";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -42,10 +43,11 @@ async function startServer() {
   // Clerk sync routes for Clerk → Manus OAuth session bridging
   registerClerkSyncRoutes(app);
 
-  // Route d'upload multipart avec authentification
-  // Middleware auth pour injecter req.user avant la route upload
+  // Middleware auth pour les routes d'upload (standard + chunked)
   app.use("/api", async (req, res, next) => {
-    if (req.path === '/upload' && req.method === 'POST') {
+    const uploadPaths = ['/upload', '/upload-chunk', '/upload-chunk-complete'];
+    const isUploadRoute = uploadPaths.includes(req.path) && req.method === 'POST';
+    if (isUploadRoute) {
       try {
         const user = await sdk.authenticateRequest(req);
         (req as any).user = user;
@@ -57,6 +59,7 @@ async function startServer() {
     next();
   });
   app.use("/api", uploadRouter);
+  app.use("/api", chunkedUploadRouter);
 
   // tRPC API
   app.use(

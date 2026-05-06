@@ -1401,3 +1401,14 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Touches de couleur cyan/violet dans les modals pour lisibilité
 - [x] Données structurées JSON-LD (FAQPage) injectées dans le rendu React
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 📱 Solution combinée mobile — Contournement limite mémoire (Session courante)
+
+**Seuil de bascule : 300 Mo**
+
+- [x] `audioContextExtractor.ts` — Extraction audio natif navigateur (AudioContext + OfflineAudioContext) pour MP4/MOV/WebM mobile > 300 Mo. Sortie WAV 16 kHz mono (~10 Mo pour 1h d'audio)
+- [x] `chunkedUploader.ts` — Upload par chunks de 10 Mo avec retry exponentiel (3 retries) pour AVI/MKV mobile > 300 Mo
+- [x] `chunkedUploadRoute.ts` — Routes serveur `/api/upload-chunk` et `/api/upload-chunk-complete` avec réassemblage + extraction ffmpeg Node.js + déclenchement worker
+- [x] `Upload.tsx` — Routeur de décision automatique : WASM (desktop + mobile < 300 Mo) / AudioContext (mobile + format natif > 300 Mo) / Chunked (mobile + format non natif > 300 Mo) / Fallback universel
+- [x] `mobileUpload.test.ts` — 38 nouveaux tests Vitest (isMobileDevice, canDecodeNatively, shouldUseAudioContext, shouldUseChunkedUpload, getChunkCount, estimateUploadTime)
+- [x] **339/339 tests passent, 0 erreur TypeScript**
