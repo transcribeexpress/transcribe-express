@@ -1448,3 +1448,12 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Fix serveur : nettoyage des chunks temporaires sur S3 via `storageDelete()` après assemblage
 - [x] Fix serveur : `multer.memoryStorage()` (12 Mo max RAM par chunk)
 - [x] 337/337 tests passent, 0 erreur TypeScript
+
+## 🐛 Correction crash upload chunked V4 — OOM assemblage 503 (7 mai 2026)
+
+**Diagnostic :** `assembleChunksFromS3()` télécharge les 47 chunks (470 Mo) en RAM via `Buffer.concat()` → OOM kill Cloud Run → 503 `{"error":""}`.
+
+- [x] Fix serveur : remplacer `Buffer.concat` par streaming vers fichier temporaire disque
+- [x] Fix serveur : uploader le fichier assemblé vers S3 via `@aws-sdk/lib-storage` multipart streaming
+- [x] Fix serveur : nettoyage du fichier temporaire disque après upload S3
+- [x] 337/337 tests passent, 0 erreur TypeScript

@@ -1,16 +1,16 @@
 /**
  * Routes d'upload chunked — Gestion des fichiers volumineux sur mobile
  *
- * Architecture V3 (7 mai 2026) — Cloud Run compatible :
+ * Architecture V4 (7 mai 2026) — Cloud Run compatible + Zero OOM :
  * - Les chunks sont stockés directement sur S3 (pas sur le disque local)
  * - Chaque instance Cloud Run peut recevoir n'importe quel chunk
- * - La vérification des chunks se fait via S3 (HEAD object)
- * - L'assemblage télécharge les chunks depuis S3, les concatène, et uploade le fichier final
+ * - L'assemblage se fait par STREAMING vers le disque (pas de Buffer.concat en RAM)
+ * - L'upload final vers S3 se fait via @aws-sdk/lib-storage (multipart streaming)
+ * - Empreinte mémoire : ~10 Mo max (un chunk à la fois) au lieu de 470 Mo
  *
- * Pourquoi S3 au lieu du disque local ?
- * - Cloud Run est stateless : chaque requête peut être routée vers une instance différente
- * - Le disque local est éphémère et non partagé entre instances
- * - S3 est partagé, persistant, et accessible depuis toutes les instances
+ * Pourquoi streaming au lieu de Buffer.concat ?
+ * - Buffer.concat(47 chunks × 10 Mo) = 470 Mo en RAM → OOM kill Cloud Run → 503
+ * - Streaming : chaque chunk est écrit sur disque puis lu en stream → ~10 Mo RAM max
  *
  * Endpoints :
  *   POST /api/upload-chunk
@@ -36,11 +36,27 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { randomBytes } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { S3Client, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { storagePut, storageGet, storageDelete } from './storage';
 import { createTranscription } from './db';
 import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
-import { ENV } from './_core/env';
+
+// ─── Configuration S3 (même config que s3Direct.ts) ──────────────────────────
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'eu-west-3',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || '';
 
 // ─── Configuration Multer (memoryStorage) ───────────────────────────────────
 // memoryStorage : le chunk est en RAM (max 12 Mo) le temps de l'uploader sur S3
@@ -53,7 +69,7 @@ const uploadChunkMiddleware = multer({
   },
 }).single('chunk');
 
-// ─── S3 Helpers pour les chunks ─────────────────────────────────────────────
+// ─── S3 Helpers pour les chunks (stockage intermédiaire) ─────────────────────
 
 /**
  * Clé S3 pour un chunk spécifique
@@ -65,7 +81,7 @@ function getChunkS3Key(uploadId: string, chunkIndex: number): string {
 }
 
 /**
- * Uploader un chunk sur S3
+ * Uploader un chunk sur S3 via le proxy Manus (storagePut)
  */
 async function putChunkToS3(
   uploadId: string,
@@ -90,20 +106,6 @@ async function chunkExistsOnS3(uploadId: string, chunkIndex: number): Promise<bo
   } catch {
     return false;
   }
-}
-
-/**
- * Télécharger un chunk depuis S3
- */
-async function downloadChunkFromS3(uploadId: string, chunkIndex: number): Promise<Buffer> {
-  const key = getChunkS3Key(uploadId, chunkIndex);
-  const { url } = await storageGet(key);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download chunk ${chunkIndex} from S3 (${response.status})`);
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
 }
 
 /**
@@ -147,33 +149,6 @@ async function getMissingChunksFromS3(uploadId: string, totalChunks: number): Pr
 }
 
 /**
- * Assembler tous les chunks depuis S3 en un seul Buffer
- * Pour les fichiers de 500 Mo, on télécharge et concatène par lots
- */
-async function assembleChunksFromS3(
-  uploadId: string,
-  totalChunks: number
-): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkBuffer = await downloadChunkFromS3(uploadId, i);
-    chunks.push(chunkBuffer);
-    totalBytes += chunkBuffer.length;
-
-    if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
-      console.log(
-        `[ChunkedUpload] Downloaded chunk ${i + 1}/${totalChunks} ` +
-        `(total: ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`
-      );
-    }
-  }
-
-  return Buffer.concat(chunks);
-}
-
-/**
  * Nettoyer tous les chunks temporaires d'un upload sur S3
  */
 async function cleanupChunksFromS3(uploadId: string, totalChunks: number): Promise<void> {
@@ -191,6 +166,162 @@ async function cleanupChunksFromS3(uploadId: string, totalChunks: number): Promi
   }
 
   console.log(`[ChunkedUpload] Cleanup complete for uploadId ${uploadId}`);
+}
+
+// ─── Assemblage streaming vers disque ────────────────────────────────────────
+
+/**
+ * Télécharger un chunk depuis S3 (via URL signée) et l'écrire en streaming sur disque
+ * Empreinte mémoire : ~10 Mo max (un chunk à la fois)
+ */
+async function downloadChunkToStream(
+  uploadId: string,
+  chunkIndex: number,
+  writeStream: fs.WriteStream
+): Promise<number> {
+  const key = getChunkS3Key(uploadId, chunkIndex);
+  const { url } = await storageGet(key);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download chunk ${chunkIndex} from S3 (${response.status})`);
+  }
+
+  if (!response.body) {
+    throw new Error(`Chunk ${chunkIndex} response has no body`);
+  }
+
+  // Écrire le stream de réponse directement sur disque
+  let bytesWritten = 0;
+  const reader = response.body.getReader();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      bytesWritten += value.length;
+      // Écriture synchrone dans le stream
+      await new Promise<void>((resolve, reject) => {
+        writeStream.write(value, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+  }
+
+  return bytesWritten;
+}
+
+/**
+ * Assembler tous les chunks depuis S3 vers un fichier temporaire sur disque
+ * STREAMING : empreinte mémoire ~10 Mo max (un chunk à la fois)
+ *
+ * @returns Chemin du fichier temporaire assemblé
+ */
+async function assembleChunksToDisk(
+  uploadId: string,
+  totalChunks: number,
+  ext: string
+): Promise<string> {
+  const tmpDir = os.tmpdir();
+  const safeId = uploadId.replace(/[^a-z0-9-]/gi, '_');
+  const tmpFilePath = path.join(tmpDir, `assembled-${safeId}.${ext}`);
+
+  console.log(`[ChunkedUpload] Assembling ${totalChunks} chunks to disk: ${tmpFilePath}`);
+
+  const writeStream = fs.createWriteStream(tmpFilePath);
+
+  let totalBytes = 0;
+  const startTime = Date.now();
+
+  try {
+    for (let i = 0; i < totalChunks; i++) {
+      const chunkBytes = await downloadChunkToStream(uploadId, i, writeStream);
+      totalBytes += chunkBytes;
+
+      if ((i + 1) % 5 === 0 || i === totalChunks - 1) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(
+          `[ChunkedUpload] Assembled chunk ${i + 1}/${totalChunks} ` +
+          `(total: ${(totalBytes / 1024 / 1024).toFixed(1)} MB, ${elapsed}s)`
+        );
+      }
+    }
+
+    // Fermer le stream d'écriture
+    await new Promise<void>((resolve, reject) => {
+      writeStream.end((err?: Error | null) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    const fileSize = fs.statSync(tmpFilePath).size;
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(
+      `[ChunkedUpload] Assembly complete: ${(fileSize / 1024 / 1024).toFixed(1)} MB in ${elapsed}s`
+    );
+
+    return tmpFilePath;
+  } catch (err) {
+    // Nettoyer le fichier partiel en cas d'erreur
+    writeStream.destroy();
+    try { fs.unlinkSync(tmpFilePath); } catch { /* ignore */ }
+    throw err;
+  }
+}
+
+/**
+ * Uploader un fichier depuis le disque vers S3 via multipart streaming
+ * Utilise @aws-sdk/lib-storage pour un upload en streaming (pas de chargement en RAM)
+ *
+ * @returns URL publique du fichier uploadé
+ */
+async function uploadFileTos3Streaming(
+  filePath: string,
+  fileKey: string,
+  mimeType: string
+): Promise<string> {
+  console.log(`[ChunkedUpload] Streaming upload to S3: ${fileKey}`);
+  const startTime = Date.now();
+
+  const fileStream = fs.createReadStream(filePath);
+  const fileSize = fs.statSync(filePath).size;
+
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+      Body: fileStream,
+      ContentType: mimeType,
+    },
+    // Taille de chaque partie multipart : 10 Mo (minimum AWS = 5 Mo)
+    partSize: 10 * 1024 * 1024,
+    // Nombre de parties en parallèle
+    queueSize: 3,
+  });
+
+  // Suivre la progression
+  upload.on('httpUploadProgress', (progress) => {
+    if (progress.loaded && progress.total) {
+      const percent = ((progress.loaded / progress.total) * 100).toFixed(1);
+      console.log(`[ChunkedUpload] S3 upload progress: ${percent}%`);
+    }
+  });
+
+  await upload.done();
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(
+    `[ChunkedUpload] S3 upload complete: ${(fileSize / 1024 / 1024).toFixed(1)} MB in ${elapsed}s`
+  );
+
+  // Construire l'URL publique
+  const region = process.env.AWS_REGION || 'eu-west-3';
+  const url = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${fileKey}`;
+  return url;
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -307,15 +438,17 @@ chunkedUploadRouter.get(
  * Signaler que tous les chunks ont été uploadés.
  * Le serveur :
  * 1. Vérifie que tous les chunks sont présents sur S3
- * 2. Télécharge et réassemble les chunks depuis S3
- * 3. Upload le fichier assemblé vers S3 (clé finale)
+ * 2. Télécharge les chunks depuis S3 et les assemble en STREAMING vers le disque
+ * 3. Upload le fichier assemblé vers S3 via multipart streaming (pas de RAM)
  * 4. Crée l'entrée en BDD
  * 5. Déclenche le worker de transcription
- * 6. Nettoie les chunks temporaires sur S3
+ * 6. Nettoie les chunks temporaires sur S3 et le fichier disque
  */
 chunkedUploadRouter.post(
   '/upload-chunk-complete',
   async (req: Request, res: Response) => {
+    let tmpFilePath: string | null = null;
+
     try {
       // Vérifier l'authentification
       const user = (req as any).user;
@@ -355,49 +488,62 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Télécharger et assembler les chunks depuis S3
-      console.log(`[ChunkedUpload] Assembling ${totalChunksNum} chunks from S3 for ${fileName}...`);
-      const assembledBuffer = await assembleChunksFromS3(uploadId, totalChunksNum);
-      console.log(`[ChunkedUpload] Assembly complete: ${(assembledBuffer.length / 1024 / 1024).toFixed(1)} MB`);
+      // ── ÉTAPE 1 : Assembler les chunks depuis S3 vers le disque (streaming) ──
+      // Empreinte mémoire : ~10 Mo max (un chunk à la fois)
+      tmpFilePath = await assembleChunksToDisk(uploadId, totalChunksNum, ext);
 
-      // Upload le fichier assemblé vers S3 (clé finale)
+      // ── ÉTAPE 2 : Upload le fichier assemblé vers S3 via multipart streaming ──
+      // Empreinte mémoire : ~10 Mo max (buffer interne @aws-sdk/lib-storage)
       const randomId = randomBytes(8).toString('hex');
       const timestamp = Date.now();
       const fileKey = `transcriptions/${user.openId}/${timestamp}-${randomId}.${ext}`;
       const mimeType = getMimeType(ext);
 
-      console.log(`[ChunkedUpload] Uploading assembled file to S3: ${fileKey}`);
-      const { url } = await storagePut(fileKey, assembledBuffer, mimeType);
-      console.log(`[ChunkedUpload] S3 upload complete: ${url}`);
+      const fileUrl = await uploadFileTos3Streaming(tmpFilePath, fileKey, mimeType);
+      console.log(`[ChunkedUpload] Final file available at: ${fileUrl}`);
 
-      // Créer l'entrée en BDD
+      // ── ÉTAPE 3 : Créer l'entrée en BDD ──
       const result = await createTranscription({
         userId: user.openId,
         fileName,
-        fileUrl: url,
+        fileUrl,
         fileKey,
         status: 'pending',
       });
 
       const transcriptionId = (result as any).insertId || (result as any)[0]?.insertId;
 
-      // Déclencher le worker asynchrone
+      // ── ÉTAPE 4 : Déclencher le worker asynchrone ──
       await triggerTranscriptionWorker(transcriptionId);
 
-      // Nettoyer les chunks temporaires sur S3 (non-bloquant)
+      // ── ÉTAPE 5 : Nettoyage non-bloquant ──
+      // Supprimer les chunks temporaires sur S3
       cleanupChunksFromS3(uploadId, totalChunksNum).catch((err) => {
-        console.warn('[ChunkedUpload] Cleanup failed (non-blocking):', err);
+        console.warn('[ChunkedUpload] S3 cleanup failed (non-blocking):', err);
       });
+
+      // Supprimer le fichier temporaire sur disque
+      if (tmpFilePath) {
+        const fileToDelete = tmpFilePath;
+        setImmediate(() => {
+          try { fs.unlinkSync(fileToDelete); } catch { /* ignore */ }
+        });
+      }
 
       console.log(`[ChunkedUpload] Pipeline complete: transcription ID ${transcriptionId}`);
 
       res.json({
         id: transcriptionId,
         fileName,
-        fileUrl: url,
+        fileUrl,
         status: 'pending',
       });
     } catch (error: any) {
+      // Nettoyage d'urgence du fichier temporaire
+      if (tmpFilePath) {
+        try { fs.unlinkSync(tmpFilePath); } catch { /* ignore */ }
+      }
+
       console.error('[ChunkedUpload] Completion error:', error);
       res.status(500).json({ error: error.message || 'Erreur lors de l\'assemblage' });
     }
