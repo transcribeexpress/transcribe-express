@@ -1,11 +1,16 @@
 /**
  * Routes d'upload chunked — Gestion des fichiers volumineux sur mobile
  *
- * Pourquoi l'upload chunked ?
- * - Sur mobile, un fichier de 500 Mo uploadé en une seule requête peut :
- *   1. Dépasser la limite mémoire du navigateur (OOM kill → page refresh)
- *   2. Échouer si la connexion est interrompue (pas de reprise)
- *   3. Déclencher un timeout serveur
+ * Architecture V3 (7 mai 2026) — Cloud Run compatible :
+ * - Les chunks sont stockés directement sur S3 (pas sur le disque local)
+ * - Chaque instance Cloud Run peut recevoir n'importe quel chunk
+ * - La vérification des chunks se fait via S3 (HEAD object)
+ * - L'assemblage télécharge les chunks depuis S3, les concatène, et uploade le fichier final
+ *
+ * Pourquoi S3 au lieu du disque local ?
+ * - Cloud Run est stateless : chaque requête peut être routée vers une instance différente
+ * - Le disque local est éphémère et non partagé entre instances
+ * - S3 est partagé, persistant, et accessible depuis toutes les instances
  *
  * Endpoints :
  *   POST /api/upload-chunk
@@ -16,41 +21,29 @@
  *       - fileName   : string  — Nom du fichier original
  *       - chunk      : Blob    — Données du chunk
  *
+ *   GET /api/upload-chunk-status
+ *     Query :
+ *       - uploadId   : string  — ID unique de l'upload
+ *       - totalChunks: number  — Nombre total de chunks attendus
+ *
  *   POST /api/upload-chunk-complete
  *     Body (application/json) :
  *       - uploadId   : string  — ID unique de l'upload
  *       - fileName   : string  — Nom du fichier original
  *       - totalChunks: number  — Nombre total de chunks attendus
- *
- * Sécurité :
- * - Authentification via session cookie (même mécanisme que /api/upload)
- * - Validation de l'extension du fichier
- * - Nettoyage automatique des fichiers temporaires après assemblage
- * - Limite de taille par chunk : 12 Mo (légèrement supérieure au CHUNK_SIZE côté client)
- *
- * Fix V2 (7 mai 2026) :
- * - Utilisation de memoryStorage au lieu de diskStorage pour éviter le bug
- *   où req.body n'est pas encore parsé quand Multer appelle filename()
- * - Écriture manuelle du chunk sur disque APRÈS validation des champs body
- * - Ajout de vérification d'intégrité (taille chunk > 0)
- * - Ajout d'un endpoint GET /api/upload-chunk-status pour vérifier les chunks reçus
- * - Retry côté client amélioré avec vérification serveur avant complétion
  */
 
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs';
 import { randomBytes } from 'crypto';
-import { storagePut } from './storage';
+import { storagePut, storageGet, storageDelete } from './storage';
 import { createTranscription } from './db';
 import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
+import { ENV } from './_core/env';
 
 // ─── Configuration Multer (memoryStorage) ───────────────────────────────────
-// On utilise memoryStorage pour que req.body soit toujours disponible
-// quand on écrit le fichier sur disque (pas de race condition)
+// memoryStorage : le chunk est en RAM (max 12 Mo) le temps de l'uploader sur S3
 
 const uploadChunkMiddleware = multer({
   storage: multer.memoryStorage(),
@@ -60,129 +53,144 @@ const uploadChunkMiddleware = multer({
   },
 }).single('chunk');
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── S3 Helpers pour les chunks ─────────────────────────────────────────────
 
 /**
- * Obtenir le répertoire temporaire pour les chunks
- * Crée le répertoire s'il n'existe pas
+ * Clé S3 pour un chunk spécifique
+ * Format : tmp-chunks/{uploadId}/chunk-{index}
  */
-function ensureChunkDir(): string {
-  const tmpDir = path.join(os.tmpdir(), 'te-chunks');
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir, { recursive: true });
+function getChunkS3Key(uploadId: string, chunkIndex: number): string {
+  const safeId = uploadId.replace(/[^a-z0-9-]/gi, '_');
+  return `tmp-chunks/${safeId}/chunk-${String(chunkIndex).padStart(5, '0')}`;
+}
+
+/**
+ * Uploader un chunk sur S3
+ */
+async function putChunkToS3(
+  uploadId: string,
+  chunkIndex: number,
+  buffer: Buffer
+): Promise<{ key: string; url: string }> {
+  const key = getChunkS3Key(uploadId, chunkIndex);
+  return storagePut(key, buffer, 'application/octet-stream');
+}
+
+/**
+ * Vérifier si un chunk existe sur S3 en tentant de récupérer son URL
+ * Retourne true si le chunk existe, false sinon
+ */
+async function chunkExistsOnS3(uploadId: string, chunkIndex: number): Promise<boolean> {
+  try {
+    const key = getChunkS3Key(uploadId, chunkIndex);
+    const { url } = await storageGet(key);
+    // Faire un HEAD request pour vérifier que le fichier existe réellement
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch {
+    return false;
   }
-  return tmpDir;
 }
 
 /**
- * Sanitizer un uploadId pour l'utiliser comme nom de fichier
+ * Télécharger un chunk depuis S3
  */
-function sanitizeUploadId(uploadId: string): string {
-  return uploadId.replace(/[^a-z0-9-]/gi, '_');
+async function downloadChunkFromS3(uploadId: string, chunkIndex: number): Promise<Buffer> {
+  const key = getChunkS3Key(uploadId, chunkIndex);
+  const { url } = await storageGet(key);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download chunk ${chunkIndex} from S3 (${response.status})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 /**
- * Obtenir le chemin d'un chunk spécifique
+ * Supprimer un chunk de S3
  */
-function getChunkPath(uploadId: string, chunkIndex: number): string {
-  const safeId = sanitizeUploadId(uploadId);
-  return path.join(ensureChunkDir(), `${safeId}-chunk-${chunkIndex}`);
+async function deleteChunkFromS3(uploadId: string, chunkIndex: number): Promise<void> {
+  try {
+    const key = getChunkS3Key(uploadId, chunkIndex);
+    await storageDelete(key);
+  } catch (err) {
+    // Non-bloquant : le nettoyage peut échouer sans impact fonctionnel
+    console.warn(`[ChunkedUpload] Failed to delete chunk ${chunkIndex} from S3:`, err);
+  }
 }
 
 /**
- * Vérifier quels chunks sont présents et retourner la liste des manquants
+ * Vérifier quels chunks sont manquants sur S3
  */
-function getMissingChunks(uploadId: string, totalChunks: number): number[] {
+async function getMissingChunksFromS3(uploadId: string, totalChunks: number): Promise<number[]> {
   const missing: number[] = [];
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkPath = getChunkPath(uploadId, i);
-    if (!fs.existsSync(chunkPath)) {
-      missing.push(i);
-    } else {
-      // Vérifier que le chunk n'est pas vide (corruption)
-      const stats = fs.statSync(chunkPath);
-      if (stats.size === 0) {
-        missing.push(i);
-        // Supprimer le chunk corrompu
-        try { fs.unlinkSync(chunkPath); } catch {}
+
+  // Vérifier en parallèle par lots de 10 pour ne pas surcharger
+  const batchSize = 10;
+  for (let batchStart = 0; batchStart < totalChunks; batchStart += batchSize) {
+    const batchEnd = Math.min(batchStart + batchSize, totalChunks);
+    const checks = [];
+    for (let i = batchStart; i < batchEnd; i++) {
+      checks.push(
+        chunkExistsOnS3(uploadId, i).then((exists) => ({ index: i, exists }))
+      );
+    }
+    const results = await Promise.all(checks);
+    for (const { index, exists } of results) {
+      if (!exists) {
+        missing.push(index);
       }
     }
   }
+
   return missing;
 }
 
 /**
- * Vérifier que tous les chunks sont présents et valides
+ * Assembler tous les chunks depuis S3 en un seul Buffer
+ * Pour les fichiers de 500 Mo, on télécharge et concatène par lots
  */
-function allChunksPresent(uploadId: string, totalChunks: number): boolean {
-  return getMissingChunks(uploadId, totalChunks).length === 0;
-}
-
-/**
- * Réassembler les chunks en un fichier unique via streaming
- * (évite de charger tous les chunks en RAM simultanément)
- */
-async function assembleChunks(
+async function assembleChunksFromS3(
   uploadId: string,
-  totalChunks: number,
-  outputPath: string
-): Promise<number> {
-  const writeStream = fs.createWriteStream(outputPath);
+  totalChunks: number
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
 
-  return new Promise((resolve, reject) => {
-    let totalBytes = 0;
-
-    const writeNextChunk = (index: number) => {
-      if (index >= totalChunks) {
-        writeStream.end();
-        return;
-      }
-
-      const chunkPath = getChunkPath(uploadId, index);
-
-      // Utiliser un stream de lecture pour éviter de tout charger en RAM
-      const readStream = fs.createReadStream(chunkPath);
-      let chunkBytes = 0;
-
-      readStream.on('data', (data: Buffer | string) => {
-        const len = typeof data === 'string' ? Buffer.byteLength(data) : data.length;
-        chunkBytes += len;
-        totalBytes += len;
-      });
-
-      readStream.on('error', (err) => {
-        writeStream.destroy();
-        reject(new Error(`Erreur lecture chunk ${index}: ${err.message}`));
-      });
-
-      readStream.pipe(writeStream, { end: false });
-
-      readStream.on('end', () => {
-        writeNextChunk(index + 1);
-      });
-    };
-
-    writeStream.on('finish', () => resolve(totalBytes));
-    writeStream.on('error', reject);
-
-    writeNextChunk(0);
-  });
-}
-
-/**
- * Nettoyer les chunks temporaires d'un upload
- */
-function cleanupChunks(uploadId: string, totalChunks: number): void {
   for (let i = 0; i < totalChunks; i++) {
-    const chunkPath = getChunkPath(uploadId, i);
-    try {
-      if (fs.existsSync(chunkPath)) {
-        fs.unlinkSync(chunkPath);
-      }
-    } catch (err) {
-      console.warn(`[ChunkedUpload] Failed to cleanup chunk ${i}:`, err);
+    const chunkBuffer = await downloadChunkFromS3(uploadId, i);
+    chunks.push(chunkBuffer);
+    totalBytes += chunkBuffer.length;
+
+    if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
+      console.log(
+        `[ChunkedUpload] Downloaded chunk ${i + 1}/${totalChunks} ` +
+        `(total: ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`
+      );
     }
   }
+
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Nettoyer tous les chunks temporaires d'un upload sur S3
+ */
+async function cleanupChunksFromS3(uploadId: string, totalChunks: number): Promise<void> {
+  console.log(`[ChunkedUpload] Cleaning up ${totalChunks} chunks from S3...`);
+
+  // Supprimer en parallèle par lots de 10
+  const batchSize = 10;
+  for (let batchStart = 0; batchStart < totalChunks; batchStart += batchSize) {
+    const batchEnd = Math.min(batchStart + batchSize, totalChunks);
+    const deletions = [];
+    for (let i = batchStart; i < batchEnd; i++) {
+      deletions.push(deleteChunkFromS3(uploadId, i));
+    }
+    await Promise.all(deletions);
+  }
+
+  console.log(`[ChunkedUpload] Cleanup complete for uploadId ${uploadId}`);
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -192,9 +200,8 @@ export const chunkedUploadRouter = Router();
 /**
  * POST /api/upload-chunk
  *
- * Recevoir et stocker un chunk individuel.
- * Le chunk est d'abord chargé en mémoire (max 12 Mo) puis écrit sur disque
- * avec le nom correct basé sur uploadId et chunkIndex (disponibles dans req.body).
+ * Recevoir un chunk et le stocker directement sur S3.
+ * Le chunk est en mémoire (max 12 Mo) le temps de l'upload S3.
  */
 chunkedUploadRouter.post(
   '/upload-chunk',
@@ -208,7 +215,7 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Valider les paramètres (maintenant toujours disponibles grâce à memoryStorage)
+      // Valider les paramètres
       const { uploadId, chunkIndex, totalChunks, fileName } = req.body;
 
       if (!uploadId || chunkIndex === undefined || !totalChunks || !fileName) {
@@ -237,23 +244,12 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Écrire le chunk sur disque avec le nom correct
-      // (maintenant req.body est garanti d'être disponible)
-      const chunkPath = getChunkPath(uploadId, chunkIdx);
-      fs.writeFileSync(chunkPath, req.file.buffer);
-
-      // Vérifier l'intégrité de l'écriture
-      const writtenStats = fs.statSync(chunkPath);
-      if (writtenStats.size !== req.file.buffer.length) {
-        // Écriture corrompue — supprimer et signaler l'erreur
-        try { fs.unlinkSync(chunkPath); } catch {}
-        res.status(500).json({ error: `Erreur d'écriture chunk ${chunkIdx}: taille attendue ${req.file.buffer.length}, écrite ${writtenStats.size}` });
-        return;
-      }
+      // Uploader le chunk directement sur S3
+      const { key } = await putChunkToS3(uploadId, chunkIdx, req.file.buffer);
 
       console.log(
-        `[ChunkedUpload] Received chunk ${chunkIdx + 1}/${totalChunksNum} ` +
-        `for uploadId ${uploadId} (${(req.file.buffer.length / 1024 / 1024).toFixed(1)} MB)`
+        `[ChunkedUpload] Chunk ${chunkIdx + 1}/${totalChunksNum} stored on S3 ` +
+        `(${(req.file.buffer.length / 1024 / 1024).toFixed(1)} MB) key=${key}`
       );
 
       res.json({ success: true, chunkIndex: chunkIdx, size: req.file.buffer.length });
@@ -267,8 +263,7 @@ chunkedUploadRouter.post(
 /**
  * GET /api/upload-chunk-status
  *
- * Vérifier quels chunks ont été reçus pour un uploadId donné.
- * Permet au client de savoir quels chunks retenter avant d'appeler complete.
+ * Vérifier quels chunks ont été reçus sur S3 pour un uploadId donné.
  */
 chunkedUploadRouter.get(
   '/upload-chunk-status',
@@ -289,7 +284,7 @@ chunkedUploadRouter.get(
         return;
       }
 
-      const missingChunks = getMissingChunks(uploadId, totalChunks);
+      const missingChunks = await getMissingChunksFromS3(uploadId, totalChunks);
       const receivedCount = totalChunks - missingChunks.length;
 
       res.json({
@@ -311,18 +306,16 @@ chunkedUploadRouter.get(
  *
  * Signaler que tous les chunks ont été uploadés.
  * Le serveur :
- * 1. Vérifie que tous les chunks sont présents et valides
- * 2. Réassemble les chunks en un fichier unique (streaming)
- * 3. Upload vers S3
+ * 1. Vérifie que tous les chunks sont présents sur S3
+ * 2. Télécharge et réassemble les chunks depuis S3
+ * 3. Upload le fichier assemblé vers S3 (clé finale)
  * 4. Crée l'entrée en BDD
  * 5. Déclenche le worker de transcription
- * 6. Nettoie les fichiers temporaires
+ * 6. Nettoie les chunks temporaires sur S3
  */
 chunkedUploadRouter.post(
   '/upload-chunk-complete',
   async (req: Request, res: Response) => {
-    let assembledFilePath: string | null = null;
-
     try {
       // Vérifier l'authentification
       const user = (req as any).user;
@@ -351,8 +344,8 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Vérifier que tous les chunks sont présents et valides
-      const missingChunks = getMissingChunks(uploadId, totalChunksNum);
+      // Vérifier que tous les chunks sont présents sur S3
+      const missingChunks = await getMissingChunksFromS3(uploadId, totalChunksNum);
       if (missingChunks.length > 0) {
         res.status(400).json({
           error: `Chunks manquants pour l'uploadId ${uploadId}. Chunks absents: [${missingChunks.join(', ')}]`,
@@ -362,25 +355,19 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Réassembler les chunks via streaming
+      // Télécharger et assembler les chunks depuis S3
+      console.log(`[ChunkedUpload] Assembling ${totalChunksNum} chunks from S3 for ${fileName}...`);
+      const assembledBuffer = await assembleChunksFromS3(uploadId, totalChunksNum);
+      console.log(`[ChunkedUpload] Assembly complete: ${(assembledBuffer.length / 1024 / 1024).toFixed(1)} MB`);
+
+      // Upload le fichier assemblé vers S3 (clé finale)
       const randomId = randomBytes(8).toString('hex');
       const timestamp = Date.now();
-      assembledFilePath = path.join(
-        ensureChunkDir(),
-        `assembled-${timestamp}-${randomId}.${ext}`
-      );
-
-      console.log(`[ChunkedUpload] Assembling ${totalChunksNum} chunks for ${fileName}...`);
-      const totalBytes = await assembleChunks(uploadId, totalChunksNum, assembledFilePath);
-      console.log(`[ChunkedUpload] Assembly complete: ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
-
-      // Upload vers S3 via streaming (évite de charger 500 Mo en RAM)
       const fileKey = `transcriptions/${user.openId}/${timestamp}-${randomId}.${ext}`;
-      const fileBuffer = fs.readFileSync(assembledFilePath);
       const mimeType = getMimeType(ext);
 
-      console.log(`[ChunkedUpload] Uploading to S3: ${fileKey}`);
-      const { url } = await storagePut(fileKey, fileBuffer, mimeType);
+      console.log(`[ChunkedUpload] Uploading assembled file to S3: ${fileKey}`);
+      const { url } = await storagePut(fileKey, assembledBuffer, mimeType);
       console.log(`[ChunkedUpload] S3 upload complete: ${url}`);
 
       // Créer l'entrée en BDD
@@ -397,14 +384,10 @@ chunkedUploadRouter.post(
       // Déclencher le worker asynchrone
       await triggerTranscriptionWorker(transcriptionId);
 
-      // Nettoyer les fichiers temporaires
-      cleanupChunks(uploadId, totalChunksNum);
-      try {
-        if (assembledFilePath && fs.existsSync(assembledFilePath)) {
-          fs.unlinkSync(assembledFilePath);
-        }
-      } catch {}
-      assembledFilePath = null;
+      // Nettoyer les chunks temporaires sur S3 (non-bloquant)
+      cleanupChunksFromS3(uploadId, totalChunksNum).catch((err) => {
+        console.warn('[ChunkedUpload] Cleanup failed (non-blocking):', err);
+      });
 
       console.log(`[ChunkedUpload] Pipeline complete: transcription ID ${transcriptionId}`);
 
@@ -416,12 +399,6 @@ chunkedUploadRouter.post(
       });
     } catch (error: any) {
       console.error('[ChunkedUpload] Completion error:', error);
-
-      // Nettoyer le fichier assemblé en cas d'erreur
-      if (assembledFilePath) {
-        try { fs.unlinkSync(assembledFilePath); } catch {}
-      }
-
       res.status(500).json({ error: error.message || 'Erreur lors de l\'assemblage' });
     }
   }

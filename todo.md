@@ -1437,3 +1437,14 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Fix client : timeout 60s par chunk avec AbortController
 - [x] Fix middleware : route GET /upload-chunk-status ajoutée au middleware auth
 - [x] 337/337 tests passent, 0 erreur TypeScript
+
+## 🐛 Correction crash upload chunked V3 — Cloud Run stateless (7 mai 2026)
+
+**Diagnostic :** Cloud Run route chaque requête vers une instance différente. Les chunks écrits sur le disque local de l'instance A ne sont pas visibles par l'instance B → "tous les chunks manquants".
+
+- [x] Fix serveur : stocker chaque chunk sur S3 via `storagePut()` au lieu du disque local (`os.tmpdir()`)
+- [x] Fix serveur : vérification des chunks via S3 (`storageGet()` + HEAD request) au lieu de `fs.existsSync`
+- [x] Fix serveur : assemblage des chunks depuis S3 (download séquentiel + `Buffer.concat`)
+- [x] Fix serveur : nettoyage des chunks temporaires sur S3 via `storageDelete()` après assemblage
+- [x] Fix serveur : `multer.memoryStorage()` (12 Mo max RAM par chunk)
+- [x] 337/337 tests passent, 0 erreur TypeScript
