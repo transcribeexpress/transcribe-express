@@ -1,26 +1,24 @@
 /**
  * Page Upload - Upload de fichiers audio/vidéo
  *
- * V5 : Architecture hybride étendue avec support mobile optimisé
+ * V6 : Architecture hybride corrigée — zéro extraction client sur mobile > 300 Mo
  *
  * Routeur de décision automatique :
  *
- * ┌─ Fichier audio (MP3, WAV, M4A, OGG, FLAC, WEBM) ─────────────────────────┐
+ * ┌─ Fichier audio (MP3, WAV, M4A, OGG, FLAC, WEBM) ───────────────────────────────┐
  * │  → Upload direct S3 (tous appareils)                                       │
  * └────────────────────────────────────────────────────────────────────────────┘
  *
- * ┌─ Fichier vidéo (MP4, MOV, AVI, MKV, WebM) ───────────────────────────────┐
+ * ┌─ Fichier vidéo (MP4, MOV, AVI, MKV, WebM) ───────────────────────────┐
  * │                                                                             │
- * │  Desktop ou mobile < 300 Mo                                                │
+ * │  Desktop ou mobile ≤ 300 Mo                                                │
  * │  → FFmpeg WASM (stream copy) → upload audio léger (~5-30 Mo)               │
  * │                                                                             │
- * │  Mobile + vidéo > 300 Mo + format natif (MP4/MOV/WebM)                    │
- * │  → AudioContext natif navigateur → WAV 16 kHz → upload audio léger        │
+ * │  Mobile + vidéo > 300 Mo (TOUS formats)                                    │
+ * │  → Upload chunked (10 Mo/chunk, 10 Mo RAM max) → extraction serveur        │
+ * │    Aucune extraction client — élimine 100% des crashes OOM mobile           │
  * │                                                                             │
- * │  Mobile + vidéo > 300 Mo + format non natif (AVI/MKV)                     │
- * │  → Upload chunked (10 Mo/chunk) → extraction ffmpeg serveur               │
- * │                                                                             │
- * │  Fallback universel (si tout échoue)                                       │
+ * │  Fallback universel (si WASM échoue)                                       │
  * │  → Upload vidéo brute → extraction ffmpeg serveur                          │
  * └────────────────────────────────────────────────────────────────────────────┘
  */
@@ -37,12 +35,9 @@ import { validateFormat, isVideoFile } from "@/utils/audioValidation";
 import { needsAudioExtraction, extractAudioFromVideo, isFFmpegSupported } from "@/utils/audioExtractor";
 import type { ExtractionProgressCallback } from "@/utils/audioExtractor";
 import {
-  shouldUseAudioContext,
   shouldUseChunkedUpload,
-  extractAudioViaAudioContext,
   isMobileDevice,
 } from "@/utils/audioContextExtractor";
-import type { AudioContextProgressCallback } from "@/utils/audioContextExtractor";
 import { uploadFileInChunks } from "@/utils/chunkedUploader";
 import { ArrowLeft, Wand2, Zap, AlertTriangle, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,15 +52,14 @@ const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/o
 /** Étapes du pipeline côté client */
 type ClientPipelineStage =
   | 'idle'
-  | 'extracting'           // Extraction audio FFmpeg WASM
-  | 'extracting_native'    // Extraction audio AudioContext (mobile natif)
+  | 'extracting'           // Extraction audio FFmpeg WASM (desktop ou mobile ≤ 300 Mo)
   | 'uploading'            // Upload standard vers S3
-  | 'uploading_chunked'    // Upload chunked (mobile, fichier lourd)
+  | 'uploading_chunked'    // Upload chunked (mobile > 300 Mo)
   | 'confirming'           // Confirmation au serveur
   | 'done';                // Redirection vers /progress/:id
 
 /** Stratégie mobile utilisée */
-type MobileStrategy = 'wasm' | 'audiocontext' | 'chunked' | null;
+type MobileStrategy = 'wasm' | 'chunked' | null;
 
 interface ExtractionState {
   stage: string;
@@ -193,14 +187,16 @@ export default function Upload() {
       const isVideo = needsAudioExtraction(selectedFile);
 
       if (isVideo) {
-        // ─── CAS 1 : Mobile + fichier lourd + format non natif → Upload chunked ───
+        // ─── CAS 1 : Mobile + vidéo > 300 Mo → Upload chunked direct ─────────────
+        // Aucune extraction côté client possible sans charger le fichier complet en RAM.
+        // L'upload chunked ne charge que 10 Mo à la fois (1 chunk) → 0 risque OOM.
         if (shouldUseChunkedUpload(selectedFile)) {
           setMobileStrategy('chunked');
           setPipelineStage('uploading_chunked');
           setUploadProgress(0);
 
           toast.info("Upload optimisé pour mobile", {
-            description: `Le fichier (${formatSize(selectedFile.size)}) sera envoyé par segments pour éviter les interruptions.`,
+            description: `Le fichier (${formatSize(selectedFile.size)}) sera envoyé par segments de 10 Mo pour éviter tout crash mémoire.`,
           });
 
           const chunkedResult = await uploadFileInChunks(selectedFile, (progress) => {
@@ -218,73 +214,13 @@ export default function Upload() {
 
           setUploadProgress(100);
           setPipelineStage('done');
-          toast.success("Upload réussi !", { description: "La transcription va démarrer automatiquement." });
+          toast.success("Upload réussi !", { description: "L'extraction audio et la transcription vont démarrer automatiquement côté serveur." });
           setLocation(`/progress/${chunkedResult.transcriptionId}`);
           return;
         }
 
-        // ─── CAS 2 : Mobile + fichier lourd + format natif → AudioContext ──────────
-        if (shouldUseAudioContext(selectedFile)) {
-          setMobileStrategy('audiocontext');
-          setPipelineStage('extracting_native');
-
-          toast.info("Extraction audio optimisée pour mobile", {
-            description: `Traitement de ${formatSize(selectedFile.size)} sans surcharge mémoire...`,
-          });
-
-          const onAudioCtxProgress: AudioContextProgressCallback = (progress) => {
-            setExtractionState({
-              stage: progress.stage,
-              percent: progress.percent,
-              message: progress.message,
-            });
-            // 0-50% pour l'extraction, 50-100% pour l'upload
-            setUploadProgress(Math.round(progress.percent * 0.5));
-          };
-
-          const acResult = await extractAudioViaAudioContext(selectedFile, onAudioCtxProgress);
-
-          if (acResult.success && acResult.audioFile) {
-            fileToUpload = acResult.audioFile;
-            setCompressionInfo({
-              original: acResult.originalSize,
-              extracted: acResult.extractedSize!,
-              ratio: acResult.compressionRatio!,
-            });
-            toast.success("Audio extrait avec succès !", {
-              description: `${formatSize(acResult.originalSize)} → ${formatSize(acResult.extractedSize!)} (${acResult.compressionRatio!.toFixed(0)}x plus léger)`,
-            });
-          } else {
-            // AudioContext a échoué → fallback upload chunked
-            console.warn('[Upload] AudioContext extraction failed, falling back to chunked upload:', acResult.error);
-            setMobileStrategy('chunked');
-            setPipelineStage('uploading_chunked');
-            setUploadProgress(0);
-
-            toast.info("Mode alternatif activé", { description: "Envoi du fichier par segments..." });
-
-            const chunkedFallback = await uploadFileInChunks(selectedFile, (progress) => {
-              setUploadProgress(progress.percent);
-              setExtractionState({
-                stage: progress.stage,
-                percent: progress.percent,
-                message: progress.message,
-              });
-            });
-
-            if (!chunkedFallback.success) {
-              throw new Error(chunkedFallback.error || "Erreur lors de l'upload par segments");
-            }
-
-            setUploadProgress(100);
-            setPipelineStage('done');
-            toast.success("Upload réussi !", { description: "La transcription va démarrer automatiquement." });
-            setLocation(`/progress/${chunkedFallback.transcriptionId}`);
-            return;
-          }
-        }
-        // ─── CAS 3 : Desktop ou mobile < 300 Mo → FFmpeg WASM ───────────────────────
-        else if (isFFmpegSupported()) {
+        // ─── CAS 2 : Desktop ou mobile ≤ 300 Mo → FFmpeg WASM (stream copy) ─────────
+        if (isFFmpegSupported()) {
           setMobileStrategy('wasm');
           setPipelineStage('extracting');
 
@@ -526,36 +462,7 @@ export default function Upload() {
                 </div>
               )}
 
-              {/* Extraction AudioContext (mobile natif) */}
-              {pipelineStage === 'extracting_native' && extractionState && (
-                <div className="w-full max-w-2xl mx-auto p-6 rounded-xl bg-gray-900/50 border border-[#34D5BE]/30 backdrop-blur-sm">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-[#34D5BE]/20 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-[#34D5BE] animate-pulse" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-200">Extraction audio optimisée mobile</p>
-                      <p className="text-xs text-gray-400 mt-1">{extractionState.message}</p>
-                    </div>
-                    <span className="text-lg font-semibold text-[#34D5BE]">
-                      {Math.round(extractionState.percent)}%
-                    </span>
-                  </div>
-                  <Progress value={extractionState.percent} className="h-2 bg-gray-800/50" />
-                  <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-[#34D5BE]/5 border border-[#34D5BE]/10">
-                    <Smartphone className="w-4 h-4 text-[#34D5BE] mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-gray-400">
-                      Extraction optimisée pour mobile — traitement natif du navigateur sans surcharge mémoire.
-                      Votre appareil reste fluide pendant l'opération.
-                    </p>
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <button onClick={handleCancel} className="text-xs text-red-400 hover:text-red-300 transition-colors" type="button">
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              )}
+
 
               {/* Upload chunked (mobile, fichier lourd) */}
               {pipelineStage === 'uploading_chunked' && extractionState && (
@@ -605,7 +512,7 @@ export default function Upload() {
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {formatSize(compressionInfo.original)} → {formatSize(compressionInfo.extracted)}
-                        {mobileStrategy === 'audiocontext' && ' · Extraction native mobile'}
+
                       </p>
                     </div>
                   </div>

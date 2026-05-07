@@ -1412,3 +1412,12 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] `Upload.tsx` — Routeur de décision automatique : WASM (desktop + mobile < 300 Mo) / AudioContext (mobile + format natif > 300 Mo) / Chunked (mobile + format non natif > 300 Mo) / Fallback universel
 - [x] `mobileUpload.test.ts` — 38 nouveaux tests Vitest (isMobileDevice, canDecodeNatively, shouldUseAudioContext, shouldUseChunkedUpload, getChunkCount, estimateUploadTime)
 - [x] **339/339 tests passent, 0 erreur TypeScript**
+
+## 🐛 Correction crash mobile AudioContext (Session 7 mai 2026)
+
+**Diagnostic :** AudioContext.decodeAudioData() charge le fichier entier en RAM (470 Mo × 2 = 940 Mo → OOM kill iPhone 13 à 25%)
+
+- [x] Désactivation complète du chemin AudioContext (shouldUseAudioContext retourne toujours false)
+- [x] Routeur V6 simplifié : mobile > 300 Mo → upload chunked direct (10 Mo RAM max) → extraction serveur
+- [x] Suppression du code mort (extracting_native, audiocontext strategy) dans Upload.tsx
+- [x] Tests mis à jour (337/337 passent), 0 erreur TypeScript

@@ -90,35 +90,36 @@ export function canDecodeNatively(file: File): boolean {
 /**
  * Déterminer si on doit utiliser AudioContext (au lieu de FFmpeg WASM)
  *
- * Conditions :
- * - Appareil mobile (ou fenêtre < 1024px)
- * - Fichier > 300 Mo (seuil de sécurité mémoire mobile)
- * - Format nativement supporté par le navigateur (MP4, MOV, WebM)
- * - AudioContext disponible
+ * DÉSACTIVÉ — AudioContext.decodeAudioData() nécessite un ArrayBuffer complet
+ * en entrée (pas de streaming), ce qui charge le fichier entier en RAM.
+ * Sur mobile, un fichier de 470 Mo = 940 Mo de RAM (original + copie décodage)
+ * → OOM kill garanti sur iPhone 13 (crash à ~25%).
+ *
+ * Solution : pour tout fichier > 300 Mo sur mobile, utiliser l'upload chunked
+ * direct (10 Mo/chunk en RAM max) + extraction ffmpeg côté serveur.
+ *
+ * @returns false — toujours désactivé, le chemin chunked est utilisé à la place
  */
-export function shouldUseAudioContext(file: File): boolean {
-  const MOBILE_THRESHOLD_BYTES = 300 * 1024 * 1024; // 300 Mo
-  return (
-    isMobileDevice() &&
-    file.size > MOBILE_THRESHOLD_BYTES &&
-    canDecodeNatively(file) &&
-    isAudioContextSupported()
-  );
+export function shouldUseAudioContext(_file: File): boolean {
+  return false;
 }
 
 /**
  * Déterminer si on doit basculer vers l'upload chunked direct
- * (fichier trop lourd OU format non supporté nativement sur mobile)
+ *
+ * Règle simple : tout fichier vidéo > 300 Mo sur mobile → upload chunked.
+ * Aucune extraction côté client n'est possible sans charger le fichier
+ * complet en RAM (que ce soit FFmpeg WASM ou AudioContext).
+ *
+ * L'upload chunked ne charge que 10 Mo à la fois en RAM (1 chunk),
+ * puis le serveur extrait l'audio avec ffmpeg Node.js.
  */
 export function shouldUseChunkedUpload(file: File): boolean {
   const MOBILE_THRESHOLD_BYTES = 300 * 1024 * 1024; // 300 Mo
   if (!isMobileDevice()) return false;
   if (file.size <= MOBILE_THRESHOLD_BYTES) return false;
-  // Format non supporté nativement → upload chunked
-  if (!canDecodeNatively(file)) return true;
-  // AudioContext non disponible → upload chunked
-  if (!isAudioContextSupported()) return true;
-  return false;
+  // Tout fichier > 300 Mo sur mobile → upload chunked (pas d'extraction client possible)
+  return true;
 }
 
 // ─── Encodage WAV ────────────────────────────────────────────────────────────

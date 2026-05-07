@@ -161,35 +161,21 @@ describe('shouldUseAudioContext', () => {
     delete (window as any).AudioContext;
   });
 
-  it('retourne true pour mobile + MP4 > 300 Mo', () => {
+  it('retourne toujours false (AudioContext désactivé — OOM sur mobile)', () => {
+    // AudioContext.decodeAudioData() charge le fichier entier en RAM
+    // → crash garanti sur mobile pour les gros fichiers
+    // La fonction est désactivée, tous les cas retournent false
     const file = makeFile('video.mp4', THRESHOLD + 1);
-    expect(shouldUseAudioContext(file)).toBe(true);
+    expect(shouldUseAudioContext(file)).toBe(false);
   });
 
-  it('retourne false pour mobile + MP4 < 300 Mo (WASM suffisant)', () => {
+  it('retourne false même pour mobile + MP4 < 300 Mo', () => {
     const file = makeFile('video.mp4', THRESHOLD - 1);
     expect(shouldUseAudioContext(file)).toBe(false);
   });
 
-  it('retourne false pour mobile + AVI > 300 Mo (format non natif)', () => {
+  it('retourne false pour tout format et toute taille', () => {
     const file = makeFile('video.avi', THRESHOLD + 1);
-    expect(shouldUseAudioContext(file)).toBe(false);
-  });
-
-  it('retourne false pour desktop + MP4 > 300 Mo (WASM disponible)', () => {
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-      configurable: true,
-    });
-    Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
-    const file = makeFile('video.mp4', THRESHOLD + 1);
-    expect(shouldUseAudioContext(file)).toBe(false);
-  });
-
-  it('retourne false si AudioContext non disponible', () => {
-    delete (window as any).AudioContext;
-    delete (window as any).webkitAudioContext;
-    const file = makeFile('video.mp4', THRESHOLD + 1);
     expect(shouldUseAudioContext(file)).toBe(false);
   });
 
@@ -231,9 +217,9 @@ describe('shouldUseChunkedUpload', () => {
     expect(shouldUseChunkedUpload(file)).toBe(true);
   });
 
-  it('retourne false pour mobile + MP4 > 300 Mo (AudioContext disponible)', () => {
+  it('retourne true pour mobile + MP4 > 300 Mo (chunked obligatoire, AudioContext désactivé)', () => {
     const file = makeFile('video.mp4', THRESHOLD + 1);
-    expect(shouldUseChunkedUpload(file)).toBe(false);
+    expect(shouldUseChunkedUpload(file)).toBe(true);
   });
 
   it('retourne false pour mobile + fichier < 300 Mo (WASM suffisant)', () => {
@@ -251,10 +237,8 @@ describe('shouldUseChunkedUpload', () => {
     expect(shouldUseChunkedUpload(file)).toBe(false);
   });
 
-  it('retourne true si AudioContext non disponible sur mobile + MP4 > 300 Mo', () => {
-    delete (window as any).AudioContext;
-    delete (window as any).webkitAudioContext;
-    const file = makeFile('video.mp4', THRESHOLD + 1);
+  it('retourne true pour mobile + MOV > 300 Mo (chunked obligatoire)', () => {
+    const file = makeFile('video.mov', THRESHOLD + 1);
     expect(shouldUseChunkedUpload(file)).toBe(true);
   });
 });
