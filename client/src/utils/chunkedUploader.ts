@@ -1,24 +1,17 @@
 /**
  * Module d'upload chunked pour fichiers volumineux sur mobile
  *
- * Pourquoi l'upload chunked ?
- * - Sur mobile, un fichier de 500 Mo uploadé en une seule requête peut :
- *   1. Dépasser la limite mémoire du navigateur (OOM kill)
- *   2. Échouer si la connexion est interrompue (pas de reprise)
- *   3. Déclencher un timeout serveur (Express limite par défaut)
+ * Architecture V5 (7 mai 2026) — Fire & Forget + Polling :
  *
- * Stratégie V2 (corrigée 7 mai 2026) :
- * - Découper le fichier en chunks de CHUNK_SIZE_BYTES (10 Mo par défaut)
- * - Uploader chaque chunk séquentiellement via POST /api/upload-chunk
- * - AVANT de compléter : vérifier côté serveur quels chunks sont reçus
- * - Si des chunks manquent → les retenter automatiquement
- * - Seulement quand TOUS les chunks sont confirmés → appeler complete
+ * PROBLÈME : Cloud Run coupe les connexions HTTP après 60 secondes.
+ * L'assemblage de 470 Mo (download S3 + écriture disque + upload S3) prend ~60-90s.
+ * → timeout systématique → 503 {"error":""}
  *
- * Améliorations V2 :
- * - Vérification serveur (GET /api/upload-chunk-status) avant complétion
- * - Retry automatique des chunks manquants détectés par le serveur
- * - Timeout par chunk configurable (60s par défaut)
- * - Meilleure gestion des erreurs réseau mobile (AbortController)
+ * SOLUTION : Ne jamais bloquer la connexion HTTP pendant un traitement long.
+ * 1. POST /api/upload-chunk-complete → répond 202 Accepted + jobId en < 2s
+ * 2. L'assemblage se fait en arrière-plan sur le serveur
+ * 3. Client poll GET /api/upload-chunk-job-status/:jobId toutes les 3s
+ * 4. Quand status=completed → transcriptionId disponible → navigation
  */
 
 export type ChunkedUploadProgressCallback = (progress: {
@@ -41,7 +34,7 @@ export interface ChunkedUploadResult {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-/** Taille de chaque chunk : 10 Mo (équilibre entre nombre de requêtes et mémoire) */
+/** Taille de chaque chunk : 10 Mo */
 const CHUNK_SIZE_BYTES = 10 * 1024 * 1024;
 
 /** Nombre maximum de retries par chunk en cas d'échec réseau */
@@ -55,6 +48,12 @@ const CHUNK_UPLOAD_TIMEOUT_MS = 60_000;
 
 /** Nombre max de cycles de vérification/retry après l'upload initial */
 const MAX_VERIFICATION_CYCLES = 3;
+
+/** Intervalle de polling du job status (3 secondes) */
+const JOB_POLL_INTERVAL_MS = 3_000;
+
+/** Timeout maximum pour le polling (15 minutes — gros fichiers) */
+const JOB_POLL_TIMEOUT_MS = 15 * 60 * 1000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -183,17 +182,18 @@ async function checkChunkStatus(
   return response.json();
 }
 
-// ─── Complétion de l'upload ───────────────────────────────────────────────────
+// ─// ─── Démarrage de l'assemblage (fire & forget) ─────────────────────────────────────
 
 /**
- * Signaler au serveur que tous les chunks ont été uploadés
- * Le serveur réassemble, upload sur S3 et déclenche le worker
+ * Démarrer l'assemblage en arrière-plan.
+ * Le serveur répond immédiatement 202 Accepted + jobId (< 2s).
+ * L'assemblage se fait en background sans bloquer la connexion HTTP.
  */
-async function completeChunkedUpload(
+async function startAssemblyJob(
   uploadId: string,
   fileName: string,
   totalChunks: number
-): Promise<{ id: number; fileUrl: string; status: string }> {
+): Promise<{ jobId: string }> {
   const response = await fetch('/api/upload-chunk-complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -203,19 +203,74 @@ async function completeChunkedUpload(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: response.statusText }));
-
-    // Si le serveur indique des chunks manquants, propager l'info
     if (errorData.missingChunks && errorData.canRetry) {
       const err = new Error(errorData.error) as any;
       err.missingChunks = errorData.missingChunks;
       err.canRetry = true;
       throw err;
     }
-
-    throw new Error(`Upload completion failed (${response.status}): ${JSON.stringify(errorData)}`);
+    throw new Error(`Assembly start failed (${response.status}): ${JSON.stringify(errorData)}`);
   }
 
-  return response.json();
+  return response.json(); // { jobId, status: 'pending' }
+}
+
+// ─── Polling du statut du job ──────────────────────────────────────────────────
+
+/**
+ * Attendre la complétion d'un job d'assemblage en pollant toutes les 3s.
+ * Timeout maximum : 15 minutes (gros fichiers).
+ */
+async function pollJobStatus(
+  jobId: string,
+  onProgress?: ChunkedUploadProgressCallback
+): Promise<{ transcriptionId: number }> {
+  const startTime = Date.now();
+  let pollCount = 0;
+
+  while (Date.now() - startTime < JOB_POLL_TIMEOUT_MS) {
+    await delay(JOB_POLL_INTERVAL_MS);
+    pollCount++;
+
+    const response = await fetch(`/api/upload-chunk-job-status/${encodeURIComponent(jobId)}`, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Job status check failed (${response.status}): ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+    if (data.status === 'completed') {
+      return { transcriptionId: data.transcriptionId };
+    }
+
+    if (data.status === 'error') {
+      throw new Error(data.error || 'Erreur lors de l\'assemblage du fichier');
+    }
+
+    // En cours (pending | assembling | uploading)
+    const statusMessages: Record<string, string> = {
+      pending: 'Démarrage de l\'assemblage...',
+      assembling: 'Assemblage du fichier en cours...',
+      uploading: 'Finalisation de l\'upload...',
+    };
+    const message = statusMessages[data.status] || 'Traitement en cours...';
+    const pollProgress = Math.min(98, 88 + Math.floor((elapsed / 600) * 10));
+
+    onProgress?.({
+      stage: 'assembling',
+      percent: pollProgress,
+      message: `${message} (${elapsed}s)`,
+    });
+
+    console.log(`[ChunkedUploader] Job ${jobId}: ${data.status} (poll #${pollCount}, ${elapsed}s)`);
+  }
+
+  throw new Error(`Timeout: l'assemblage n'a pas terminé après ${JOB_POLL_TIMEOUT_MS / 60000} minutes`);
 }
 
 // ─── Pipeline principal ───────────────────────────────────────────────────────
@@ -321,27 +376,25 @@ export async function uploadFileInChunks(
       }
     }
 
-    // ─── Étape 3 : Compléter l'upload ─────────────────────────────
+    // ───     // ─── Étape 3 : Démarrer l'assemblage (réponse immédiate 202) ───
     onProgress?.({
       stage: 'assembling',
       percent: 88,
-      message: 'Assemblage du fichier sur le serveur...',
+      message: 'Démarrage de l\'assemblage...',
     });
-
-    const result = await completeChunkedUpload(uploadId, file.name, totalChunks);
-
+    const { jobId } = await startAssemblyJob(uploadId, file.name, totalChunks);
+    console.log(`[ChunkedUploader] Assembly job started: ${jobId}`);
+    // ─── Étape 4 : Polling jusqu'à la complétion ──────────────────
+    const { transcriptionId } = await pollJobStatus(jobId, onProgress);
     onProgress?.({
       stage: 'done',
       percent: 100,
       message: 'Upload terminé !',
     });
-
-    console.log(`[ChunkedUploader] Upload complete: transcription ID ${result.id}`);
-
+    console.log(`[ChunkedUploader] Upload complete: transcription ID ${transcriptionId}`);
     return {
       success: true,
-      transcriptionId: result.id,
-      fileUrl: result.fileUrl,
+      transcriptionId,
     };
   } catch (error: any) {
     console.error('[ChunkedUploader] Upload failed:', error);

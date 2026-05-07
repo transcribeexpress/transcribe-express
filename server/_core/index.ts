@@ -47,9 +47,11 @@ async function startServer() {
   app.use("/api", async (req, res, next) => {
     const uploadPostPaths = ['/upload', '/upload-chunk', '/upload-chunk-complete'];
     const uploadGetPaths = ['/upload-chunk-status'];
+    // La route de polling utilise un path dynamique /upload-chunk-job-status/:jobId
+    const isJobStatusRoute = req.method === 'GET' && req.path.startsWith('/upload-chunk-job-status/');
     const isUploadRoute = (uploadPostPaths.includes(req.path) && req.method === 'POST') ||
       (uploadGetPaths.includes(req.path) && req.method === 'GET');
-    if (isUploadRoute) {
+    if (isUploadRoute || isJobStatusRoute) {
       try {
         const user = await sdk.authenticateRequest(req);
         (req as any).user = user;

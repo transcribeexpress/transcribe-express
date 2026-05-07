@@ -1457,3 +1457,17 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Fix serveur : uploader le fichier assemblé vers S3 via `@aws-sdk/lib-storage` multipart streaming
 - [x] Fix serveur : nettoyage du fichier temporaire disque après upload S3
 - [x] 337/337 tests passent, 0 erreur TypeScript
+
+## 🐛 Correction crash upload chunked V5 — Timeout Cloud Run 60s (7 mai 2026)
+
+**Diagnostic :** Le 503 `{"error":""}` est un timeout Cloud Run. Le proxy HTTP coupe les connexions après 60s. Notre pipeline (download 47 chunks S3 + écriture disque + multipart upload 470 Mo) prend ~60-90s → timeout systématique.
+
+**Solution :** Pattern "Fire and Forget" — répondre immédiatement 202 Accepted + jobId, traiter en arrière-plan, client poll /api/upload-chunk-job-status/:jobId.
+
+- [x] Ajouter table `assemblyJobs` dans drizzle/schema.ts + migration SQL directe
+- [x] Helpers BDD : createAssemblyJob, getAssemblyJobById, updateAssemblyJobStatus dans server/db.ts
+- [x] Réécrire /api/upload-chunk-complete : répond 202 Accepted + jobId en < 2s
+- [x] Créer /api/upload-chunk-job-status/:jobId : polling status + transcriptionId
+- [x] Mettre à jour chunkedUploader.ts : startAssemblyJob + pollJobStatus toutes les 3s (timeout 15 min)
+- [x] Middleware auth étendu pour couvrir /upload-chunk-job-status/:jobId
+- [x] 337/337 tests passent, 0 erreur TypeScript
