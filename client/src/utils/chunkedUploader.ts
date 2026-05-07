@@ -7,24 +7,22 @@
  *   2. Échouer si la connexion est interrompue (pas de reprise)
  *   3. Déclencher un timeout serveur (Express limite par défaut)
  *
- * Stratégie :
+ * Stratégie V2 (corrigée 7 mai 2026) :
  * - Découper le fichier en chunks de CHUNK_SIZE_BYTES (10 Mo par défaut)
  * - Uploader chaque chunk séquentiellement via POST /api/upload-chunk
- * - Le serveur réassemble les chunks et déclenche le worker
+ * - AVANT de compléter : vérifier côté serveur quels chunks sont reçus
+ * - Si des chunks manquent → les retenter automatiquement
+ * - Seulement quand TOUS les chunks sont confirmés → appeler complete
  *
- * Fallback :
- * - Si l'upload chunked échoue → retenter le chunk jusqu'à MAX_RETRIES fois
- * - Si tous les retries échouent → propager l'erreur
- *
- * Architecture :
- * - Client → POST /api/upload-chunk (chunk N/total + uploadId)
- * - Serveur → stocke les chunks temporairement sur disque
- * - Client → POST /api/upload-chunk-complete (uploadId)
- * - Serveur → réassemble, upload S3, déclenche worker
+ * Améliorations V2 :
+ * - Vérification serveur (GET /api/upload-chunk-status) avant complétion
+ * - Retry automatique des chunks manquants détectés par le serveur
+ * - Timeout par chunk configurable (60s par défaut)
+ * - Meilleure gestion des erreurs réseau mobile (AbortController)
  */
 
 export type ChunkedUploadProgressCallback = (progress: {
-  stage: 'uploading' | 'assembling' | 'done';
+  stage: 'uploading' | 'verifying' | 'retrying' | 'assembling' | 'done';
   percent: number;
   message: string;
   chunkIndex?: number;
@@ -47,10 +45,16 @@ export interface ChunkedUploadResult {
 const CHUNK_SIZE_BYTES = 10 * 1024 * 1024;
 
 /** Nombre maximum de retries par chunk en cas d'échec réseau */
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 
-/** Délai de base entre les retries (exponentiel : 1s, 2s, 4s) */
+/** Délai de base entre les retries (exponentiel : 1s, 2s, 4s, 8s, 16s) */
 const RETRY_BASE_DELAY_MS = 1000;
+
+/** Timeout par requête de chunk (60 secondes — connexion mobile lente) */
+const CHUNK_UPLOAD_TIMEOUT_MS = 60_000;
+
+/** Nombre max de cycles de vérification/retry après l'upload initial */
+const MAX_VERIFICATION_CYCLES = 3;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,7 +87,7 @@ function formatSize(bytes: number): string {
 // ─── Upload d'un chunk individuel ────────────────────────────────────────────
 
 /**
- * Uploader un seul chunk avec retry automatique
+ * Uploader un seul chunk avec retry automatique et timeout
  *
  * @param uploadId - ID unique de l'upload (partagé entre tous les chunks)
  * @param chunkIndex - Index du chunk (0-based)
@@ -99,7 +103,7 @@ async function uploadChunk(
   chunkBlob: Blob,
   fileName: string,
   retries: number = MAX_RETRIES
-): Promise<void> {
+): Promise<{ success: boolean; size: number }> {
   const formData = new FormData();
   formData.append('uploadId', uploadId);
   formData.append('chunkIndex', chunkIndex.toString());
@@ -107,29 +111,76 @@ async function uploadChunk(
   formData.append('fileName', fileName);
   formData.append('chunk', chunkBlob, `chunk-${chunkIndex}`);
 
+  // AbortController pour timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CHUNK_UPLOAD_TIMEOUT_MS);
+
   try {
     const response = await fetch('/api/upload-chunk', {
       method: 'POST',
       body: formData,
-      credentials: 'include', // Inclure le cookie de session
+      credentials: 'include',
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => response.statusText);
       throw new Error(`Chunk ${chunkIndex} upload failed (${response.status}): ${errorText}`);
     }
+
+    const result = await response.json();
+    return { success: true, size: result.size || chunkBlob.size };
   } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    // Distinguer les erreurs réseau des erreurs serveur
+    const isNetworkError = error.name === 'AbortError' ||
+      error.name === 'TypeError' ||
+      error.message?.includes('Failed to fetch') ||
+      error.message?.includes('NetworkError') ||
+      error.message?.includes('network');
+
     if (retries > 0) {
       const waitMs = RETRY_BASE_DELAY_MS * Math.pow(2, MAX_RETRIES - retries);
       console.warn(
-        `[ChunkedUploader] Chunk ${chunkIndex} failed, retrying in ${waitMs}ms... (${retries} retries left)`,
+        `[ChunkedUploader] Chunk ${chunkIndex} failed (${isNetworkError ? 'network' : 'server'}), ` +
+        `retrying in ${waitMs}ms... (${retries} retries left)`,
         error.message
       );
       await delay(waitMs);
       return uploadChunk(uploadId, chunkIndex, totalChunks, chunkBlob, fileName, retries - 1);
     }
-    throw error;
+
+    throw new Error(
+      `Chunk ${chunkIndex} a échoué après ${MAX_RETRIES} tentatives: ${error.message}`
+    );
   }
+}
+
+// ─── Vérification côté serveur ──────────────────────────────────────────────
+
+/**
+ * Demander au serveur quels chunks ont été reçus
+ */
+async function checkChunkStatus(
+  uploadId: string,
+  totalChunks: number
+): Promise<{ receivedCount: number; missingChunks: number[]; complete: boolean }> {
+  const response = await fetch(
+    `/api/upload-chunk-status?uploadId=${encodeURIComponent(uploadId)}&totalChunks=${totalChunks}`,
+    {
+      method: 'GET',
+      credentials: 'include',
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Status check failed (${response.status})`);
+  }
+
+  return response.json();
 }
 
 // ─── Complétion de l'upload ───────────────────────────────────────────────────
@@ -151,8 +202,17 @@ async function completeChunkedUpload(
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
-    throw new Error(`Upload completion failed (${response.status}): ${errorText}`);
+    const errorData = await response.json().catch(() => ({ error: response.statusText }));
+
+    // Si le serveur indique des chunks manquants, propager l'info
+    if (errorData.missingChunks && errorData.canRetry) {
+      const err = new Error(errorData.error) as any;
+      err.missingChunks = errorData.missingChunks;
+      err.canRetry = true;
+      throw err;
+    }
+
+    throw new Error(`Upload completion failed (${response.status}): ${JSON.stringify(errorData)}`);
   }
 
   return response.json();
@@ -163,11 +223,13 @@ async function completeChunkedUpload(
 /**
  * Uploader un fichier volumineux par chunks de 10 Mo
  *
- * Pipeline :
+ * Pipeline V2 :
  * 1. Découper le fichier en chunks de CHUNK_SIZE_BYTES
- * 2. Uploader chaque chunk séquentiellement (avec retry automatique)
- * 3. Signaler la complétion au serveur
- * 4. Retourner l'ID de transcription créé
+ * 2. Uploader chaque chunk séquentiellement (avec retry + timeout)
+ * 3. Vérifier côté serveur que tous les chunks sont reçus
+ * 4. Si des chunks manquent → les retenter
+ * 5. Signaler la complétion au serveur
+ * 6. Retourner l'ID de transcription créé
  *
  * @param file - Fichier à uploader
  * @param onProgress - Callback de progression (optionnel)
@@ -191,13 +253,12 @@ export async function uploadFileInChunks(
       const end = Math.min(start + CHUNK_SIZE_BYTES, file.size);
       const chunkBlob = file.slice(start, end);
 
-      const uploadedBytes = start + chunkBlob.size;
-      const percent = Math.round((uploadedBytes / file.size) * 85); // 0% → 85%
+      const percent = Math.round(((i + 1) / totalChunks) * 80); // 0% → 80%
 
       onProgress?.({
         stage: 'uploading',
         percent,
-        message: `Upload en cours... ${i + 1}/${totalChunks} (${formatSize(uploadedBytes)} / ${formatSize(file.size)})`,
+        message: `Upload en cours... ${i + 1}/${totalChunks} (${formatSize(end)} / ${formatSize(file.size)})`,
         chunkIndex: i,
         totalChunks,
       });
@@ -210,7 +271,57 @@ export async function uploadFileInChunks(
       );
     }
 
-    // ─── Étape 2 : Compléter l'upload ─────────────────────────────
+    // ─── Étape 2 : Vérifier côté serveur que tous les chunks sont reçus ───
+    onProgress?.({
+      stage: 'verifying',
+      percent: 82,
+      message: 'Vérification des segments reçus...',
+    });
+
+    let verificationCycle = 0;
+    while (verificationCycle < MAX_VERIFICATION_CYCLES) {
+      const status = await checkChunkStatus(uploadId, totalChunks);
+
+      if (status.complete) {
+        console.log(`[ChunkedUploader] All ${totalChunks} chunks verified on server`);
+        break;
+      }
+
+      // Des chunks manquent → les retenter
+      console.warn(
+        `[ChunkedUploader] Server reports ${status.missingChunks.length} missing chunks: [${status.missingChunks.join(', ')}]`
+      );
+
+      onProgress?.({
+        stage: 'retrying',
+        percent: 83,
+        message: `Renvoi de ${status.missingChunks.length} segment(s) manquant(s)...`,
+      });
+
+      for (const missingIdx of status.missingChunks) {
+        const start = missingIdx * CHUNK_SIZE_BYTES;
+        const end = Math.min(start + CHUNK_SIZE_BYTES, file.size);
+        const chunkBlob = file.slice(start, end);
+
+        console.log(`[ChunkedUploader] Retrying missing chunk ${missingIdx}...`);
+        await uploadChunk(uploadId, missingIdx, totalChunks, chunkBlob, file.name);
+      }
+
+      verificationCycle++;
+    }
+
+    // Vérification finale
+    if (verificationCycle >= MAX_VERIFICATION_CYCLES) {
+      const finalStatus = await checkChunkStatus(uploadId, totalChunks);
+      if (!finalStatus.complete) {
+        throw new Error(
+          `Impossible de compléter l'upload après ${MAX_VERIFICATION_CYCLES} cycles de vérification. ` +
+          `Chunks manquants: [${finalStatus.missingChunks.join(', ')}]`
+        );
+      }
+    }
+
+    // ─── Étape 3 : Compléter l'upload ─────────────────────────────
     onProgress?.({
       stage: 'assembling',
       percent: 88,

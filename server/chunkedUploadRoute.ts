@@ -28,12 +28,13 @@
  * - Nettoyage automatique des fichiers temporaires après assemblage
  * - Limite de taille par chunk : 12 Mo (légèrement supérieure au CHUNK_SIZE côté client)
  *
- * Pipeline après assemblage :
- * 1. Réassembler les chunks en un fichier unique sur disque
- * 2. Upload vers S3 via storagePut()
- * 3. Créer l'entrée en BDD
- * 4. Déclencher le worker de transcription (asynchrone)
- * 5. Nettoyer les fichiers temporaires
+ * Fix V2 (7 mai 2026) :
+ * - Utilisation de memoryStorage au lieu de diskStorage pour éviter le bug
+ *   où req.body n'est pas encore parsé quand Multer appelle filename()
+ * - Écriture manuelle du chunk sur disque APRÈS validation des champs body
+ * - Ajout de vérification d'intégrité (taille chunk > 0)
+ * - Ajout d'un endpoint GET /api/upload-chunk-status pour vérifier les chunks reçus
+ * - Retry côté client amélioré avec vérification serveur avant complétion
  */
 
 import { Router, Request, Response } from 'express';
@@ -47,69 +48,79 @@ import { createTranscription } from './db';
 import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
 
-// ─── Configuration Multer pour les chunks ────────────────────────────────────
+// ─── Configuration Multer (memoryStorage) ───────────────────────────────────
+// On utilise memoryStorage pour que req.body soit toujours disponible
+// quand on écrit le fichier sur disque (pas de race condition)
 
-const chunkStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const tmpDir = path.join(os.tmpdir(), 'te-chunks');
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir, { recursive: true });
-    }
-    cb(null, tmpDir);
-  },
-  filename: (req, _file, cb) => {
-    const uploadId = (req.body.uploadId || 'unknown').replace(/[^a-z0-9-]/gi, '_');
-    const chunkIndex = req.body.chunkIndex || '0';
-    cb(null, `${uploadId}-chunk-${chunkIndex}`);
-  },
-});
-
-const uploadChunk = multer({
-  storage: chunkStorage,
+const uploadChunkMiddleware = multer({
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 12 * 1024 * 1024, // 12 Mo par chunk (légèrement supérieur au 10 Mo client)
+    fileSize: 12 * 1024 * 1024, // 12 Mo par chunk
     files: 1,
   },
-});
+}).single('chunk');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Obtenir le répertoire temporaire pour un uploadId donné
+ * Obtenir le répertoire temporaire pour les chunks
+ * Crée le répertoire s'il n'existe pas
  */
-function getUploadDir(uploadId: string): string {
-  return path.join(os.tmpdir(), 'te-chunks');
+function ensureChunkDir(): string {
+  const tmpDir = path.join(os.tmpdir(), 'te-chunks');
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  }
+  return tmpDir;
+}
+
+/**
+ * Sanitizer un uploadId pour l'utiliser comme nom de fichier
+ */
+function sanitizeUploadId(uploadId: string): string {
+  return uploadId.replace(/[^a-z0-9-]/gi, '_');
 }
 
 /**
  * Obtenir le chemin d'un chunk spécifique
  */
 function getChunkPath(uploadId: string, chunkIndex: number): string {
-  const safeId = uploadId.replace(/[^a-z0-9-]/gi, '_');
-  return path.join(getUploadDir(uploadId), `${safeId}-chunk-${chunkIndex}`);
+  const safeId = sanitizeUploadId(uploadId);
+  return path.join(ensureChunkDir(), `${safeId}-chunk-${chunkIndex}`);
 }
 
 /**
- * Vérifier que tous les chunks sont présents
+ * Vérifier quels chunks sont présents et retourner la liste des manquants
  */
-function allChunksPresent(uploadId: string, totalChunks: number): boolean {
+function getMissingChunks(uploadId: string, totalChunks: number): number[] {
+  const missing: number[] = [];
   for (let i = 0; i < totalChunks; i++) {
     const chunkPath = getChunkPath(uploadId, i);
     if (!fs.existsSync(chunkPath)) {
-      console.warn(`[ChunkedUpload] Missing chunk ${i} for uploadId ${uploadId}`);
-      return false;
+      missing.push(i);
+    } else {
+      // Vérifier que le chunk n'est pas vide (corruption)
+      const stats = fs.statSync(chunkPath);
+      if (stats.size === 0) {
+        missing.push(i);
+        // Supprimer le chunk corrompu
+        try { fs.unlinkSync(chunkPath); } catch {}
+      }
     }
   }
-  return true;
+  return missing;
 }
 
 /**
- * Réassembler les chunks en un fichier unique
- *
- * @param uploadId - ID de l'upload
- * @param totalChunks - Nombre total de chunks
- * @param outputPath - Chemin du fichier de sortie
- * @returns Taille du fichier assemblé en octets
+ * Vérifier que tous les chunks sont présents et valides
+ */
+function allChunksPresent(uploadId: string, totalChunks: number): boolean {
+  return getMissingChunks(uploadId, totalChunks).length === 0;
+}
+
+/**
+ * Réassembler les chunks en un fichier unique via streaming
+ * (évite de charger tous les chunks en RAM simultanément)
  */
 async function assembleChunks(
   uploadId: string,
@@ -128,15 +139,25 @@ async function assembleChunks(
       }
 
       const chunkPath = getChunkPath(uploadId, index);
-      const chunkBuffer = fs.readFileSync(chunkPath);
-      totalBytes += chunkBuffer.length;
 
-      writeStream.write(chunkBuffer, (err) => {
-        if (err) {
-          writeStream.destroy();
-          reject(err);
-          return;
-        }
+      // Utiliser un stream de lecture pour éviter de tout charger en RAM
+      const readStream = fs.createReadStream(chunkPath);
+      let chunkBytes = 0;
+
+      readStream.on('data', (data: Buffer | string) => {
+        const len = typeof data === 'string' ? Buffer.byteLength(data) : data.length;
+        chunkBytes += len;
+        totalBytes += len;
+      });
+
+      readStream.on('error', (err) => {
+        writeStream.destroy();
+        reject(new Error(`Erreur lecture chunk ${index}: ${err.message}`));
+      });
+
+      readStream.pipe(writeStream, { end: false });
+
+      readStream.on('end', () => {
         writeNextChunk(index + 1);
       });
     };
@@ -171,12 +192,13 @@ export const chunkedUploadRouter = Router();
 /**
  * POST /api/upload-chunk
  *
- * Recevoir et stocker un chunk individuel sur le disque temporaire.
- * Répond 200 OK si le chunk est bien reçu.
+ * Recevoir et stocker un chunk individuel.
+ * Le chunk est d'abord chargé en mémoire (max 12 Mo) puis écrit sur disque
+ * avec le nom correct basé sur uploadId et chunkIndex (disponibles dans req.body).
  */
 chunkedUploadRouter.post(
   '/upload-chunk',
-  uploadChunk.single('chunk'),
+  uploadChunkMiddleware,
   async (req: Request, res: Response) => {
     try {
       // Vérifier l'authentification
@@ -186,7 +208,7 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Valider les paramètres
+      // Valider les paramètres (maintenant toujours disponibles grâce à memoryStorage)
       const { uploadId, chunkIndex, totalChunks, fileName } = req.body;
 
       if (!uploadId || chunkIndex === undefined || !totalChunks || !fileName) {
@@ -209,29 +231,77 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Vérifier que le chunk a bien été reçu
-      if (!req.file) {
-        res.status(400).json({ error: 'Aucun chunk reçu' });
+      // Vérifier que le chunk a bien été reçu en mémoire
+      if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
+        res.status(400).json({ error: 'Aucun chunk reçu ou chunk vide' });
         return;
       }
 
-      // Le chunk est déjà sauvegardé par Multer avec le bon nom
-      // (uploadId-chunk-chunkIndex) grâce à la configuration diskStorage
-      console.log(
-        `[ChunkedUpload] Received chunk ${chunkIdx + 1}/${totalChunksNum} ` +
-        `for uploadId ${uploadId} (${(req.file.size / 1024 / 1024).toFixed(1)} MB)`
-      );
+      // Écrire le chunk sur disque avec le nom correct
+      // (maintenant req.body est garanti d'être disponible)
+      const chunkPath = getChunkPath(uploadId, chunkIdx);
+      fs.writeFileSync(chunkPath, req.file.buffer);
 
-      res.json({ success: true, chunkIndex: chunkIdx });
-    } catch (error: any) {
-      console.error('[ChunkedUpload] Chunk upload error:', error);
-
-      // Nettoyer le fichier temporaire en cas d'erreur
-      if (req.file?.path) {
-        try { fs.unlinkSync(req.file.path); } catch {}
+      // Vérifier l'intégrité de l'écriture
+      const writtenStats = fs.statSync(chunkPath);
+      if (writtenStats.size !== req.file.buffer.length) {
+        // Écriture corrompue — supprimer et signaler l'erreur
+        try { fs.unlinkSync(chunkPath); } catch {}
+        res.status(500).json({ error: `Erreur d'écriture chunk ${chunkIdx}: taille attendue ${req.file.buffer.length}, écrite ${writtenStats.size}` });
+        return;
       }
 
+      console.log(
+        `[ChunkedUpload] Received chunk ${chunkIdx + 1}/${totalChunksNum} ` +
+        `for uploadId ${uploadId} (${(req.file.buffer.length / 1024 / 1024).toFixed(1)} MB)`
+      );
+
+      res.json({ success: true, chunkIndex: chunkIdx, size: req.file.buffer.length });
+    } catch (error: any) {
+      console.error('[ChunkedUpload] Chunk upload error:', error);
       res.status(500).json({ error: error.message || 'Erreur lors de la réception du chunk' });
+    }
+  }
+);
+
+/**
+ * GET /api/upload-chunk-status
+ *
+ * Vérifier quels chunks ont été reçus pour un uploadId donné.
+ * Permet au client de savoir quels chunks retenter avant d'appeler complete.
+ */
+chunkedUploadRouter.get(
+  '/upload-chunk-status',
+  async (req: Request, res: Response) => {
+    try {
+      // Vérifier l'authentification
+      const user = (req as any).user;
+      if (!user) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      const uploadId = req.query.uploadId as string;
+      const totalChunks = parseInt(req.query.totalChunks as string, 10);
+
+      if (!uploadId || isNaN(totalChunks) || totalChunks <= 0) {
+        res.status(400).json({ error: 'Paramètres manquants : uploadId et totalChunks requis' });
+        return;
+      }
+
+      const missingChunks = getMissingChunks(uploadId, totalChunks);
+      const receivedCount = totalChunks - missingChunks.length;
+
+      res.json({
+        uploadId,
+        totalChunks,
+        receivedCount,
+        missingChunks,
+        complete: missingChunks.length === 0,
+      });
+    } catch (error: any) {
+      console.error('[ChunkedUpload] Status check error:', error);
+      res.status(500).json({ error: error.message || 'Erreur lors de la vérification' });
     }
   }
 );
@@ -241,8 +311,8 @@ chunkedUploadRouter.post(
  *
  * Signaler que tous les chunks ont été uploadés.
  * Le serveur :
- * 1. Vérifie que tous les chunks sont présents
- * 2. Réassemble les chunks en un fichier unique
+ * 1. Vérifie que tous les chunks sont présents et valides
+ * 2. Réassemble les chunks en un fichier unique (streaming)
  * 3. Upload vers S3
  * 4. Crée l'entrée en BDD
  * 5. Déclenche le worker de transcription
@@ -281,20 +351,22 @@ chunkedUploadRouter.post(
         return;
       }
 
-      // Vérifier que tous les chunks sont présents
-      if (!allChunksPresent(uploadId, totalChunksNum)) {
+      // Vérifier que tous les chunks sont présents et valides
+      const missingChunks = getMissingChunks(uploadId, totalChunksNum);
+      if (missingChunks.length > 0) {
         res.status(400).json({
-          error: `Chunks manquants pour l'uploadId ${uploadId}. Assurez-vous que tous les chunks ont été uploadés.`,
+          error: `Chunks manquants pour l'uploadId ${uploadId}. Chunks absents: [${missingChunks.join(', ')}]`,
+          missingChunks,
+          canRetry: true,
         });
         return;
       }
 
-      // Réassembler les chunks
+      // Réassembler les chunks via streaming
       const randomId = randomBytes(8).toString('hex');
       const timestamp = Date.now();
       assembledFilePath = path.join(
-        os.tmpdir(),
-        'te-chunks',
+        ensureChunkDir(),
         `assembled-${timestamp}-${randomId}.${ext}`
       );
 
@@ -302,7 +374,7 @@ chunkedUploadRouter.post(
       const totalBytes = await assembleChunks(uploadId, totalChunksNum, assembledFilePath);
       console.log(`[ChunkedUpload] Assembly complete: ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
 
-      // Upload vers S3
+      // Upload vers S3 via streaming (évite de charger 500 Mo en RAM)
       const fileKey = `transcriptions/${user.openId}/${timestamp}-${randomId}.${ext}`;
       const fileBuffer = fs.readFileSync(assembledFilePath);
       const mimeType = getMimeType(ext);

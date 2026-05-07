@@ -45,8 +45,10 @@ async function startServer() {
 
   // Middleware auth pour les routes d'upload (standard + chunked)
   app.use("/api", async (req, res, next) => {
-    const uploadPaths = ['/upload', '/upload-chunk', '/upload-chunk-complete'];
-    const isUploadRoute = uploadPaths.includes(req.path) && req.method === 'POST';
+    const uploadPostPaths = ['/upload', '/upload-chunk', '/upload-chunk-complete'];
+    const uploadGetPaths = ['/upload-chunk-status'];
+    const isUploadRoute = (uploadPostPaths.includes(req.path) && req.method === 'POST') ||
+      (uploadGetPaths.includes(req.path) && req.method === 'GET');
     if (isUploadRoute) {
       try {
         const user = await sdk.authenticateRequest(req);

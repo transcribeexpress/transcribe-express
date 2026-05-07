@@ -1421,3 +1421,19 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Routeur V6 simplifié : mobile > 300 Mo → upload chunked direct (10 Mo RAM max) → extraction serveur
 - [x] Suppression du code mort (extracting_native, audiocontext strategy) dans Upload.tsx
 - [x] Tests mis à jour (337/337 passent), 0 erreur TypeScript
+
+## 🐛 Correction crash upload chunked V2 — "Chunks manquants" à 88% (7 mai 2026)
+
+**Diagnostic :** Multer diskStorage appelle filename() AVANT que req.body soit parsé → chunks écrits sous "unknown-chunk-0" → serveur ne les retrouve pas
+
+- [x] Fix serveur : memoryStorage remplace diskStorage (req.body garanti disponible)
+- [x] Fix serveur : écriture manuelle du chunk sur disque APRÈS validation des champs body
+- [x] Fix serveur : vérification d'intégrité (taille écrite == taille reçue)
+- [x] Fix serveur : assemblage par streaming (readStream.pipe) au lieu de readFileSync
+- [x] Fix serveur : endpoint GET /api/upload-chunk-status pour vérifier les chunks reçus
+- [x] Fix serveur : réponse 400 avec liste des chunks manquants (canRetry: true)
+- [x] Fix client : vérification serveur AVANT complétion (checkChunkStatus)
+- [x] Fix client : retry automatique des chunks manquants détectés par le serveur (3 cycles max)
+- [x] Fix client : timeout 60s par chunk avec AbortController
+- [x] Fix middleware : route GET /upload-chunk-status ajoutée au middleware auth
+- [x] 337/337 tests passent, 0 erreur TypeScript
