@@ -48,7 +48,7 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { S3Client } from '@aws-sdk/client-s3';
 import { storagePut, storageGet, storageDelete } from './storage';
 import { createTranscription, createAssemblyJob, getAssemblyJobById, updateAssemblyJobStatus } from './db';
-import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
+// triggerTranscriptionWorker n'est plus utilisé ici (SSE-driven)
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
 
 // ─── Configuration S3 ────────────────────────────────────────────────────────
@@ -280,8 +280,8 @@ async function processAssemblyJob(
     });
     const transcriptionId = (result as any).insertId || (result as any)[0]?.insertId;
 
-    // Étape 4 : Déclencher le worker
-    await triggerTranscriptionWorker(transcriptionId);
+    // Étape 4 : Le worker n'est plus lancé ici (fire-and-forget tué par Cloud Run).
+    // La transcription sera déclenchée par le client via SSE (/api/transcribe-stream/:id).
 
     // Étape 5 : Marquer le job comme terminé
     await updateAssemblyJobStatus(jobId, 'completed', { transcriptionId });

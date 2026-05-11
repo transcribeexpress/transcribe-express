@@ -1,0 +1,91 @@
+{
+  "query": "SELECT id, fileName, status, processingStep, processingProgress, errorMessage, createdAt FROM transcriptions ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34dHiYBFrZrzB5t.e635ab5adb48 --database oRqyQWHwreNEuW2rCuPNoU --execute SELECT id, fileName, status, processingStep, processingProgress, errorMessage, createdAt FROM transcriptions ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1860002",
+      "fileName": "Test Transcribe express Genesis.m4a",
+      "status": "cancelled",
+      "processingStep": "cancelled",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-11 06:11:00"
+    },
+    {
+      "id": "1860001",
+      "fileName": "ScreenRecording_05-06-2026 08-10-51_1.m4a",
+      "status": "cancelled",
+      "processingStep": "cancelled",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-11 06:00:14"
+    },
+    {
+      "id": "1830023",
+      "fileName": "test-audio.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:34"
+    },
+    {
+      "id": "1830022",
+      "fileName": "test-audio.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:34"
+    },
+    {
+      "id": "1830020",
+      "fileName": "test-audio-delete.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:33"
+    },
+    {
+      "id": "1830021",
+      "fileName": "test-audio.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:33"
+    },
+    {
+      "id": "1830019",
+      "fileName": "test-audio-delete.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:32"
+    },
+    {
+      "id": "1830017",
+      "fileName": "user1-file2.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:31"
+    },
+    {
+      "id": "1830016",
+      "fileName": "user1-file1.mp3",
+      "status": "completed",
+      "processingStep": "NULL",
+      "processingProgress": "0",
+      "errorMessage": "NULL",
+      "createdAt": "2026-05-07 10:15:31"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tfileName\tstatus\tprocessingStep\tprocessingProgress\terrorMessage\tcreatedAt\n1860002\tTest Transcribe express Genesis.m4a\tcancelled\tcancelled\t0\tNULL\t2026-05-11 06:11:00\n1860001\tScreenRecording_05-06-2026 08-10-51_1.m4a\tcancelled\tcancelled\t0\tNULL\t2026-05-11 06:00:14\n1830023\ttest-audio.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:34\n1830022\ttest-audio.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:34\n1830020\ttest-audio-delete.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:33\n1830021\ttest-audio.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:33\n1830019\ttest-audio-delete.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:32\n1830017\tuser1-file2.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:31\n1830016\tuser1-file1.mp3\tcompleted\tNULL\t0\tNULL\t2026-05-07 10:15:31\n",
+  "stderr": "",
+  "execution_time_ms": 1306
+}

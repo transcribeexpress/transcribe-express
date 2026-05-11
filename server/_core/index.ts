@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { uploadRouter } from "../uploadRoute";
 import { chunkedUploadRouter } from "../chunkedUploadRoute";
+import { transcribeStreamRouter } from "../transcribeStreamRoute";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -49,9 +50,11 @@ async function startServer() {
     const uploadGetPaths = ['/upload-chunk-status'];
     // La route de polling utilise un path dynamique /upload-chunk-job-status/:jobId
     const isJobStatusRoute = req.method === 'GET' && req.path.startsWith('/upload-chunk-job-status/');
+    // La route SSE de transcription utilise un path dynamique /transcribe-stream/:id
+    const isTranscribeStreamRoute = req.method === 'GET' && req.path.startsWith('/transcribe-stream/');
     const isUploadRoute = (uploadPostPaths.includes(req.path) && req.method === 'POST') ||
       (uploadGetPaths.includes(req.path) && req.method === 'GET');
-    if (isUploadRoute || isJobStatusRoute) {
+    if (isUploadRoute || isJobStatusRoute || isTranscribeStreamRoute) {
       try {
         const user = await sdk.authenticateRequest(req);
         (req as any).user = user;
@@ -64,6 +67,7 @@ async function startServer() {
   });
   app.use("/api", uploadRouter);
   app.use("/api", chunkedUploadRouter);
+  app.use("/api", transcribeStreamRouter);
 
   // tRPC API
   app.use(

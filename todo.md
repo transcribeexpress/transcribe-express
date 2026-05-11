@@ -1471,3 +1471,22 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Mettre à jour chunkedUploader.ts : startAssemblyJob + pollJobStatus toutes les 3s (timeout 15 min)
 - [x] Middleware auth étendu pour couvrir /upload-chunk-job-status/:jobId
 - [x] 337/337 tests passent, 0 erreur TypeScript
+
+## 🐛 Bug transcription IA ne fonctionne plus (desktop) + timeout assemblage 15 min (11 mai 2026)
+
+**Symptômes :**
+1. Transcription IA ne s'effectue plus du tout sur desktop (fichiers normaux)
+2. Assemblage chunked timeout après 15 min sur iPhone 470 Mo (le polling expire)
+
+- [x] Diagnostiquer pourquoi la transcription IA ne se lance plus (worker/audioProcessor/Groq)
+  - **Cause racine :** Le worker fire-and-forget est tué par l'hébergeur serverless (Cloud Run)
+    quand il n'y a plus de requête HTTP active. Le processus orphelin est killé immédiatement.
+- [x] Corriger le bug de transcription IA
+  - **Solution :** Créer endpoint SSE `/api/transcribe-stream/:id` qui maintient une connexion HTTP
+    active pendant tout le traitement. Le client ouvre cette connexion depuis Progress.tsx.
+  - Supprimé tous les appels `triggerTranscriptionWorker()` (routers.ts, uploadRoute.ts, chunkedUploadRoute.ts)
+  - Keep-alive SSE toutes les 15s pour éviter timeout proxy
+- [x] Analyser le timeout d'assemblage 15 min
+  - Le timeout de 15 min côté client est un problème séparé lié à la lenteur de l'assemblage S3
+  - Le SSE résout aussi ce problème car la transcription est déclenchée par le client après assemblage
+- [x] 337/337 tests passent, 0 erreur TypeScript

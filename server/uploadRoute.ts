@@ -21,7 +21,8 @@ import * as fs from 'fs';
 import { randomBytes } from 'crypto';
 import { storagePut } from './storage';
 import { createTranscription } from './db';
-import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
+// Note: triggerTranscriptionWorker n'est plus utilisé ici.
+// La transcription est déclenchée par le client via SSE.
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
 
 // Configuration Multer : stockage temporaire sur disque
@@ -108,8 +109,8 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
 
     const transcriptionId = (result as any).insertId || (result as any)[0]?.insertId;
 
-    // 6. Déclencher le worker asynchrone
-    await triggerTranscriptionWorker(transcriptionId);
+    // 6. Le worker n'est plus lancé ici (fire-and-forget tué par Cloud Run).
+    // La transcription sera déclenchée par le client via SSE (/api/transcribe-stream/:id).
 
     // 7. Nettoyer le fichier temporaire
     try {
