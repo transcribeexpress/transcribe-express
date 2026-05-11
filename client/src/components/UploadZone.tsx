@@ -1,8 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, X, AlertCircle, Film, Music } from 'lucide-react';
+import { Upload, X, AlertCircle, Film, Music, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isVideoFile, SUPPORTED_EXTENSIONS } from '@/utils/audioValidation';
+
+const MAX_FILE_SIZE_MB = 300;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 /**
  * Valider un fichier par son extension (pas par MIME type)
@@ -44,9 +47,16 @@ export function UploadZone({
 
     const file = allFiles[0];
 
-    // Validation manuelle par extension uniquement (plus de limite de taille)
+    // Validation par extension
     if (!isAcceptedFile(file)) {
-      setError('Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM');
+      setError('FORMAT_UNSUPPORTED');
+      return;
+    }
+
+    // Limite de taille : 300 Mo
+    const MAX_SIZE_BYTES = 300 * 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      setError('FILE_TOO_LARGE');
       return;
     }
 
@@ -122,7 +132,7 @@ export function UploadZone({
                 <Film className="w-3.5 h-3.5" />
                 <span>Vidéo : MP4, MOV, AVI, MKV, WEBM</span>
               </div>
-              <p className="text-gray-600 mt-1">Aucune limite de taille • Upload direct vers le cloud</p>
+              <p className="text-gray-600 mt-1">Limite : 300 Mo • Upload direct vers le cloud</p>
             </div>
           </div>
         )}
@@ -163,19 +173,66 @@ export function UploadZone({
         )}
 
         {error && (
-          <div className="flex flex-col items-center text-center space-y-4">
+          <div className="flex flex-col items-center text-center space-y-4 max-w-sm">
             <div className="w-16 h-16 rounded-full flex items-center justify-center bg-red-500/20 border border-red-500/30">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
-            
-            <div className="space-y-2">
-              <p className="text-lg font-medium text-red-400">
-                Erreur de validation
-              </p>
-              <p className="text-sm text-gray-400 max-w-md">
-                {error}
-              </p>
-            </div>
+
+            {error === 'FILE_TOO_LARGE' ? (
+              <div className="space-y-3">
+                <p className="text-lg font-medium text-red-400">
+                  Fichier trop volumineux
+                </p>
+                <p className="text-sm text-gray-400">
+                  La taille maximale acceptée est de <span className="text-white font-medium">300 Mo</span>.
+                  Compressez votre fichier avant de l'uploader.
+                </p>
+                <div className="flex flex-col gap-2 mt-2">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Outils de compression gratuits</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <a
+                      href="https://www.handbrake.fr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 hover:text-white transition-colors border border-gray-700"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      HandBrake (desktop)
+                    </a>
+                    <a
+                      href="https://clideo.com/fr/compress-video"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 hover:text-white transition-colors border border-gray-700"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Clideo (en ligne)
+                    </a>
+                    <a
+                      href="https://www.freeconvert.com/fr/video-compressor"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 hover:text-white transition-colors border border-gray-700"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      FreeConvert (en ligne)
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-lg font-medium text-red-400">
+                  Format non supporté
+                </p>
+                <p className="text-sm text-gray-400">
+                  Formats acceptés : MP3, WAV, M4A, OGG, FLAC, MP4, MOV, AVI, MKV, WEBM
+                </p>
+              </div>
+            )}
 
             <button
               onClick={(e) => {
@@ -185,7 +242,7 @@ export function UploadZone({
               className="text-sm text-[#BE34D5] hover:text-[#BE34D5]/80 transition-colors"
               type="button"
             >
-              Réessayer
+              Choisir un autre fichier
             </button>
           </div>
         )}

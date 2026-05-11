@@ -36,6 +36,20 @@
       "when": 1775021546165,
       "tag": "0004_calm_orphan",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1778148439710,
+      "tag": "0005_fresh_zaran",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1778502322737,
+      "tag": "0006_greedy_nuke",
+      "breakpoints": true
     }
   ]
 }

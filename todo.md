@@ -1401,3 +1401,17 @@ La progression serveur s'arrête à 15% avec un temps de traitement très long.
 - [x] Touches de couleur cyan/violet dans les modals pour lisibilité
 - [x] Données structurées JSON-LD (FAQPage) injectées dans le rendu React
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🔄 Restauration + Limite 300 Mo (11 mai 2026)
+
+**Décision :** Restauration vers `0f37589` (version stable avant modifications mobile).
+Le support mobile > 300 Mo nécessite une architecture asynchrone (job queue + notification email)
+qui sera implémentée comme fonctionnalité Pro future.
+
+- [x] Restaurer `0f37589` via webdev_rollback_checkpoint
+- [x] Ajouter limite 300 Mo dans UploadZone.tsx (validation côté client, avant onFileSelect)
+- [x] Message d'erreur élégant dans UploadZone.tsx avec liens HandBrake, Clideo, FreeConvert
+- [x] Mettre à jour le texte de la zone d'upload ("Limite : 300 Mo • Upload direct vers le cloud")
+- [x] Supprimer la mention "Aucune limite de taille" dans Upload.tsx et UploadZone.tsx
+- [x] Double validation dans Upload.tsx (format + taille) avec toast d'erreur
+- [x] 301/301 tests passent, 0 erreur TypeScript

@@ -90,11 +90,23 @@ export default function Upload() {
     setCompressionInfo(null);
     setUsedFallback(false);
     
-    // Valider uniquement le format (plus de limite de taille)
+    // Valider le format
     if (!validateFormat(file)) {
       const errorMsg = 'Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, WEBM, MP4, MOV, AVI, MKV';
       setValidationError(errorMsg);
       toast.error("Format non supporté", {
+        description: errorMsg,
+      });
+      setSelectedFile(null);
+      return;
+    }
+
+    // Limite de taille : 300 Mo
+    const MAX_SIZE_BYTES = 300 * 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      const errorMsg = `Fichier trop volumineux (${formatSize(file.size)}). La limite est de 300 Mo.`;
+      setValidationError('FILE_TOO_LARGE');
+      toast.error("Fichier trop volumineux", {
         description: errorMsg,
       });
       setSelectedFile(null);
@@ -540,7 +552,7 @@ export default function Upload() {
                 <p className="text-xs text-muted-foreground/70">
                   <span className="text-[#BE34D5] font-medium">Optimisation intelligente</span> — Les fichiers vidéo sont automatiquement 
                   convertis en audio dans votre navigateur avant l'upload, réduisant le temps de transfert jusqu'à 100x.
-                  Aucune limite de taille.
+                  <span className="text-amber-400/80"> Limite : 300 Mo par fichier.</span>
                 </p>
               </div>
             </div>
