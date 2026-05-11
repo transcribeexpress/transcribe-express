@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited } from "./db";
-import { cancelTranscriptionWorker } from "./workers/transcriptionWorker";
+import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
@@ -85,10 +85,8 @@ export const appRouter = router({
 
         const transcriptionId = (result as any).insertId || (result as any)[0]?.insertId;
 
-        // Note: Le worker n'est plus lancé ici en fire-and-forget.
-        // La transcription sera déclenchée par le client via SSE (/api/transcribe-stream/:id)
-        // Cela garantit qu'une requête HTTP reste active pendant le traitement,
-        // empêchant l'hébergeur serverless de tuer le processus.
+        // Déclencher le worker asynchrone
+        await triggerTranscriptionWorker(transcriptionId);
 
         return {
           id: transcriptionId,

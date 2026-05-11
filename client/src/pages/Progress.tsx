@@ -30,7 +30,7 @@ import {
   Ban,
   Loader2 
 } from "lucide-react";
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 
 
@@ -105,10 +105,8 @@ export default function ProgressPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const transcriptionId = params?.id ? parseInt(params.id) : 0;
-  const sseConnectedRef = useRef(false);
-  const [sseProgress, setSseProgress] = useState<{ step: string; progress: number; message: string } | null>(null);
 
-  // Polling toutes les 2 secondes (fallback + vérification statut)
+  // Polling toutes les 2 secondes
   const { data: transcription, isLoading } = trpc.transcriptions.getById.useQuery(
     { id: transcriptionId },
     {
@@ -117,55 +115,6 @@ export default function ProgressPage() {
       refetchIntervalInBackground: true,
     }
   );
-
-  // SSE : Ouvrir une connexion streaming pour déclencher et suivre la transcription
-  // Cela maintient une requête HTTP active sur le serveur, empêchant Cloud Run de tuer le processus
-  useEffect(() => {
-    if (!transcriptionId || !user) return;
-    if (sseConnectedRef.current) return;
-    // Ne connecter que si la transcription est en pending ou processing
-    const status = transcription?.status;
-    if (status && status !== 'pending' && status !== 'processing') return;
-
-    sseConnectedRef.current = true;
-    const eventSource = new EventSource(`/api/transcribe-stream/${transcriptionId}`, {
-      withCredentials: true,
-    });
-
-    eventSource.addEventListener('progress', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setSseProgress(data);
-      } catch {}
-    });
-
-    eventSource.addEventListener('completed', () => {
-      setSseProgress({ step: 'completed', progress: 100, message: 'Transcription terminée !' });
-      eventSource.close();
-    });
-
-    eventSource.addEventListener('error', (event) => {
-      // SSE error event from server
-      try {
-        const data = JSON.parse((event as any).data || '{}');
-        if (data.message) {
-          toast.error(`Erreur: ${data.message}`);
-        }
-      } catch {}
-      eventSource.close();
-    });
-
-    eventSource.onerror = () => {
-      // Connection error - will rely on polling fallback
-      eventSource.close();
-      sseConnectedRef.current = false;
-    };
-
-    return () => {
-      eventSource.close();
-      sseConnectedRef.current = false;
-    };
-  }, [transcriptionId, user, transcription?.status]);
 
   const cancelMutation = trpc.transcriptions.cancel.useMutation({
     onSuccess: () => {

@@ -9,8 +9,6 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { uploadRouter } from "../uploadRoute";
-import { chunkedUploadRouter } from "../chunkedUploadRoute";
-import { transcribeStreamRouter } from "../transcribeStreamRoute";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -44,17 +42,10 @@ async function startServer() {
   // Clerk sync routes for Clerk → Manus OAuth session bridging
   registerClerkSyncRoutes(app);
 
-  // Middleware auth pour les routes d'upload (standard + chunked)
+  // Route d'upload multipart avec authentification
+  // Middleware auth pour injecter req.user avant la route upload
   app.use("/api", async (req, res, next) => {
-    const uploadPostPaths = ['/upload', '/upload-chunk', '/upload-chunk-complete'];
-    const uploadGetPaths = ['/upload-chunk-status'];
-    // La route de polling utilise un path dynamique /upload-chunk-job-status/:jobId
-    const isJobStatusRoute = req.method === 'GET' && req.path.startsWith('/upload-chunk-job-status/');
-    // La route SSE de transcription utilise un path dynamique /transcribe-stream/:id
-    const isTranscribeStreamRoute = req.method === 'GET' && req.path.startsWith('/transcribe-stream/');
-    const isUploadRoute = (uploadPostPaths.includes(req.path) && req.method === 'POST') ||
-      (uploadGetPaths.includes(req.path) && req.method === 'GET');
-    if (isUploadRoute || isJobStatusRoute || isTranscribeStreamRoute) {
+    if (req.path === '/upload' && req.method === 'POST') {
       try {
         const user = await sdk.authenticateRequest(req);
         (req as any).user = user;
@@ -66,8 +57,6 @@ async function startServer() {
     next();
   });
   app.use("/api", uploadRouter);
-  app.use("/api", chunkedUploadRouter);
-  app.use("/api", transcribeStreamRouter);
 
   // tRPC API
   app.use(

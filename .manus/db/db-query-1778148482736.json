@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE IF NOT EXISTS `assemblyJobs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `jobId` varchar(64) NOT NULL,\n  `userId` varchar(255) NOT NULL,\n  `uploadId` varchar(128) NOT NULL,\n  `fileName` varchar(255) NOT NULL,\n  `totalChunks` int NOT NULL,\n  `status` enum('pending','assembling','uploading','completed','error') NOT NULL DEFAULT 'pending',\n  `transcriptionId` int,\n  `errorMessage` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `assemblyJobs_id` PRIMARY KEY(`id`),\n  CONSTRAINT `assemblyJobs_jobId_unique` UNIQUE(`jobId`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 34dHiYBFrZrzB5t.e635ab5adb48 --database oRqyQWHwreNEuW2rCuPNoU --execute CREATE TABLE IF NOT EXISTS `assemblyJobs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `jobId` varchar(64) NOT NULL,\n  `userId` varchar(255) NOT NULL,\n  `uploadId` varchar(128) NOT NULL,\n  `fileName` varchar(255) NOT NULL,\n  `totalChunks` int NOT NULL,\n  `status` enum('pending','assembling','uploading','completed','error') NOT NULL DEFAULT 'pending',\n  `transcriptionId` int,\n  `errorMessage` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `assemblyJobs_id` PRIMARY KEY(`id`),\n  CONSTRAINT `assemblyJobs_jobId_unique` UNIQUE(`jobId`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 665
-}

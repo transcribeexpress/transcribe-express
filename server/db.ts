@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, transcriptions, InsertTranscription, assemblyJobs, InsertAssemblyJob } from "../drizzle/schema";
+import { InsertUser, users, transcriptions, InsertTranscription } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -245,59 +245,4 @@ export async function deleteTranscription(id: number) {
     .where(eq(transcriptions.id, id));
   
   return { success: true };
-}
-
-// ─── Helpers assemblyJobs ─────────────────────────────────────────────────────
-
-/**
- * Créer un job d'assemblage asynchrone
- */
-export async function createAssemblyJob(job: InsertAssemblyJob) {
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
-  }
-  const result = await db.insert(assemblyJobs).values(job);
-  return result;
-}
-
-/**
- * Récupérer un job d'assemblage par son jobId
- */
-export async function getAssemblyJobById(jobId: string) {
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
-  }
-  const result = await db
-    .select()
-    .from(assemblyJobs)
-    .where(eq(assemblyJobs.jobId, jobId))
-    .limit(1);
-  return result.length > 0 ? result[0] : null;
-}
-
-/**
- * Mettre à jour le statut d'un job d'assemblage
- */
-export async function updateAssemblyJobStatus(
-  jobId: string,
-  status: 'pending' | 'assembling' | 'uploading' | 'completed' | 'error',
-  updates?: {
-    transcriptionId?: number;
-    errorMessage?: string;
-  }
-) {
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
-  }
-  const updateData: Partial<InsertAssemblyJob> = { status };
-  if (updates?.transcriptionId !== undefined) updateData.transcriptionId = updates.transcriptionId;
-  if (updates?.errorMessage !== undefined) updateData.errorMessage = updates.errorMessage;
-
-  await db
-    .update(assemblyJobs)
-    .set(updateData)
-    .where(eq(assemblyJobs.jobId, jobId));
 }

@@ -1,26 +1,25 @@
 /**
  * Page Upload - Upload de fichiers audio/vidéo
- *
- * V6 : Architecture hybride corrigée — zéro extraction client sur mobile > 300 Mo
- *
- * Routeur de décision automatique :
- *
- * ┌─ Fichier audio (MP3, WAV, M4A, OGG, FLAC, WEBM) ───────────────────────────────┐
- * │  → Upload direct S3 (tous appareils)                                       │
- * └────────────────────────────────────────────────────────────────────────────┘
- *
- * ┌─ Fichier vidéo (MP4, MOV, AVI, MKV, WebM) ───────────────────────────┐
- * │                                                                             │
- * │  Desktop ou mobile ≤ 300 Mo                                                │
- * │  → FFmpeg WASM (stream copy) → upload audio léger (~5-30 Mo)               │
- * │                                                                             │
- * │  Mobile + vidéo > 300 Mo (TOUS formats)                                    │
- * │  → Upload chunked (10 Mo/chunk, 10 Mo RAM max) → extraction serveur        │
- * │    Aucune extraction client — élimine 100% des crashes OOM mobile           │
- * │                                                                             │
- * │  Fallback universel (si WASM échoue)                                       │
- * │  → Upload vidéo brute → extraction ffmpeg serveur                          │
- * └────────────────────────────────────────────────────────────────────────────┘
+ * 
+ * V4 : Architecture hybride avec extraction audio côté client
+ * 
+ * Pipeline vidéo (MP4, MOV, AVI, MKV, WebM) :
+ * 1. Extraction audio côté client via FFmpeg WASM (stream copy, quasi-instantané)
+ * 2. Upload de l'audio léger (~5-8 Mo au lieu de 500+ Mo) vers S3
+ * 3. Transcription serveur (pas besoin d'extraction FFmpeg côté serveur)
+ * 
+ * Pipeline audio (MP3, WAV, M4A, OGG, FLAC) :
+ * 1. Upload direct vers S3
+ * 2. Transcription serveur
+ * 
+ * Fallback :
+ * Si FFmpeg WASM échoue → upload vidéo brute + extraction serveur (pipeline V3)
+ * 
+ * Avantages :
+ * - Vidéo 550 Mo → audio ~5 Mo = upload 100x plus rapide
+ * - Coûts S3 divisés par 100
+ * - Pas de timeout serveur pour les gros fichiers
+ * - 100% des utilisateurs couverts (fallback automatique)
  */
 
 import { useState, useCallback, useRef } from "react";
@@ -30,16 +29,12 @@ import { useClerkSync } from "@/hooks/useClerkSync";
 import { UserMenu } from "@/components/UserMenu";
 import { UploadZone } from "@/components/UploadZone";
 import { UploadProgress } from "@/components/UploadProgress";
+import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
 import { validateFormat, isVideoFile } from "@/utils/audioValidation";
 import { needsAudioExtraction, extractAudioFromVideo, isFFmpegSupported } from "@/utils/audioExtractor";
 import type { ExtractionProgressCallback } from "@/utils/audioExtractor";
-import {
-  shouldUseChunkedUpload,
-  isMobileDevice,
-} from "@/utils/audioContextExtractor";
-import { uploadFileInChunks } from "@/utils/chunkedUploader";
-import { ArrowLeft, Wand2, Zap, AlertTriangle, Smartphone } from "lucide-react";
+import { ArrowLeft, Wand2, Zap, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,16 +45,12 @@ const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQ
 const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/wordmark-transparent_d2755219.webp";
 
 /** Étapes du pipeline côté client */
-type ClientPipelineStage =
+type ClientPipelineStage = 
   | 'idle'
-  | 'extracting'           // Extraction audio FFmpeg WASM (desktop ou mobile ≤ 300 Mo)
-  | 'uploading'            // Upload standard vers S3
-  | 'uploading_chunked'    // Upload chunked (mobile > 300 Mo)
-  | 'confirming'           // Confirmation au serveur
-  | 'done';                // Redirection vers /progress/:id
-
-/** Stratégie mobile utilisée */
-type MobileStrategy = 'wasm' | 'chunked' | null;
+  | 'extracting'      // Extraction audio WASM en cours
+  | 'uploading'        // Upload vers S3
+  | 'confirming'       // Confirmation au serveur
+  | 'done';            // Redirection vers /progress/:id
 
 interface ExtractionState {
   stage: string;
@@ -77,7 +68,7 @@ function formatSize(bytes: number): string {
 
 export default function Upload() {
   const { isSignedIn, isLoading } = useAuth();
-  const { isSyncing, error: syncError } = useClerkSync();
+  const { isSessionReady, isSyncing, error: syncError } = useClerkSync();
   const [, setLocation] = useLocation();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -87,11 +78,9 @@ export default function Upload() {
   const [extractionState, setExtractionState] = useState<ExtractionState | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [usedFallback, setUsedFallback] = useState(false);
-  const [mobileStrategy, setMobileStrategy] = useState<MobileStrategy>(null);
   const [compressionInfo, setCompressionInfo] = useState<{ original: number; extracted: number; ratio: number } | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const cancelledRef = useRef(false);
-
+  
   // Mutations tRPC pour l'upload direct S3
   const getUploadUrl = trpc.transcriptions.getUploadUrl.useMutation();
   const confirmUpload = trpc.transcriptions.confirmUpload.useMutation();
@@ -100,16 +89,18 @@ export default function Upload() {
     setValidationError(null);
     setCompressionInfo(null);
     setUsedFallback(false);
-    setMobileStrategy(null);
-
+    
+    // Valider uniquement le format (plus de limite de taille)
     if (!validateFormat(file)) {
       const errorMsg = 'Format non supporté. Formats acceptés : MP3, WAV, M4A, OGG, FLAC, WEBM, MP4, MOV, AVI, MKV';
       setValidationError(errorMsg);
-      toast.error("Format non supporté", { description: errorMsg });
+      toast.error("Format non supporté", {
+        description: errorMsg,
+      });
       setSelectedFile(null);
       return;
     }
-
+    
     setSelectedFile(file);
   }, []);
 
@@ -117,11 +108,13 @@ export default function Upload() {
    * Upload un fichier vers S3 via URL pré-signée avec progression XHR
    */
   const uploadToS3 = useCallback(async (file: File): Promise<{ fileKey: string; fileUrl: string }> => {
+    // Obtenir l'URL pré-signée
     const { uploadUrl, fileKey, fileUrl } = await getUploadUrl.mutateAsync({
       fileName: file.name,
       contentType: file.type || 'application/octet-stream',
     });
 
+    // Upload direct vers S3 via XHR
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
@@ -156,129 +149,100 @@ export default function Upload() {
   }, [getUploadUrl]);
 
   /**
-   * Pipeline principal — routeur de décision automatique
-   *
-   * Desktop / mobile < 300 Mo :
-   *   Vidéo → FFmpeg WASM → upload audio léger
-   *
-   * Mobile + vidéo > 300 Mo + format natif (MP4/MOV/WebM) :
-   *   → AudioContext natif → WAV 16 kHz → upload audio léger
-   *
-   * Mobile + vidéo > 300 Mo + format non natif (AVI/MKV) :
-   *   → Upload chunked → extraction serveur
-   *
-   * Fallback universel :
-   *   → Upload vidéo brute → extraction serveur
+   * Pipeline principal : extraction audio côté client + upload + transcription
+   * 
+   * Décision automatique :
+   * - Vidéo → extraction WASM → upload audio léger
+   * - Audio → upload direct
+   * - Fallback → si WASM échoue → upload vidéo brute
    */
   const handleUpload = useCallback(async () => {
     if (!selectedFile) return;
 
-    cancelledRef.current = false;
     setIsProcessing(true);
     setUploadProgress(0);
     setPipelineStage('idle');
     setExtractionState(null);
     setCompressionInfo(null);
     setUsedFallback(false);
-    setMobileStrategy(null);
 
     try {
       let fileToUpload = selectedFile;
       const isVideo = needsAudioExtraction(selectedFile);
 
-      if (isVideo) {
-        // ─── CAS 1 : Mobile + vidéo > 300 Mo → Upload chunked direct ─────────────
-        // Aucune extraction côté client possible sans charger le fichier complet en RAM.
-        // L'upload chunked ne charge que 10 Mo à la fois (1 chunk) → 0 risque OOM.
-        if (shouldUseChunkedUpload(selectedFile)) {
-          setMobileStrategy('chunked');
-          setPipelineStage('uploading_chunked');
-          setUploadProgress(0);
+      // ═══════════════════════════════════════════════════════════
+      // ÉTAPE 1 : Extraction audio côté client (vidéos uniquement)
+      // ═══════════════════════════════════════════════════════════
+      if (isVideo && isFFmpegSupported()) {
+        setPipelineStage('extracting');
+        
+        toast.info("Extraction audio en cours...", {
+          description: `Optimisation de ${formatSize(selectedFile.size)} pour un upload ultra-rapide`,
+        });
 
-          toast.info("Upload optimisé pour mobile", {
-            description: `Le fichier (${formatSize(selectedFile.size)}) sera envoyé par segments de 10 Mo pour éviter tout crash mémoire.`,
+        const onProgress: ExtractionProgressCallback = (progress) => {
+          setExtractionState({
+            stage: progress.stage,
+            percent: progress.percent,
+            message: progress.message,
+          });
+        };
+
+        const result = await extractAudioFromVideo(selectedFile, onProgress);
+
+        if (result.success && result.audioFile) {
+          // Extraction réussie ! On upload l'audio léger
+          fileToUpload = result.audioFile;
+          setCompressionInfo({
+            original: result.originalSize,
+            extracted: result.extractedSize!,
+            ratio: result.compressionRatio!,
           });
 
-          const chunkedResult = await uploadFileInChunks(selectedFile, (progress) => {
-            setUploadProgress(progress.percent);
-            setExtractionState({
-              stage: progress.stage,
-              percent: progress.percent,
-              message: progress.message,
-            });
+          toast.success("Audio extrait avec succès !", {
+            description: `${formatSize(result.originalSize)} → ${formatSize(result.extractedSize!)} (${result.compressionRatio!.toFixed(0)}x plus léger)`,
           });
-
-          if (!chunkedResult.success) {
-            throw new Error(chunkedResult.error || "Erreur lors de l'upload par segments");
-          }
-
-          setUploadProgress(100);
-          setPipelineStage('done');
-          toast.success("Upload réussi !", { description: "L'extraction audio et la transcription vont démarrer automatiquement côté serveur." });
-          setLocation(`/progress/${chunkedResult.transcriptionId}`);
-          return;
-        }
-
-        // ─── CAS 2 : Desktop ou mobile ≤ 300 Mo → FFmpeg WASM (stream copy) ─────────
-        if (isFFmpegSupported()) {
-          setMobileStrategy('wasm');
-          setPipelineStage('extracting');
-
-          toast.info("Extraction audio en cours...", {
-            description: `Optimisation de ${formatSize(selectedFile.size)} pour un upload ultra-rapide`,
-          });
-
-          const onProgress: ExtractionProgressCallback = (progress) => {
-            setExtractionState({
-              stage: progress.stage,
-              percent: progress.percent,
-              message: progress.message,
-            });
-          };
-
-          const wasmResult = await extractAudioFromVideo(selectedFile, onProgress);
-
-          if (wasmResult.success && wasmResult.audioFile) {
-            fileToUpload = wasmResult.audioFile;
-            setCompressionInfo({
-              original: wasmResult.originalSize,
-              extracted: wasmResult.extractedSize!,
-              ratio: wasmResult.compressionRatio!,
-            });
-            toast.success("Audio extrait avec succès !", {
-              description: `${formatSize(wasmResult.originalSize)} → ${formatSize(wasmResult.extractedSize!)} (${wasmResult.compressionRatio!.toFixed(0)}x plus léger)`,
-            });
-          } else if (wasmResult.useFallback) {
-            // WASM a échoué → fallback upload vidéo brute
-            setUsedFallback(true);
-            fileToUpload = selectedFile;
-            toast.info("Mode alternatif activé", {
-              description: "L'extraction locale n'est pas disponible. Le fichier vidéo sera traité côté serveur.",
-            });
-          }
-        } else {
-          // WASM non supporté → fallback direct
+        } else if (result.useFallback) {
+          // WASM a échoué → fallback vers upload vidéo brute
           setUsedFallback(true);
+          fileToUpload = selectedFile;
+          
           toast.info("Mode alternatif activé", {
-            description: "Votre navigateur ne supporte pas l'extraction locale. Le fichier sera traité côté serveur.",
+            description: "L'extraction locale n'est pas disponible. Le fichier vidéo sera traité côté serveur.",
           });
         }
+      } else if (isVideo && !isFFmpegSupported()) {
+        // Navigateur ne supporte pas WASM → fallback direct
+        setUsedFallback(true);
+        toast.info("Mode alternatif activé", {
+          description: "Votre navigateur ne supporte pas l'extraction locale. Le fichier sera traité côté serveur.",
+        });
       }
 
-      // ─── ÉTAPE COMMUNE : Upload vers S3 + confirmation ───────────────────────────
+      // ═══════════════════════════════════════════════════════════
+      // ÉTAPE 2 : Upload vers S3
+      // ═══════════════════════════════════════════════════════════
       setPipelineStage('uploading');
       setUploadProgress(0);
 
       const uploadSizeMsg = isVideo && !usedFallback && fileToUpload !== selectedFile
         ? `Upload de l'audio optimisé (${formatSize(fileToUpload.size)})`
         : `Upload de ${formatSize(fileToUpload.size)}`;
+      
       toast.info(uploadSizeMsg);
 
       const { fileKey, fileUrl } = await uploadToS3(fileToUpload);
 
+      // ═══════════════════════════════════════════════════════════
+      // ÉTAPE 3 : Confirmer et lancer la transcription
+      // ═══════════════════════════════════════════════════════════
       setPipelineStage('confirming');
       setUploadProgress(98);
 
+      // IMPORTANT : envoyer le nom du fichier RÉELLEMENT uploadé
+      // Si extraction client réussie : fileToUpload.name = "video.m4a" (audio)
+      // Si fallback ou audio direct : fileToUpload.name = nom original
+      // Le serveur utilise l'extension pour router vers le bon pipeline
       const result = await confirmUpload.mutateAsync({
         fileName: fileToUpload.name,
         fileKey,
@@ -287,13 +251,19 @@ export default function Upload() {
 
       setUploadProgress(100);
       setPipelineStage('done');
-      toast.success("Upload réussi !", { description: "La transcription va démarrer automatiquement." });
+
+      toast.success("Upload réussi !", {
+        description: "La transcription va démarrer automatiquement.",
+      });
+
+      // Rediriger vers la page de progression
       setLocation(`/progress/${result.id}`);
 
     } catch (error: any) {
-      if (cancelledRef.current) return;
       console.error("Pipeline error:", error);
-      toast.error("Erreur", { description: error.message || "Une erreur est survenue." });
+      toast.error("Erreur", {
+        description: error.message || "Une erreur est survenue.",
+      });
       setIsProcessing(false);
       setUploadProgress(0);
       setPipelineStage('idle');
@@ -303,7 +273,6 @@ export default function Upload() {
 
   /** Annuler le processus en cours */
   const handleCancel = useCallback(() => {
-    cancelledRef.current = true;
     if (xhrRef.current) {
       xhrRef.current.abort();
       xhrRef.current = null;
@@ -329,7 +298,9 @@ export default function Upload() {
           <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
           <h2 className="text-xl font-semibold">Connexion requise</h2>
           <p className="text-muted-foreground">Veuillez vous connecter pour uploader un fichier.</p>
-          <Button onClick={() => setLocation("/login")}>Se connecter</Button>
+          <Button onClick={() => setLocation("/login")}>
+            Se connecter
+          </Button>
         </div>
       </div>
     );
@@ -343,13 +314,13 @@ export default function Upload() {
           <img src={LOGO_URL} alt="Transcribe Express" className="w-12 h-12 mx-auto" style={{ mixBlendMode: 'screen' }} />
           <h2 className="text-xl font-semibold">Erreur de connexion</h2>
           <p className="text-muted-foreground">Impossible de synchroniser votre session.</p>
-          <Button onClick={() => window.location.reload()}>Réessayer</Button>
+          <Button onClick={() => window.location.reload()}>
+            Réessayer
+          </Button>
         </div>
       </div>
     );
   }
-
-  const isMobile = isMobileDevice();
 
   return (
     <div className="min-h-screen bg-background">
@@ -365,32 +336,38 @@ export default function Upload() {
       </header>
 
       {/* Main Content */}
-      <motion.main
+      <motion.main 
         className="container py-8 max-w-4xl"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         {/* Back Button */}
-        <Button variant="ghost" className="mb-6" onClick={() => setLocation("/dashboard")}>
+        <Button
+          variant="ghost"
+          className="mb-6"
+          onClick={() => setLocation("/dashboard")}
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour au dashboard
         </Button>
 
         {/* Page Title */}
-        <motion.div
+        <motion.div 
           className="mb-8"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <h1 className="text-3xl font-bold tracking-tight">Nouvelle Transcription</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Nouvelle Transcription
+          </h1>
           <p className="text-muted-foreground mt-1">
             Uploadez un fichier audio ou vidéo pour le transcrire automatiquement
           </p>
         </motion.div>
 
-        {/* Upload Zone */}
+        {/* Upload Zone — visible quand pas en cours de traitement */}
         <AnimatePresence mode="wait">
           {!isProcessing && (
             <motion.div
@@ -400,11 +377,19 @@ export default function Upload() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <UploadZone onFileSelect={handleFileSelect} disabled={isProcessing} />
+              <UploadZone
+                onFileSelect={handleFileSelect}
+                disabled={isProcessing}
+              />
 
               {selectedFile && (
                 <div className="flex justify-end">
-                  <Button size="lg" onClick={handleUpload} disabled={isProcessing} className="min-w-[200px]">
+                  <Button
+                    size="lg"
+                    onClick={handleUpload}
+                    disabled={isProcessing}
+                    className="min-w-[200px]"
+                  >
                     {isVideoFile(selectedFile) ? (
                       <>
                         <Wand2 className="w-4 h-4 mr-2" />
@@ -431,7 +416,7 @@ export default function Upload() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Extraction FFmpeg WASM */}
+              {/* Étape d'extraction audio WASM */}
               {pipelineStage === 'extracting' && extractionState && (
                 <div className="w-full max-w-2xl mx-auto p-6 rounded-xl bg-gray-900/50 border border-[#BE34D5]/30 backdrop-blur-sm">
                   <div className="flex items-center space-x-4 mb-6">
@@ -439,56 +424,39 @@ export default function Upload() {
                       <Wand2 className="w-6 h-6 text-[#BE34D5] animate-pulse" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-200">Extraction audio côté client</p>
-                      <p className="text-xs text-gray-400 mt-1">{extractionState.message}</p>
+                      <p className="text-sm font-medium text-gray-200">
+                        Extraction audio côté client
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {extractionState.message}
+                      </p>
                     </div>
-                    <span className="text-lg font-semibold text-[#BE34D5]">
-                      {Math.round(extractionState.percent)}%
-                    </span>
+                    <div className="flex-shrink-0">
+                      <span className="text-lg font-semibold text-[#BE34D5]">
+                        {Math.round(extractionState.percent)}%
+                      </span>
+                    </div>
                   </div>
-                  <Progress value={extractionState.percent} className="h-2 bg-gray-800/50" />
+
+                  <Progress 
+                    value={extractionState.percent} 
+                    className="h-2 bg-gray-800/50"
+                  />
+
                   <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-[#BE34D5]/5 border border-[#BE34D5]/10">
                     <Zap className="w-4 h-4 text-[#BE34D5] mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-gray-400">
-                      L'audio est extrait directement dans votre navigateur. Seul l'audio sera uploadé,
+                      L'audio est extrait directement dans votre navigateur. Seul l'audio sera uploadé, 
                       réduisant considérablement le temps de transfert.
                     </p>
                   </div>
+
                   <div className="mt-3 flex justify-end">
-                    <button onClick={handleCancel} className="text-xs text-red-400 hover:text-red-300 transition-colors" type="button">
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              )}
-
-
-
-              {/* Upload chunked (mobile, fichier lourd) */}
-              {pipelineStage === 'uploading_chunked' && extractionState && (
-                <div className="w-full max-w-2xl mx-auto p-6 rounded-xl bg-gray-900/50 border border-[#34D5BE]/30 backdrop-blur-sm">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-[#34D5BE]/20 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-[#34D5BE] animate-pulse" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-200">Envoi par segments (mobile)</p>
-                      <p className="text-xs text-gray-400 mt-1">{extractionState.message}</p>
-                    </div>
-                    <span className="text-lg font-semibold text-[#34D5BE]">
-                      {Math.round(uploadProgress)}%
-                    </span>
-                  </div>
-                  <Progress value={uploadProgress} className="h-2 bg-gray-800/50" />
-                  <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-[#34D5BE]/5 border border-[#34D5BE]/10">
-                    <Zap className="w-4 h-4 text-[#34D5BE] mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-gray-400">
-                      Le fichier est envoyé en petits segments pour garantir la stabilité sur mobile.
-                      L'extraction audio sera effectuée côté serveur.
-                    </p>
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <button onClick={handleCancel} className="text-xs text-red-400 hover:text-red-300 transition-colors" type="button">
+                    <button
+                      onClick={handleCancel}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      type="button"
+                    >
                       Annuler
                     </button>
                   </div>
@@ -512,7 +480,6 @@ export default function Upload() {
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {formatSize(compressionInfo.original)} → {formatSize(compressionInfo.extracted)}
-
                       </p>
                     </div>
                   </div>
@@ -536,7 +503,7 @@ export default function Upload() {
                 </motion.div>
               )}
 
-              {/* Upload Progress (S3 standard) */}
+              {/* Upload Progress (S3) */}
               {(pipelineStage === 'uploading' || pipelineStage === 'confirming' || pipelineStage === 'done') && (
                 <UploadProgress
                   progress={uploadProgress}
@@ -551,33 +518,31 @@ export default function Upload() {
         {/* Validation Error */}
         {validationError && (
           <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-sm text-destructive font-medium">{validationError}</p>
+            <p className="text-sm text-destructive font-medium">
+              {validationError}
+            </p>
           </div>
         )}
-
-        {/* Info formats */}
+        
+        {/* Info */}
         {!isProcessing && (
           <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
             <h3 className="font-medium mb-2">Formats acceptés</h3>
-            <p className="text-sm text-muted-foreground">Audio : MP3, WAV, M4A, OGG, FLAC, WEBM</p>
-            <p className="text-sm text-muted-foreground">Vidéo : MP4, MOV, AVI, MKV, WEBM</p>
-            <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Audio : MP3, WAV, M4A, OGG, FLAC, WEBM
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Vidéo : MP4, MOV, AVI, MKV, WEBM
+            </p>
+            <div className="mt-3 pt-3 border-t border-border/50">
               <div className="flex items-start gap-2">
                 <Zap className="w-4 h-4 text-[#BE34D5] mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-muted-foreground/70">
-                  <span className="text-[#BE34D5] font-medium">Optimisation intelligente</span> — Les fichiers vidéo sont automatiquement
-                  convertis en audio avant l'upload, réduisant le temps de transfert jusqu'à 100x. Aucune limite de taille.
+                  <span className="text-[#BE34D5] font-medium">Optimisation intelligente</span> — Les fichiers vidéo sont automatiquement 
+                  convertis en audio dans votre navigateur avant l'upload, réduisant le temps de transfert jusqu'à 100x.
+                  Aucune limite de taille.
                 </p>
               </div>
-              {isMobile && (
-                <div className="flex items-start gap-2">
-                  <Smartphone className="w-4 h-4 text-[#34D5BE] mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-muted-foreground/70">
-                    <span className="text-[#34D5BE] font-medium">Mode mobile optimisé</span> — Les fichiers vidéo volumineux (&gt; 300 Mo)
-                    sont traités via une extraction native ou un envoi par segments pour éviter les interruptions.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}

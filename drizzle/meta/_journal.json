@@ -36,13 +36,6 @@
       "when": 1775021546165,
       "tag": "0004_calm_orphan",
       "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1778148439710,
-      "tag": "0005_fresh_zaran",
-      "breakpoints": true
     }
   ]
 }

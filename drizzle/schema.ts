@@ -27,7 +27,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 /**
  * Table transcriptions - Stocke les transcriptions audio/vidéo
- *
+ * 
  * Étapes du pipeline (processingStep) :
  * - uploading : Upload vers S3 en cours
  * - downloading : Téléchargement depuis S3 vers le serveur
@@ -35,7 +35,7 @@ export type InsertUser = typeof users.$inferInsert;
  * - transcribing : Transcription via Groq Whisper
  * - completed : Terminé
  * - error : Erreur
- *
+ * 
  * processingProgress : 0-100 (pourcentage de progression global)
  */
 export const transcriptions = mysqlTable("transcriptions", {
@@ -62,34 +62,3 @@ export const transcriptions = mysqlTable("transcriptions", {
 
 export type Transcription = typeof transcriptions.$inferSelect;
 export type InsertTranscription = typeof transcriptions.$inferInsert;
-
-/**
- * Table assemblyJobs — Suivi des jobs d'assemblage asynchrones
- *
- * Permet de répondre immédiatement à /api/upload-chunk-complete (202 Accepted)
- * et de traiter l'assemblage en arrière-plan sans bloquer la connexion HTTP.
- * Le client poll /api/upload-chunk-job-status/:jobId jusqu'à la complétion.
- *
- * Statuts :
- * - pending    : Job créé, en attente de démarrage
- * - assembling : Téléchargement des chunks depuis S3 + écriture disque
- * - uploading  : Upload multipart du fichier assemblé vers S3
- * - completed  : Assemblage terminé, transcriptionId disponible
- * - error      : Erreur lors de l'assemblage
- */
-export const assemblyJobs = mysqlTable("assemblyJobs", {
-  id: int("id").autoincrement().primaryKey(),
-  jobId: varchar("jobId", { length: 64 }).notNull().unique(),
-  userId: varchar("userId", { length: 255 }).notNull(),
-  uploadId: varchar("uploadId", { length: 128 }).notNull(),
-  fileName: varchar("fileName", { length: 255 }).notNull(),
-  totalChunks: int("totalChunks").notNull(),
-  status: mysqlEnum("status", ["pending", "assembling", "uploading", "completed", "error"]).default("pending").notNull(),
-  transcriptionId: int("transcriptionId"),
-  errorMessage: text("errorMessage"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AssemblyJob = typeof assemblyJobs.$inferSelect;
-export type InsertAssemblyJob = typeof assemblyJobs.$inferInsert;
