@@ -3,9 +3,10 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, X, AlertCircle, Film, Music, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isVideoFile, SUPPORTED_EXTENSIONS } from '@/utils/audioValidation';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
-const MAX_FILE_SIZE_MB = 300;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_MOBILE_FILE_SIZE_MB = 300;
+const MAX_MOBILE_FILE_SIZE_BYTES = MAX_MOBILE_FILE_SIZE_MB * 1024 * 1024;
 
 /**
  * Valider un fichier par son extension (pas par MIME type)
@@ -30,6 +31,7 @@ export function UploadZone({
 }: UploadZoneProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     setError(null);
@@ -53,9 +55,8 @@ export function UploadZone({
       return;
     }
 
-    // Limite de taille : 300 Mo
-    const MAX_SIZE_BYTES = 300 * 1024 * 1024;
-    if (file.size > MAX_SIZE_BYTES) {
+    // Limite de taille : 300 Mo uniquement sur smartphone
+    if (isMobile && file.size > MAX_MOBILE_FILE_SIZE_BYTES) {
       setError('FILE_TOO_LARGE');
       return;
     }
@@ -132,7 +133,9 @@ export function UploadZone({
                 <Film className="w-3.5 h-3.5" />
                 <span>Vidéo : MP4, MOV, AVI, MKV, WEBM</span>
               </div>
-              <p className="text-gray-600 mt-1">Limite : 300 Mo • Upload direct vers le cloud</p>
+              <p className="text-gray-600 mt-1">
+                {isMobile ? 'Limite : 300 Mo • Upload direct vers le cloud' : 'Upload direct vers le cloud'}
+              </p>
             </div>
           </div>
         )}

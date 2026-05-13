@@ -1415,3 +1415,11 @@ qui sera implémentée comme fonctionnalité Pro future.
 - [x] Supprimer la mention "Aucune limite de taille" dans Upload.tsx et UploadZone.tsx
 - [x] Double validation dans Upload.tsx (format + taille) avec toast d'erreur
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🔧 Limite 300 Mo mobile uniquement (11 mai 2026)
+
+- [x] Créer le hook `useIsMobile()` dans `client/src/hooks/useIsMobile.ts` (détection iPhone/iPod/Android Mobile)
+- [x] Conditionner la limite 300 Mo dans UploadZone.tsx uniquement si `isMobile === true`
+- [x] Conditionner la limite 300 Mo dans Upload.tsx uniquement si `isMobile === true`
+- [x] Texte "Limite : 300 Mo" uniquement sur smartphone, "Upload direct vers le cloud" sur desktop
+- [x] 301/301 tests passent, 0 erreur TypeScript

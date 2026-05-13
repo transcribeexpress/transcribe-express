@@ -32,6 +32,7 @@ import { UploadProgress } from "@/components/UploadProgress";
 import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
 import { validateFormat, isVideoFile } from "@/utils/audioValidation";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { needsAudioExtraction, extractAudioFromVideo, isFFmpegSupported } from "@/utils/audioExtractor";
 import type { ExtractionProgressCallback } from "@/utils/audioExtractor";
 import { ArrowLeft, Wand2, Zap, AlertTriangle } from "lucide-react";
@@ -80,6 +81,7 @@ export default function Upload() {
   const [usedFallback, setUsedFallback] = useState(false);
   const [compressionInfo, setCompressionInfo] = useState<{ original: number; extracted: number; ratio: number } | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const isMobile = useIsMobile();
   
   // Mutations tRPC pour l'upload direct S3
   const getUploadUrl = trpc.transcriptions.getUploadUrl.useMutation();
@@ -101,10 +103,10 @@ export default function Upload() {
       return;
     }
 
-    // Limite de taille : 300 Mo
-    const MAX_SIZE_BYTES = 300 * 1024 * 1024;
-    if (file.size > MAX_SIZE_BYTES) {
-      const errorMsg = `Fichier trop volumineux (${formatSize(file.size)}). La limite est de 300 Mo.`;
+    // Limite de taille : 300 Mo uniquement sur smartphone
+    const MAX_MOBILE_SIZE_BYTES = 300 * 1024 * 1024;
+    if (isMobile && file.size > MAX_MOBILE_SIZE_BYTES) {
+      const errorMsg = `Fichier trop volumineux (${formatSize(file.size)}). La limite est de 300 Mo sur mobile.`;
       setValidationError('FILE_TOO_LARGE');
       toast.error("Fichier trop volumineux", {
         description: errorMsg,
@@ -552,7 +554,7 @@ export default function Upload() {
                 <p className="text-xs text-muted-foreground/70">
                   <span className="text-[#BE34D5] font-medium">Optimisation intelligente</span> — Les fichiers vidéo sont automatiquement 
                   convertis en audio dans votre navigateur avant l'upload, réduisant le temps de transfert jusqu'à 100x.
-                  <span className="text-amber-400/80"> Limite : 300 Mo par fichier.</span>
+                  {isMobile && <span className="text-amber-400/80"> Limite : 300 Mo sur mobile.</span>}
                 </p>
               </div>
             </div>
