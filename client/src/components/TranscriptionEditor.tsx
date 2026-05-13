@@ -389,8 +389,9 @@ export function TranscriptionEditor({
   useEffect(() => {
     if (!editor || allSegments.length === 0) return;
 
-    const { tr } = editor.state;
-    tr.setMeta(audioSyncPluginKey, {
+    // Créer une transaction DEPUIS l'état courant de la vue (pas editor.state qui peut être périmé)
+    // et attacher le meta AVANT de dispatcher
+    const tr = editor.view.state.tr.setMeta(audioSyncPluginKey, {
       segmentIndex: currentSegmentIndex,
       segments: allSegments.map((s) => ({
         id: s.id,
@@ -629,16 +630,31 @@ export function TranscriptionEditor({
         searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
         "gi"
       );
-      const newText = text.replace(regex, replaceTerm);
       const count = (text.match(regex) || []).length;
+      if (count === 0) {
+        toast.error("Aucune occurrence trouvée");
+        return;
+      }
+      const newText = text.replace(regex, replaceTerm);
 
-      // Reconstruire le contenu Tiptap avec le texte remplacé
+      // Annuler le debounce en cours pour éviter une double sauvegarde
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      // Reconstruire le contenu Tiptap avec les segments pour préserver l'horodatage
+      // Utiliser emitUpdate:false pour éviter que onUpdate ne déclenche une sauvegarde
+      // avec l'ancien texte (race condition)
       editor.commands.setContent(
-        textToTiptapHTML(newText, undefined)
+        textToTiptapHTML(newText, allSegments.length > 0 ? allSegments : undefined),
+        { emitUpdate: false } // Ne pas déclencher onUpdate pour éviter la race condition
       );
+
+      // Mettre à jour l'état manuellement (puisque onUpdate n'est pas appelé)
       setIsDirty(true);
-      setSaveStatus("unsaved");
+      setSaveStatus("saving");
       onTextChange?.(newText);
+
+      // Sauvegarder immédiatement avec le bon texte
+      updateMutation.mutate({ id: transcriptionId, editedText: newText });
 
       toast.success(
         `${count} remplacement${count > 1 ? "s" : ""} effectué${count > 1 ? "s" : ""}`,
@@ -646,12 +662,6 @@ export function TranscriptionEditor({
           description: `"${searchTerm}" → "${replaceTerm}"`,
         }
       );
-
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        setSaveStatus("saving");
-        updateMutation.mutate({ id: transcriptionId, editedText: newText });
-      }, 1000);
     } catch {
       toast.error("Expression de recherche invalide");
     }

@@ -1423,3 +1423,9 @@ qui sera implémentée comme fonctionnalité Pro future.
 - [x] Conditionner la limite 300 Mo dans Upload.tsx uniquement si `isMobile === true`
 - [x] Texte "Limite : 300 Mo" uniquement sur smartphone, "Upload direct vers le cloud" sur desktop
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🐛 Bugs éditeur de transcription (13 mai 2026)
+
+- [x] Bug 1 : synchronisation audio/horodatage — correction `editor.view.state.tr` (transaction fraîche) au lieu de `editor.state.tr` (périmé)
+- [x] Bug 2 : remplacement de mots — `setContent(..., { emitUpdate: false })` + sauvegarde immédiate avec `newText` (plus de race condition avec `onUpdate`)
+- [x] 301/301 tests passent, 0 erreur TypeScript
