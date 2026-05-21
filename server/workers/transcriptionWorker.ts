@@ -24,7 +24,7 @@
 import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments } from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
 import { processMediaFile, isAudioFormat } from '../audioProcessor';
-import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions } from '../audioChunker';
+import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions, reassembleSegments } from '../audioChunker';
 import { retryWithBackoff } from '../utils/retry';
 import { downloadFileFromS3 } from '../s3Direct';
 
@@ -232,6 +232,17 @@ async function processAudioDirect(
       transcriptText = reassembleTranscriptions(chunkResults);
       detectedLanguage = chunkResults[0]?.language || 'fr';
       totalDuration = chunkTotalDuration || 0;
+
+      // Fusionner les segments Whisper de tous les chunks avec offsets temporels
+      const mergedSegments = reassembleSegments(chunkResults);
+      if (mergedSegments.length > 0) {
+        try {
+          await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
+          log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
+        } catch (e) {
+          log(`Warning: could not store merged segments: ${e}`);
+        }
+      }
     } finally {
       for (const tempFile of tempFiles) {
         try {
@@ -402,6 +413,17 @@ async function processVideoFull(
       transcriptText = reassembleTranscriptions(chunkResults);
       detectedLanguage = chunkResults[0]?.language || 'fr';
       totalDuration = chunkTotalDuration || totalDuration;
+
+      // Fusionner les segments Whisper de tous les chunks avec offsets temporels
+      const mergedSegments = reassembleSegments(chunkResults);
+      if (mergedSegments.length > 0) {
+        try {
+          await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
+          log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
+        } catch (e) {
+          log(`Warning: could not store merged segments: ${e}`);
+        }
+      }
 
       log(`Reassembled ${chunkResults.length} chunks → ${transcriptText.length} chars`);
     } finally {

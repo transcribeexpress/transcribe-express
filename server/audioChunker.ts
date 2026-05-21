@@ -45,6 +45,14 @@ export interface ChunkTranscriptionResult {
   endSeconds: number;
   language: string;
   duration: number;
+  segments?: Array<{
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+    avg_logprob?: number;
+    no_speech_prob?: number;
+  }>;
 }
 
 export interface ChunkedTranscriptionResult {
@@ -322,7 +330,7 @@ export function reassembleTranscriptions(
  */
 export async function transcribeChunk(
   chunk: AudioChunk,
-  transcribeFn: (audioBuffer: Buffer, mimeType: string) => Promise<{ text: string; language: string; duration: number }>
+  transcribeFn: (audioBuffer: Buffer, mimeType: string) => Promise<{ text: string; language: string; duration: number; segments?: Array<{ id: number; start: number; end: number; text: string; avg_logprob?: number; no_speech_prob?: number }> }>
 ): Promise<ChunkTranscriptionResult> {
   console.log(`[AudioChunker] Transcribing chunk ${chunk.index} (${(chunk.buffer.length / 1024 / 1024).toFixed(1)}MB)`);
 
@@ -335,7 +343,56 @@ export async function transcribeChunk(
     endSeconds: chunk.endSeconds,
     language: result.language,
     duration: result.duration,
+    segments: result.segments,
   };
+}
+
+/**
+ * Fusionner les segments Whisper de tous les chunks en ajustant les offsets temporels.
+ * Chaque chunk a un `startSeconds` qui représente son offset dans le fichier original.
+ * Les segments Whisper de chaque chunk ont des timestamps relatifs au début du chunk.
+ * On ajoute `chunk.startSeconds` à chaque segment pour obtenir des timestamps absolus.
+ */
+export function reassembleSegments(
+  chunkResults: ChunkTranscriptionResult[]
+): Array<{ id: number; start: number; end: number; text: string; avg_logprob?: number; no_speech_prob?: number }> {
+  if (chunkResults.length === 0) return [];
+
+  const sorted = [...chunkResults].sort((a, b) => a.index - b.index);
+  const allSegments: Array<{ id: number; start: number; end: number; text: string; avg_logprob?: number; no_speech_prob?: number }> = [];
+  let globalId = 0;
+
+  for (const chunk of sorted) {
+    if (!chunk.segments || chunk.segments.length === 0) continue;
+
+    for (const seg of chunk.segments) {
+      // Ajuster les timestamps avec l'offset du chunk
+      const adjustedStart = seg.start + chunk.startSeconds;
+      const adjustedEnd = seg.end + chunk.startSeconds;
+
+      // Éviter les doublons dans la zone de chevauchement :
+      // Si le segment ajusté commence avant la fin du dernier segment global, on le skip
+      if (allSegments.length > 0) {
+        const lastSegment = allSegments[allSegments.length - 1];
+        if (adjustedStart < lastSegment.end - 0.5) {
+          // Ce segment est dans la zone de chevauchement, on le skip
+          continue;
+        }
+      }
+
+      allSegments.push({
+        id: globalId++,
+        start: Math.round(adjustedStart * 100) / 100,
+        end: Math.round(adjustedEnd * 100) / 100,
+        text: seg.text,
+        avg_logprob: seg.avg_logprob,
+        no_speech_prob: seg.no_speech_prob,
+      });
+    }
+  }
+
+  console.log(`[AudioChunker] Reassembled ${allSegments.length} segments from ${sorted.length} chunks`);
+  return allSegments;
 }
 
 /**
@@ -343,7 +400,7 @@ export async function transcribeChunk(
  */
 export async function transcribeChunksParallel(
   chunks: AudioChunk[],
-  transcribeFn: (audioBuffer: Buffer, mimeType: string) => Promise<{ text: string; language: string; duration: number }>,
+  transcribeFn: (audioBuffer: Buffer, mimeType: string) => Promise<{ text: string; language: string; duration: number; segments?: Array<{ id: number; start: number; end: number; text: string; avg_logprob?: number; no_speech_prob?: number }> }>,
   maxParallel: number = MAX_PARALLEL_CHUNKS
 ): Promise<ChunkTranscriptionResult[]> {
   const results: ChunkTranscriptionResult[] = [];

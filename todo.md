@@ -1429,3 +1429,18 @@ qui sera implémentée comme fonctionnalité Pro future.
 - [x] Bug 1 : synchronisation audio/horodatage — correction `editor.view.state.tr` (transaction fraîche) au lieu de `editor.state.tr` (périmé)
 - [x] Bug 2 : remplacement de mots — `setContent(..., { emitUpdate: false })` + sauvegarde immédiate avec `newText` (plus de race condition avec `onUpdate`)
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🐛 Bug synchronisation/horodatage fichiers longs > 16 Mo (21 mai 2026)
+
+**Constat :** Vidéo 470 Mo (24:54) → texte transcrit correct mais AUCUN horodatage, AUCUNE surbrillance, texte en bloc unique.
+Vidéo 160 Mo (1:30) → tout fonctionne parfaitement (segments, surbrillance, click-to-seek).
+
+**Hypothèse :** Les fichiers longs sont découpés en chunks audio avant transcription. Les segments Whisper de chaque chunk ne sont pas correctement fusionnés avec les offsets temporels corrects, ou ne sont pas stockés en BDD.
+
+- [x] Analyser le pipeline : `transcribeChunksParallel()` retournait des `ChunkTranscriptionResult` sans segments Whisper
+- [x] Cause racine : `transcribeChunk()` jetait les segments, `reassembleTranscriptions()` ne retournait que le texte
+- [x] Fix `audioChunker.ts` : ajout champ `segments` dans `ChunkTranscriptionResult`, capture dans `transcribeChunk()`
+- [x] Nouvelle fonction `reassembleSegments()` : fusionne les segments de tous les chunks avec offsets temporels ajustés
+- [x] Fix `transcriptionWorker.ts` (Mode A + Mode B) : appel `reassembleSegments()` + `updateTranscriptionSegments()` après chunking
+- [x] Déduplication des segments dans la zone de chevauchement (2s overlap)
+- [x] 301/301 tests passent, 0 erreur TypeScript
