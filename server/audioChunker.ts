@@ -259,6 +259,81 @@ export async function splitAudioIntoChunks(
 }
 
 /**
+ * Découper un fichier audio en chunks directement depuis un fichier sur disque.
+ * Évite de charger le fichier entier en RAM (critique pour les fichiers > 100 Mo).
+ * 
+ * Le fichier source est lu directement par FFmpeg depuis le disque.
+ * Chaque chunk extrait est lu en mémoire individuellement (~18 Mo max).
+ */
+export async function splitAudioIntoChunksFromFile(
+  inputPath: string,
+  extension: string = 'flac'
+): Promise<{ chunks: AudioChunk[]; totalDuration: number; tempFiles: string[] }> {
+  const tempFiles: string[] = [];
+
+  try {
+    // 1. Obtenir la durée totale
+    const totalDuration = await getAudioDuration(inputPath);
+    const fileSizeBytes = fs.statSync(inputPath).size;
+    console.log(`[AudioChunker] Total duration: ${totalDuration.toFixed(1)}s, size: ${(fileSizeBytes / 1024 / 1024).toFixed(1)}MB (from file)`);
+
+    // 2. Calculer la durée par chunk
+    const bytesPerSecond = fileSizeBytes / totalDuration;
+    const targetChunkDuration = Math.floor(TARGET_CHUNK_SIZE_BYTES / bytesPerSecond);
+    // Minimum 30 secondes par chunk, maximum la durée totale
+    const chunkDuration = Math.max(30, Math.min(targetChunkDuration, totalDuration));
+
+    console.log(`[AudioChunker] Bytes/sec: ${bytesPerSecond.toFixed(0)}, chunk duration: ${chunkDuration}s`);
+
+    // 3. Calculer les segments et extraire via FFmpeg
+    const chunks: AudioChunk[] = [];
+    let currentStart = 0;
+    let index = 0;
+
+    while (currentStart < totalDuration) {
+      const effectiveEnd = Math.min(currentStart + chunkDuration, totalDuration);
+      const effectiveDuration = effectiveEnd - currentStart;
+
+      // Ajouter le chevauchement pour le prochain chunk (sauf le dernier)
+      const segmentDuration = effectiveEnd < totalDuration
+        ? effectiveDuration + OVERLAP_SECONDS
+        : effectiveDuration;
+
+      // Extraire directement en FLAC 16kHz mono (format optimal pour Whisper)
+      const outputPath = createTempFilePath(`chunk-${index}`, 'flac');
+      tempFiles.push(outputPath);
+
+      // Extraire le segment avec conversion FLAC intégrée
+      await extractAudioSegment(inputPath, currentStart, segmentDuration, outputPath);
+
+      const chunkBuffer = fs.readFileSync(outputPath);
+      
+      chunks.push({
+        index,
+        startSeconds: currentStart,
+        endSeconds: Math.min(currentStart + segmentDuration, totalDuration),
+        buffer: chunkBuffer,
+        filePath: outputPath,
+      });
+
+      console.log(`[AudioChunker] Chunk ${index}: ${currentStart.toFixed(1)}s → ${(currentStart + segmentDuration).toFixed(1)}s (${(chunkBuffer.length / 1024 / 1024).toFixed(1)}MB)`);
+
+      // Avancer au prochain segment (sans le chevauchement)
+      currentStart = effectiveEnd;
+      index++;
+    }
+
+    console.log(`[AudioChunker] Split into ${chunks.length} chunks from file`);
+    return { chunks, totalDuration, tempFiles };
+
+  } catch (error) {
+    // Nettoyer en cas d'erreur
+    await cleanupTempFiles(tempFiles);
+    throw error;
+  }
+}
+
+/**
  * Supprimer les mots dupliqués aux jonctions entre chunks
  * 
  * Stratégie : comparer les derniers N mots du chunk précédent

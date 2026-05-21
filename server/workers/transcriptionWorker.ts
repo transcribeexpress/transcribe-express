@@ -23,10 +23,14 @@
 
 import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments } from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
-import { processMediaFile, isAudioFormat } from '../audioProcessor';
-import { needsChunking, splitAudioIntoChunks, transcribeChunksParallel, reassembleTranscriptions, reassembleSegments } from '../audioChunker';
+import { processMediaFile, isAudioFormat, MAX_AUDIO_CHUNK_SIZE_BYTES } from '../audioProcessor';
+import { needsChunking, splitAudioIntoChunks, splitAudioIntoChunksFromFile, transcribeChunksParallel, reassembleTranscriptions, reassembleSegments } from '../audioChunker';
 import { retryWithBackoff } from '../utils/retry';
-import { downloadFileFromS3 } from '../s3Direct';
+import { downloadFileFromS3, downloadFileFromS3ToFile } from '../s3Direct';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { randomBytes } from 'crypto';
 
 // Timeout global pour le worker (10 minutes)
 const WORKER_TIMEOUT_MS = 10 * 60 * 1000;
@@ -149,13 +153,23 @@ async function processAudioDirect(
 
   if (await isCancelled(transcriptionId)) { log('Cancelled before download'); return; }
 
-  const audioBuffer = await downloadFileFromS3(fileKey);
-  const sizeMB = audioBuffer.length / (1024 * 1024);
-  log(`Downloaded: ${sizeMB.toFixed(1)} MB`);
+  // Streaming vers disque pour éviter OOM sur gros fichiers
+  const tmpDir = os.tmpdir();
+  const uniqueId = randomBytes(6).toString('hex');
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'm4a';
+  const inputPath = path.join(tmpDir, `te-audio-${uniqueId}.${ext}`);
+  
+  const fileSizeBytes = await downloadFileFromS3ToFile(fileKey, inputPath);
+  const sizeMB = fileSizeBytes / (1024 * 1024);
+  log(`Downloaded to disk: ${sizeMB.toFixed(1)} MB`);
 
   await updateTranscriptionProgress(transcriptionId, 'downloading', 15);
 
-  if (await isCancelled(transcriptionId)) { log('Cancelled after download'); return; }
+  if (await isCancelled(transcriptionId)) { 
+    log('Cancelled after download');
+    try { fs.unlinkSync(inputPath); } catch {}
+    return; 
+  }
 
   // === TRANSCRIPTION (15-90%) ===
   const mimeType = getMimeTypeFromFileName(fileName);
@@ -163,148 +177,147 @@ async function processAudioDirect(
   let detectedLanguage: string = 'fr';
   let totalDuration: number = 0;
 
-  if (needsChunking(audioBuffer.length)) {
-    // Fichier audio > 20 Mo → chunking nécessaire (conversion FLAC + split)
-    log(`Audio needs chunking: ${sizeMB.toFixed(1)} MB > 20 MB`);
-    await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 20);
+  try {
+    if (fileSizeBytes > MAX_AUDIO_CHUNK_SIZE_BYTES) {
+      // Fichier audio > 20 Mo → chunking nécessaire
+      // Découper directement depuis le fichier sur disque (PAS de re-téléchargement)
+      log(`Audio needs chunking: ${sizeMB.toFixed(1)} MB > 20 MB`);
+      await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 20);
 
-    // Pour le chunking, on doit convertir en FLAC via processMediaFile
-    const audioResult = await processMediaFile(
-      '', // pas d'URL publique
-      fileName,
-      mimeType,
-      fileKey
-    );
+      const { chunks, totalDuration: chunkTotalDuration, tempFiles } = await splitAudioIntoChunksFromFile(
+        inputPath,
+        ext
+      );
 
-    if (!audioResult.success) {
-      throw new Error(`Audio processing failed: ${audioResult.error}`);
-    }
+      totalDuration = chunkTotalDuration;
+      const totalChunks = chunks.length;
+      log(`Split into ${totalChunks} chunks (total duration: ${chunkTotalDuration.toFixed(1)}s)`);
 
-    await updateTranscriptionProgress(transcriptionId, 'transcribing', 40);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30);
 
-    const { chunks, totalDuration: chunkTotalDuration, tempFiles } = await splitAudioIntoChunks(
-      audioResult.audioBuffer,
-      audioResult.extension
-    );
+      try {
+        let completedChunks = 0;
 
-    const totalChunks = chunks.length;
-    log(`Split into ${totalChunks} chunks`);
-
-    try {
-      let completedChunks = 0;
-
-      const chunkResults = await transcribeChunksParallel(
-        chunks,
-        async (buffer, chunkMimeType) => {
-          if (await isCancelled(transcriptionId)) {
-            throw new Error('Transcription cancelled by user');
-          }
-
-          const retryResult = await retryWithBackoff(
-            async () => transcribeAudioBuffer(buffer, chunkMimeType, 'fr'),
-            {
-              maxAttempts: 3,
-              initialDelayMs: 2000,
-              backoffMultiplier: 2,
-              onRetry: (attempt, error) => {
-                log(`Chunk retry ${attempt}/3: ${error.message}`);
-              },
+        const chunkResults = await transcribeChunksParallel(
+          chunks,
+          async (buffer, chunkMimeType) => {
+            if (await isCancelled(transcriptionId)) {
+              throw new Error('Transcription cancelled by user');
             }
-          );
 
-          if (!retryResult.success || !retryResult.result) {
-            throw retryResult.error || new Error('Chunk transcription failed');
+            const retryResult = await retryWithBackoff(
+              async () => transcribeAudioBuffer(buffer, chunkMimeType, 'fr'),
+              {
+                maxAttempts: 3,
+                initialDelayMs: 2000,
+                backoffMultiplier: 2,
+                onRetry: (attempt, error) => {
+                  log(`Chunk retry ${attempt}/3: ${error.message}`);
+                },
+              }
+            );
+
+            if (!retryResult.success || !retryResult.result) {
+              throw retryResult.error || new Error('Chunk transcription failed');
+            }
+
+            completedChunks++;
+            const chunkProgress = 30 + Math.floor((completedChunks / totalChunks) * 60);
+            await updateTranscriptionProgress(
+              transcriptionId,
+              `transcribing_${completedChunks}/${totalChunks}`,
+              chunkProgress
+            );
+            log(`Chunk ${completedChunks}/${totalChunks} completed (${chunkProgress}%)`);
+
+            return retryResult.result;
           }
+        );
 
-          completedChunks++;
-          const chunkProgress = 40 + Math.floor((completedChunks / totalChunks) * 50);
-          await updateTranscriptionProgress(
-            transcriptionId,
-            `transcribing_${completedChunks}/${totalChunks}`,
-            chunkProgress
-          );
-          log(`Chunk ${completedChunks}/${totalChunks} completed (${chunkProgress}%)`);
+        transcriptText = reassembleTranscriptions(chunkResults);
+        detectedLanguage = chunkResults[0]?.language || 'fr';
+        totalDuration = chunkTotalDuration || 0;
 
-          return retryResult.result;
+        // Fusionner les segments Whisper de tous les chunks avec offsets temporels
+        const mergedSegments = reassembleSegments(chunkResults);
+        if (mergedSegments.length > 0) {
+          try {
+            await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
+            log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
+          } catch (e) {
+            log(`Warning: could not store merged segments: ${e}`);
+          }
+        }
+      } finally {
+        for (const tempFile of tempFiles) {
+          try {
+            if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+          } catch {}
+        }
+      }
+
+    } else {
+      // Fichier audio < 20 Mo → transcription directe (PAS de FFmpeg !)
+      log(`Direct transcription: ${sizeMB.toFixed(1)} MB (no FFmpeg needed)`);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30);
+
+      if (await isCancelled(transcriptionId)) { log('Cancelled before transcription'); return; }
+
+      // Lire le fichier depuis le disque (petit fichier < 20 Mo, OK en RAM)
+      const audioBuffer = fs.readFileSync(inputPath);
+
+      const retryResult = await retryWithBackoff(
+        async () => transcribeAudioBuffer(audioBuffer, mimeType, 'fr'),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          backoffMultiplier: 2,
+          onRetry: (attempt, error) => {
+            log(`Retry attempt ${attempt}/3: ${error.message}`);
+          },
         }
       );
 
-      transcriptText = reassembleTranscriptions(chunkResults);
-      detectedLanguage = chunkResults[0]?.language || 'fr';
-      totalDuration = chunkTotalDuration || 0;
+      if (!retryResult.success || !retryResult.result) {
+        throw retryResult.error || new Error('Transcription failed after 3 attempts');
+      }
 
-      // Fusionner les segments Whisper de tous les chunks avec offsets temporels
-      const mergedSegments = reassembleSegments(chunkResults);
-      if (mergedSegments.length > 0) {
+      transcriptText = retryResult.result.text;
+      detectedLanguage = retryResult.result.language;
+      totalDuration = retryResult.result.duration || 0;
+
+      // Stocker les segments Whisper pour la synchronisation audio
+      if (retryResult.result.segments && retryResult.result.segments.length > 0) {
         try {
-          await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
-          log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
+          await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
+          log(`Stored ${retryResult.result.segments.length} Whisper segments`);
         } catch (e) {
-          log(`Warning: could not store merged segments: ${e}`);
+          log(`Warning: could not store segments: ${e}`);
         }
       }
-    } finally {
-      for (const tempFile of tempFiles) {
-        try {
-          const fs = await import('fs');
-          if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-        } catch {}
-      }
+
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
     }
 
-  } else {
-    // Fichier audio < 20 Mo → transcription directe (PAS de FFmpeg !)
-    log(`Direct transcription: ${sizeMB.toFixed(1)} MB (no FFmpeg needed)`);
-    await updateTranscriptionProgress(transcriptionId, 'transcribing', 30);
+    if (await isCancelled(transcriptionId)) { log('Cancelled before saving'); return; }
 
-    if (await isCancelled(transcriptionId)) { log('Cancelled before transcription'); return; }
+    // === SAUVEGARDE (90-100%) ===
+    await updateTranscriptionProgress(transcriptionId, 'saving', 95);
 
-    const retryResult = await retryWithBackoff(
-      async () => transcribeAudioBuffer(audioBuffer, mimeType, 'fr'),
-      {
-        maxAttempts: 3,
-        initialDelayMs: 1000,
-        backoffMultiplier: 2,
-        onRetry: (attempt, error) => {
-          log(`Retry attempt ${attempt}/3: ${error.message}`);
-        },
-      }
-    );
+    await updateTranscriptionStatus(transcriptionId, 'completed', {
+      transcriptText,
+      duration: Math.floor(totalDuration),
+      processingStep: 'completed',
+      processingProgress: 100,
+    });
 
-    if (!retryResult.success || !retryResult.result) {
-      throw retryResult.error || new Error('Transcription failed after 3 attempts');
-    }
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    log(`COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
 
-    transcriptText = retryResult.result.text;
-    detectedLanguage = retryResult.result.language;
-    totalDuration = retryResult.result.duration || 0;
-    // Stocker les segments Whisper pour la mise en évidence de confiance
-    if (retryResult.result.segments && retryResult.result.segments.length > 0) {
-      try {
-        await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
-        log(`Stored ${retryResult.result.segments.length} Whisper segments`);
-      } catch (e) {
-        log(`Warning: could not store segments: ${e}`);
-      }
-    }
-
-    await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
+  } finally {
+    // Nettoyer le fichier source téléchargé depuis S3
+    try { fs.unlinkSync(inputPath); } catch {}
   }
-
-  if (await isCancelled(transcriptionId)) { log('Cancelled before saving'); return; }
-
-  // === SAUVEGARDE (90-100%) ===
-  await updateTranscriptionProgress(transcriptionId, 'saving', 95);
-
-  await updateTranscriptionStatus(transcriptionId, 'completed', {
-    transcriptText,
-    duration: Math.floor(totalDuration),
-    processingStep: 'completed',
-    processingProgress: 100,
-  });
-
-  const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  log(`COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
 }
 
 /**

@@ -1444,3 +1444,17 @@ Vidéo 160 Mo (1:30) → tout fonctionne parfaitement (segments, surbrillance, c
 - [x] Fix `transcriptionWorker.ts` (Mode A + Mode B) : appel `reassembleSegments()` + `updateTranscriptionSegments()` après chunking
 - [x] Déduplication des segments dans la zone de chevauchement (2s overlap)
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## ⚡ Performance worker transcription fichiers longs (21 mai 2026)
+
+**Diagnostic :** Pour un fichier m4a de 470 Mo :
+1. `downloadFileFromS3()` chargeait 470 Mo en RAM → OOM sur Cloud Run (512 Mo)
+2. `processMediaFile()` re-téléchargeait les 470 Mo depuis S3 (double téléchargement)
+3. Pipeline total : 20+ minutes au lieu de ~3 minutes
+
+- [x] Remplacer `downloadFileFromS3()` (RAM) par `downloadFileFromS3ToFile()` (streaming disque)
+- [x] Créer `splitAudioIntoChunksFromFile()` qui travaille directement depuis le fichier sur disque
+- [x] Éliminer le double téléchargement S3 (1 seul téléchargement vers disque)
+- [x] Empreinte mémoire réduite : ~18 Mo max (1 chunk) au lieu de ~470 Mo
+- [x] Pipeline estimé : téléchargement ~60s + chunking ~30s + transcription ~60s = ~2.5 min
+- [x] 301/301 tests passent, 0 erreur TypeScript
