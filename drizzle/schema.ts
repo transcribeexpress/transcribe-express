@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, longtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -54,7 +54,7 @@ export const transcriptions = mysqlTable("transcriptions", {
   /** Texte édité par l'utilisateur — si renseigné, utilisé pour les exports à la place de transcriptText */
   editedText: text("editedText"),
   /** Segments Whisper sérialisés en JSON — contient les scores de confiance par segment */
-  segmentsData: text("segmentsData"),
+  segmentsData: longtext("segmentsData"),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

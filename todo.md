@@ -1458,3 +1458,15 @@ Vidéo 160 Mo (1:30) → tout fonctionne parfaitement (segments, surbrillance, c
 - [x] Empreinte mémoire réduite : ~18 Mo max (1 chunk) au lieu de ~470 Mo
 - [x] Pipeline estimé : téléchargement ~60s + chunking ~30s + transcription ~60s = ~2.5 min
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🐛 Bug éditeur fichiers longs : pas de segments/horodatage/surbrillance (21 mai 2026)
+
+**Symptôme :** Vidéo 470 Mo (30 min) transcrite en 2 min mais l'éditeur affiche le texte en bloc sans
+horodatage, sans surbrillance, sans synchronisation audio. Fichiers courts (< 20 Mo) fonctionnent.
+
+- [x] Vérifier si les segments sont bien stockés en BDD → **segmentsData = NULL** pour la transcription longue (ID 2190001)
+- [x] Cause racine : colonne `segmentsData` déclarée comme `TEXT` (64 Ko max) → dépassement silencieux pour 30 min de segments
+- [x] Fix : changer `text("segmentsData")` → `longtext("segmentsData")` dans drizzle/schema.ts (4 Go max)
+- [x] Migration SQL : `ALTER TABLE transcriptions MODIFY COLUMN segmentsData LONGTEXT`
+- [x] L'éditeur récupère et parse correctement les segments (code OK, problème était uniquement le stockage)
+- [x] 301/301 tests passent, 0 erreur TypeScript
