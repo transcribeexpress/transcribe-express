@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -678,6 +680,61 @@ export function TranscriptionEditor({
       // et déclenche onUpdate (qui gère le debounce de sauvegarde)
       if (replacedCount > 0) {
         editor.view.dispatch(tr);
+
+        // ─── Animation de surbrillance sur les mots remplacés ─────────────
+        // Appliquer des décorations inline temporaires (classe .replace-highlight)
+        // sur chaque mot remplacé pour que l'utilisateur voie clairement les modifications.
+        // On utilise un plugin éphémère avec des décorations ProseMirror.
+
+        // Trouver les positions des mots remplacés dans le document mis à jour
+        const updatedState = editor.view.state;
+        const highlightDecos: Decoration[] = [];
+
+        updatedState.doc.descendants((node, pos) => {
+          if (!node.isText || !node.text) return;
+          let m: RegExpExecArray | null;
+          const localRegex = new RegExp(
+            replaceTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+            "gi"
+          );
+          while ((m = localRegex.exec(node.text)) !== null) {
+            highlightDecos.push(
+              Decoration.inline(pos + m.index, pos + m.index + m[0].length, {
+                class: "replace-highlight",
+              })
+            );
+          }
+        });
+
+        if (highlightDecos.length > 0) {
+          const highlightPluginKey = new PluginKey<DecorationSet>("replaceHighlight");
+          const decoSet = DecorationSet.create(updatedState.doc, highlightDecos);
+          const highlightPlugin = new Plugin<DecorationSet>({
+            key: highlightPluginKey,
+            state: {
+              init() {
+                return decoSet;
+              },
+              apply(transaction, set) {
+                // Mapper les décorations si le document change
+                return set.map(transaction.mapping, transaction.doc);
+              },
+            },
+            props: {
+              decorations(editorState) {
+                return highlightPluginKey.getState(editorState);
+              },
+            },
+          });
+
+          // Enregistrer le plugin temporairement
+          editor.registerPlugin(highlightPlugin);
+
+          // Retirer le plugin après 1.6s (durée de l'animation CSS)
+          setTimeout(() => {
+            editor.unregisterPlugin(highlightPluginKey);
+          }, 1600);
+        }
       }
 
       // Récupérer le nouveau texte APRÈS la transaction

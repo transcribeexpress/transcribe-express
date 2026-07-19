@@ -1479,3 +1479,9 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Corriger handleReplace/handleReplaceAll pour mettre à jour le contenu Tiptap visuellement
 - [x] S'assurer que le texte modifié est visible immédiatement dans l'éditeur
 - [x] Tests passent + 0 erreur TypeScript
+
+## ✨ Animation surbrillance sur mots remplacés (19 juil 2026)
+
+- [x] Ajouter une animation de surbrillance temporaire (highlight flash) sur chaque mot remplacé
+- [x] L'animation doit être visible ~1.5s puis disparaître progressivement (fade out)
+- [x] Tests passent + 0 erreur TypeScript

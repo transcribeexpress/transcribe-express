@@ -333,7 +333,54 @@
   }
 }
 
-/* ─── Contrôles tactiles audio flottants (mobile/tablette) ─────────────────── */
+/* ─── Animation surbrillance mots remplacés ────────────────────────────────── */
+
+@keyframes replace-flash {
+  0% {
+    background: oklch(0.80 0.18 320 / 0.45);
+    box-shadow: 0 0 4px oklch(0.80 0.18 320 / 0.3);
+  }
+  40% {
+    background: oklch(0.80 0.18 320 / 0.30);
+    box-shadow: 0 0 2px oklch(0.80 0.18 320 / 0.15);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.replace-highlight {
+  animation: replace-flash 1.5s ease-out forwards;
+  border-radius: 3px;
+  padding: 1px 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Sur mobile : surbrillance plus visible */
+@media (max-width: 640px) {
+  .replace-highlight {
+    animation-duration: 2s;
+  }
+
+  @keyframes replace-flash {
+    0% {
+      background: oklch(0.80 0.18 320 / 0.55);
+      box-shadow: 0 0 6px oklch(0.80 0.18 320 / 0.4);
+    }
+    40% {
+      background: oklch(0.80 0.18 320 / 0.35);
+      box-shadow: 0 0 3px oklch(0.80 0.18 320 / 0.2);
+    }
+    100% {
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+}
+
+/* ─── Contrôles tactiles audio flottants (mobile/tablette) ───────────────── */
 
 /* Zone de touch élargie pour les boutons de contrôle audio */
 .touch-control-btn {
