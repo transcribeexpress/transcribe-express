@@ -625,39 +625,78 @@ export function TranscriptionEditor({
     if (!searchTerm.trim() || !editor) return;
 
     try {
-      const text = editor.getText();
-      const regex = new RegExp(
-        searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "gi"
-      );
-      const count = (text.match(regex) || []).length;
+      const escapedSearch = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escapedSearch, "gi");
+
+      // Compter les occurrences dans le texte actuel de l'éditeur
+      const currentText = editor.getText();
+      const count = (currentText.match(regex) || []).length;
       if (count === 0) {
         toast.error("Aucune occurrence trouvée");
         return;
       }
-      const newText = text.replace(regex, replaceTerm);
 
       // Annuler le debounce en cours pour éviter une double sauvegarde
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
-      // Reconstruire le contenu Tiptap avec les segments pour préserver l'horodatage
-      // Utiliser emitUpdate:false pour éviter que onUpdate ne déclenche une sauvegarde
-      // avec l'ancien texte (race condition)
-      editor.commands.setContent(
-        textToTiptapHTML(newText, allSegments.length > 0 ? allSegments : undefined),
-        { emitUpdate: false } // Ne pas déclencher onUpdate pour éviter la race condition
-      );
+      // ─── Remplacement via transaction ProseMirror ───────────────────────
+      // On parcourt le document ProseMirror et on remplace chaque occurrence
+      // directement dans le document. Cela préserve la structure des paragraphes
+      // (et donc l'horodatage/segments) tout en mettant à jour visuellement l'éditeur.
+      const { state } = editor.view;
+      let { tr } = state;
+      let replacedCount = 0;
 
-      // Mettre à jour l'état manuellement (puisque onUpdate n'est pas appelé)
+      // Collecter toutes les positions de texte à remplacer
+      // On parcourt le document noeud par noeud pour trouver les occurrences
+      const replacements: Array<{ from: number; to: number }> = [];
+      state.doc.descendants((node, pos) => {
+        if (!node.isText || !node.text) return;
+        const nodeText = node.text;
+        let match: RegExpExecArray | null;
+        // Réinitialiser le regex pour chaque noeud texte
+        const localRegex = new RegExp(escapedSearch, "gi");
+        while ((match = localRegex.exec(nodeText)) !== null) {
+          const from = pos + match.index;
+          const to = from + match[0].length;
+          replacements.push({ from, to });
+        }
+      });
+
+      // Appliquer les remplacements en ordre inverse (du dernier au premier)
+      // pour que les positions restent valides après chaque remplacement
+      for (let i = replacements.length - 1; i >= 0; i--) {
+        const { from, to } = replacements[i];
+        // Mapper les positions à travers les remplacements déjà appliqués
+        const mappedFrom = tr.mapping.map(from);
+        const mappedTo = tr.mapping.map(to);
+        tr = tr.insertText(replaceTerm, mappedFrom, mappedTo);
+        replacedCount++;
+      }
+
+      // Dispatcher la transaction — cela met à jour visuellement l'éditeur
+      // et déclenche onUpdate (qui gère le debounce de sauvegarde)
+      if (replacedCount > 0) {
+        editor.view.dispatch(tr);
+      }
+
+      // Récupérer le nouveau texte APRÈS la transaction
+      const newText = editor.getText();
+
+      // Annuler le debounce qui vient d'être déclenché par onUpdate
+      // pour faire une sauvegarde immédiate avec le texte correct
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      // Mettre à jour l'état
       setIsDirty(true);
       setSaveStatus("saving");
       onTextChange?.(newText);
 
-      // Sauvegarder immédiatement avec le bon texte
+      // Sauvegarder immédiatement avec le texte correct
       updateMutation.mutate({ id: transcriptionId, editedText: newText });
 
       toast.success(
-        `${count} remplacement${count > 1 ? "s" : ""} effectué${count > 1 ? "s" : ""}`,
+        `${replacedCount} remplacement${replacedCount > 1 ? "s" : ""} effectué${replacedCount > 1 ? "s" : ""}`,
         {
           description: `"${searchTerm}" → "${replaceTerm}"`,
         }

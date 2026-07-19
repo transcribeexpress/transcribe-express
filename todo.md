@@ -1470,3 +1470,12 @@ horodatage, sans surbrillance, sans synchronisation audio. Fichiers courts (< 20
 - [x] Migration SQL : `ALTER TABLE transcriptions MODIFY COLUMN segmentsData LONGTEXT`
 - [x] L'éditeur récupère et parse correctement les segments (code OK, problème était uniquement le stockage)
 - [x] 301/301 tests passent, 0 erreur TypeScript
+
+## 🐛 Bug remplacement mots dans l'éditeur — affichage temps réel (19 juil 2026)
+
+**Symptôme :** Le remplacement d'un mot (32 occurrences) est bien sauvegardé en BDD (export TXT correct)
+mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot reste affiché.
+
+- [x] Corriger handleReplace/handleReplaceAll pour mettre à jour le contenu Tiptap visuellement
+- [x] S'assurer que le texte modifié est visible immédiatement dans l'éditeur
+- [x] Tests passent + 0 erreur TypeScript
