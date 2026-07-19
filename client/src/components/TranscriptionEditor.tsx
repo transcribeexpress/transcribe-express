@@ -208,6 +208,9 @@ export function TranscriptionEditor({
   // Timestamp cible en attente (quand le lecteur audio vient d'être ouvert)
   // Appliqué dans onLoadedMetadata une fois la source audio chargée
   const pendingSeekRef = useRef<number | null>(null);
+  // Dernier texte sauvé par nous (via handleReplaceAll ou debounce)
+  // Utilisé pour éviter que le useEffect de sync réinitialise le contenu
+  const lastSavedTextRef = useRef<string | null>(null);
 
   // Texte initial pour Tiptap
   const initialText = editedText ?? originalText;
@@ -264,6 +267,7 @@ export function TranscriptionEditor({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         setSaveStatus("saving");
+        lastSavedTextRef.current = text;
         updateMutation.mutate({ id: transcriptionId, editedText: text });
       }, 2000);
     },
@@ -308,12 +312,23 @@ export function TranscriptionEditor({
   }, [segmentsData]);
 
   // Synchroniser le contenu si le texte externe change (ex: après restauration)
+  // IMPORTANT : On ne réinitialise PAS le contenu si le texte actuel de l'éditeur
+  // correspond à ce qu'on a nous-mêmes sauvé (lastSavedTextRef).
+  // Cela évite le bug où après un "Tout remplacer" + sauvegarde, le useEffect
+  // remet l'ancien texte car la prop editedText n'a pas encore été mise à jour.
   useEffect(() => {
     if (!editor) return;
     const incoming = editedText ?? originalText;
     const currentEditorText = editor.getText();
-    // Ne mettre à jour que si le contenu a réellement changé (pas à cause de notre propre édition)
-    if (incoming !== currentEditorText && !isDirty) {
+    // Ne mettre à jour que si :
+    // 1. Le contenu a réellement changé
+    // 2. On n'est pas en cours d'édition (isDirty)
+    // 3. Le texte actuel n'est PAS celui qu'on vient de sauvegarder
+    if (
+      incoming !== currentEditorText &&
+      !isDirty &&
+      currentEditorText !== lastSavedTextRef.current
+    ) {
       editor.commands.setContent(
         textToTiptapHTML(incoming, allSegments.length > 0 ? allSegments : undefined)
       );
@@ -599,6 +614,7 @@ export function TranscriptionEditor({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const text = editor.getText();
     setSaveStatus("saving");
+    lastSavedTextRef.current = text;
     updateMutation.mutate({ id: transcriptionId, editedText: text });
   };
 
@@ -609,6 +625,7 @@ export function TranscriptionEditor({
     );
     setIsDirty(true);
     setSaveStatus("saving");
+    lastSavedTextRef.current = null; // Reset pour permettre la sync externe
     updateMutation.mutate(
       { id: transcriptionId, editedText: null },
       {
@@ -750,6 +767,7 @@ export function TranscriptionEditor({
       onTextChange?.(newText);
 
       // Sauvegarder immédiatement avec le texte correct
+      lastSavedTextRef.current = newText;
       updateMutation.mutate({ id: transcriptionId, editedText: newText });
 
       toast.success(

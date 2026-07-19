@@ -1485,3 +1485,8 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Ajouter une animation de surbrillance temporaire (highlight flash) sur chaque mot remplacé
 - [x] L'animation doit être visible ~1.5s puis disparaître progressivement (fade out)
 - [x] Tests passent + 0 erreur TypeScript
+
+## 🐛 Bug : texte revient à l'ancien mot après disparition de la surbrillance (19 juil 2026)
+
+- [x] Corriger le bug : après 1.6s (fin animation), le texte remplacé revient à l'ancien mot
+- [x] La correction doit persister après la fin de l'animation de surbrillance
