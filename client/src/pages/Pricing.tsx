@@ -295,7 +295,6 @@ export default function Pricing() {
 
           {/* Réponse directe AEO — proposition de valeur forte */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Horodatage au mot près. Précision &gt;95%. Éditeur synchronisé exclusif.
             Transcribe Express transforme vos fichiers audio en texte exploitable
             en <strong className="text-foreground">moins de 2 minutes</strong> — là où
             une transcription manuelle prend des heures.
