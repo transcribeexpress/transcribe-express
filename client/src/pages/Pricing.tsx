@@ -287,9 +287,9 @@ export default function Pricing() {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            La transcription IA{" "}
+            Des tarifs{" "}
             <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">
-              la plus précise du marché
+              simples et transparents
             </span>
           </h1>
 
@@ -301,37 +301,6 @@ export default function Pricing() {
             une transcription manuelle prend des heures.
           </p>
 
-          {/* Toggle mensuel / annuel */}
-          <div className="flex items-center justify-center gap-3 pt-4">
-            <span
-              className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              Mensuel
-            </span>
-            <button
-              onClick={() => setIsAnnual(!isAnnual)}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${
-                isAnnual
-                  ? "bg-gradient-to-r from-[#BE34D5] to-[#34D5BE]"
-                  : "bg-muted"
-              }`}
-              aria-label="Basculer entre tarif mensuel et annuel"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
-                  isAnnual ? "translate-x-7" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <span
-              className={`text-sm font-medium transition-colors ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              Annuel
-            </span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
-              -33%
-            </span>
-          </div>
         </div>
       </section>
 
@@ -402,6 +371,38 @@ export default function Pricing() {
 
       {/* ── Pricing Cards ── */}
       <section className="container pb-20">
+        {/* Toggle mensuel / annuel — au-dessus des cartes */}
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <span
+            className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+          >
+            Mensuel
+          </span>
+          <button
+            onClick={() => setIsAnnual(!isAnnual)}
+            className={`relative w-14 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${
+              isAnnual
+                ? "bg-gradient-to-r from-[#BE34D5] to-[#34D5BE]"
+                : "bg-muted"
+            }`}
+            aria-label="Basculer entre tarif mensuel et annuel"
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                isAnnual ? "translate-x-7" : "translate-x-0"
+              }`}
+            />
+          </button>
+          <span
+            className={`text-sm font-medium transition-colors ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+          >
+            Annuel
+          </span>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
+            -33%
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {/* Card 1 — Starter */}
           <div className="relative rounded-2xl border bg-card p-8 flex flex-col">
