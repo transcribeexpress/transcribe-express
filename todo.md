@@ -1490,3 +1490,19 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 
 - [x] Corriger le bug : après 1.6s (fin animation), le texte remplacé revient à l'ancien mot
 - [x] La correction doit persister après la fin de l'animation de surbrillance
+
+
+## 📄 Page Pricing — Conversion optimisée + AEO-first + SEO (20 juil 2026)
+
+- [x] Créer la page Pricing.tsx avec structure AEO-first (JSON-LD Product, FAQPage)
+- [x] Design inspiré Canva : épuré, gradient magenta/cyan, CTA proéminents
+- [x] 3 packages : Starter (0,15€/min), Créateur (14,90€/mois), Agence (49,90€/mois)
+- [x] Plan Agence ajusté : 1 siège, pas d'API, pas de marque blanche, pas de chat
+- [x] Essai gratuit 30 jours / 30 min mis en avant (hero + badge)
+- [x] Section FAQ optimisée AEO (questions conversationnelles)
+- [x] Tableau comparatif des fonctionnalités
+- [x] CTA de conversion fort (Commencer gratuitement)
+- [x] Intégrer la route /pricing dans App.tsx
+- [x] Lien vers /pricing dans la navigation du header Home
+- [x] SEO : meta title/description optimisés, schema.org Product
+- [x] TypeScript 0 erreurs + tests passent

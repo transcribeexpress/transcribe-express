@@ -14,12 +14,14 @@ import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import ProgressPage from "./pages/Progress";
+import Pricing from "./pages/Pricing";
 
 function Router() {
   return (
     <Switch>
       {/* Pages publiques */}
       <Route path={"/"} component={Home} />
+      <Route path={"/pricing"} component={Pricing} />
       <Route path={"/login"} component={Login} />
       
       {/* Callback OAuth Clerk */}
