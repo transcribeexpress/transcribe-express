@@ -288,12 +288,12 @@ export default function Home() {
                 className="h-10 sm:h-12 md:h-14 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain"
               />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link href="/pricing">
-                <Button variant="ghost" className="hidden sm:inline-flex">Tarifs</Button>
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">Tarifs</Button>
               </Link>
               <Link href="/login">
-                <Button variant="outline">Se connecter</Button>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Se connecter</Button>
               </Link>
             </div>
           </nav>

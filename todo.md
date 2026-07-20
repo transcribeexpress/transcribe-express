@@ -1506,3 +1506,14 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Lien vers /pricing dans la navigation du header Home
 - [x] SEO : meta title/description optimisés, schema.org Product
 - [x] TypeScript 0 erreurs + tests passent
+
+
+## 🔧 Corrections Page Pricing (20 juil 2026)
+
+- [x] Bug : toggle mensuel/annuel — le texte se chevauche au switch
+- [x] Mobile : lien "Tarifs" invisible dans le header de Home
+- [x] Mobile : lien "Accueil" invisible dans le header de Pricing
+- [x] Hero : mettre en avant la précision de l'IA (horodatage, Whisper Large v3)
+- [x] Ajouter section avantage concurrentiel / rupture avec la concurrence
+- [x] Montrer en quoi le service répond à un besoin urgent des créateurs
+- [x] Démontrer la plus-value à haute valeur pour le travail des utilisateurs

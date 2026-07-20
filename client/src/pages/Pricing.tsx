@@ -14,6 +14,10 @@ import {
   ChevronDown,
   ChevronUp,
   Gift,
+  Timer,
+  Target,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -258,14 +262,16 @@ export default function Pricing() {
               />
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/">
-              <Button variant="ghost" className="hidden sm:inline-flex">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
                 Accueil
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline">Se connecter</Button>
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                Se connecter
+              </Button>
             </Link>
           </div>
         </nav>
@@ -281,30 +287,30 @@ export default function Pricing() {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Des tarifs{" "}
+            La transcription IA{" "}
             <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">
-              simples et transparents
+              la plus précise du marché
             </span>
           </h1>
 
-          {/* Réponse directe AEO — 30-60 mots */}
+          {/* Réponse directe AEO — proposition de valeur forte */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Transcribe Express propose la transcription audio/vidéo par IA à
-            partir de <strong className="text-foreground">0,15€ par minute</strong>.
-            Testez gratuitement pendant 30 jours avec 30 minutes offertes, puis
-            choisissez le plan adapté à votre volume — sans engagement.
+            Horodatage au mot près. Précision &gt;95%. Éditeur synchronisé exclusif.
+            Transcribe Express transforme vos fichiers audio en texte exploitable
+            en <strong className="text-foreground">moins de 2 minutes</strong> — là où
+            une transcription manuelle prend des heures.
           </p>
 
           {/* Toggle mensuel / annuel */}
           <div className="flex items-center justify-center gap-3 pt-4">
             <span
-              className={`text-sm font-medium ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+              className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
             >
               Mensuel
             </span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${
+              className={`relative w-14 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${
                 isAnnual
                   ? "bg-gradient-to-r from-[#BE34D5] to-[#34D5BE]"
                   : "bg-muted"
@@ -312,21 +318,84 @@ export default function Pricing() {
               aria-label="Basculer entre tarif mensuel et annuel"
             >
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
-                  isAnnual ? "translate-x-7.5" : "translate-x-0.5"
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                  isAnnual ? "translate-x-7" : "translate-x-0"
                 }`}
               />
             </button>
             <span
-              className={`text-sm font-medium ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+              className={`text-sm font-medium transition-colors ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
             >
               Annuel
             </span>
-            {isAnnual && (
-              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                -33%
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
+              -33%
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section Avantage Concurrentiel — Pourquoi c'est différent ── */}
+      <section className="container pb-16">
+        <div className="max-w-5xl mx-auto">
+          {/* Badge rupture */}
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#BE34D5]/10 to-[#34D5BE]/10 border border-[#34D5BE]/20 rounded-full px-4 py-1.5 mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-[#34D5BE]" />
+              <span className="text-sm font-medium text-[#34D5BE]">
+                Ce que les autres outils ne font pas
               </span>
-            )}
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+              Pas juste une transcription.
+              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent"> Un studio d'édition.</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              La plupart des outils vous livrent un fichier texte brut. Transcribe Express vous donne un environnement professionnel pour corriger, naviguer et valider chaque mot en contexte sonore.
+            </p>
+          </div>
+
+          {/* 3 colonnes : Besoin urgent / Rupture / Plus-value */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Besoin urgent */}
+            <div className="rounded-2xl border bg-card/50 p-6 space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                <Timer className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="font-semibold text-lg">Votre temps est précieux</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Vous passez <strong className="text-foreground">3 à 5 heures</strong> à transcrire manuellement une vidéo d'une heure. Avec Transcribe Express, c'est fait en <strong className="text-foreground">moins de 2 minutes</strong>. Chaque semaine, vous récupérez des heures pour créer du contenu au lieu de le retranscrire.
+              </p>
+            </div>
+
+            {/* Rupture concurrentielle */}
+            <div className="rounded-2xl border-2 border-primary/30 bg-card/50 p-6 space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Target className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg">Précision + Contrôle</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Horodatage au mot près, éditeur synchronisé avec Click-to-Seek, détection des passages incertains, remplacement global avec surbrillance. <strong className="text-foreground">Aucun concurrent</strong> ne propose ce niveau de contrôle sur votre transcription.
+              </p>
+            </div>
+
+            {/* Plus-value haute */}
+            <div className="rounded-2xl border bg-card/50 p-6 space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <ArrowRight className="w-5 h-5 text-accent" />
+              </div>
+              <h3 className="font-semibold text-lg">Sous-titres en 1 clic</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Export direct en <strong className="text-foreground">SRT et VTT</strong> avec horodatage précis. Importez dans YouTube, Premiere Pro ou DaVinci Resolve sans retouche. Vos vidéos sont accessibles et référencées immédiatement.
+              </p>
+            </div>
+          </div>
+
+          {/* Citation de rupture */}
+          <div className="mt-10 text-center">
+            <blockquote className="text-base md:text-lg font-medium text-foreground/80 italic max-w-2xl mx-auto">
+              « Un YouTuber qui publie 3 vidéos par semaine économise plus de 12 heures par mois avec Transcribe Express — soit l'équivalent d'une journée et demie de travail. »
+            </blockquote>
           </div>
         </div>
       </section>
