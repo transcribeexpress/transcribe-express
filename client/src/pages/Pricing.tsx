@@ -429,7 +429,7 @@ export default function Pricing() {
             >
               Annuel
             </span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all duration-300 ${isAnnual ? "text-primary bg-primary/10" : "text-muted-foreground/60 bg-muted/40"}`}>
               -33%
             </span>
           </div>
@@ -507,9 +507,9 @@ export default function Pricing() {
             </ul>
           </div>
 
-          {/* Card 2 — Créateur (Recommandé) — surelevée */}
-          <div className="relative rounded-2xl flex flex-col flex-1 z-10 pt-8 md:pt-8 md:min-h-[calc(100%+3rem)] md:self-end"
-            style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)", transform: "scale(1.05) translateY(-1.5rem)" }}
+          {/* Card 2 — Créateur (Recommandé) — surelevée sur desktop uniquement */}
+          <div className="relative rounded-2xl flex flex-col flex-1 z-10 pt-8 md:scale-105 md:-translate-y-6"
+            style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)" }}
           >
             {/* Badge populaire */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
@@ -724,7 +724,7 @@ export default function Pricing() {
           <div className="flex items-center gap-3 bg-card border rounded-xl px-5 py-3 shadow-sm">
             <Lock className="w-4 h-4 text-[#635BFF]" />
             <span className="text-sm text-muted-foreground">Paiements sécurisés par</span>
-            <span className="text-sm font-bold text-[#635BFF] tracking-tight">stripe</span>
+            <span className="text-lg font-bold text-[#635BFF] tracking-tight">stripe</span>
             <span className="text-xs text-muted-foreground">— Chiffrement SSL 256 bits</span>
           </div>
 

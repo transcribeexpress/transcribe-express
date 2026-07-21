@@ -1538,3 +1538,10 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Badge "Le plus populaire" : corriger le chevauchement sur desktop
 - [x] Supprimer le doublon Stripe (garder uniquement le badge visuel, supprimer le SPAN dans la ligne preuve sociale)
 - [x] Ajouter l'espace manquant entre "Pas encore convaincu ?" et "Voir comment ça fonctionne"
+
+
+## 🐛 Corrections Pricing v3 (21 juil 2026)
+
+- [x] Carte Créateur chevauche la carte Starter sur tablette/mobile — scale/translate uniquement sur md+ (desktop)
+- [x] Toggle : badge -33% toujours visible (gris par défaut, couleur magenta quand actif), enveloppé dans un span
+- [x] Badge Stripe : mot "stripe" en text-lg (plus gros que le reste) pour meilleure visibilité et centrage
