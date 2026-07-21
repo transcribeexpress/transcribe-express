@@ -401,8 +401,8 @@ export default function Pricing() {
 
       {/* ── Pricing Cards ── */}
       <section className="container pb-20">
-        {/* Toggle mensuel / annuel — au-dessus des cartes */}
-        <div className="flex flex-col items-center gap-3 mb-10 w-full">
+        {/* Toggle mensuel / annuel — centré sur toutes tailles, espacé des cartes */}
+        <div className="flex flex-col items-center gap-3 mb-16 w-full">
           <div className="flex items-center justify-center gap-3">
             <span
               className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
@@ -436,7 +436,7 @@ export default function Pricing() {
         </div>
 
         {/* Grille avec plan Créateur surelevé */}
-        <div className="flex flex-col md:flex-row items-stretch gap-6 max-w-6xl mx-auto md:items-end">
+        <div className="flex flex-col md:flex-row gap-6 max-w-6xl mx-auto md:items-end">
 
           {/* Card 1 — Starter */}
           <div className="relative rounded-2xl border bg-card p-7 flex flex-col flex-1">
@@ -508,11 +508,11 @@ export default function Pricing() {
           </div>
 
           {/* Card 2 — Créateur (Recommandé) — surelevée */}
-          <div className="relative rounded-2xl flex flex-col flex-1 md:scale-105 md:-translate-y-4 z-10"
+          <div className="relative rounded-2xl flex flex-col flex-1 md:scale-105 md:-translate-y-4 z-10 pt-6 md:pt-0"
             style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)" }}
           >
             {/* Badge populaire */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20">
               <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg tracking-wide">
                 ⭐ Le plus populaire
               </span>
@@ -717,11 +717,6 @@ export default function Pricing() {
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />
               <span>Sans engagement — résiliez à tout moment</span>
-            </div>
-            <div className="hidden sm:block w-px h-4 bg-border" />
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-primary" />
-              <span>Paiements sécurisés par <strong className="text-foreground">Stripe</strong></span>
             </div>
           </div>
 

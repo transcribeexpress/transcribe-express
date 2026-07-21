@@ -1529,3 +1529,12 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Badge Stripe : "Paiements sécurisés par Stripe"
 - [x] Section avantage concurrentiel : colonne centrale visuellement dominante
 - [x] Effet de surprise visuel : compteur 150× / >95% / 0€
+
+## 🐛 Corrections visuelles précises Page Pricing (21 juil 2026)
+
+- [x] Carte "Précision" alignée par le bas (pas par le haut) pour créer l'effet de dominance
+- [x] Toggle mensuel/annuel centré sur tablette et mobile (aligné avec le centre des cartes)
+- [x] Toggle desktop : ajouter espacement suffisant entre toggle et carte Créateur
+- [x] Badge "Le plus populaire" : corriger le chevauchement sur desktop
+- [x] Supprimer le doublon Stripe (garder uniquement le badge visuel, supprimer le SPAN dans la ligne preuve sociale)
+- [x] Ajouter l'espace manquant entre "Pas encore convaincu ?" et "Voir comment ça fonctionne"
