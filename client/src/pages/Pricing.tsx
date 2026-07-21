@@ -18,6 +18,9 @@ import {
   Target,
   Sparkles,
   ArrowRight,
+  Lock,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -323,8 +326,26 @@ export default function Pricing() {
             </p>
           </div>
 
-          {/* 3 colonnes : Besoin urgent / Rupture / Plus-value */}
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Compteur animé — élément de surprise */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-8 mb-10 p-6 rounded-2xl bg-gradient-to-r from-[#BE34D5]/5 to-[#34D5BE]/5 border border-dashed border-primary/20">
+            <div className="text-center">
+              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">150×</div>
+              <div className="text-xs text-muted-foreground mt-1">plus rapide qu'une transcription manuelle</div>
+            </div>
+            <div className="hidden sm:block w-px h-12 bg-border" />
+            <div className="text-center">
+              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">&gt;95%</div>
+              <div className="text-xs text-muted-foreground mt-1">de précision sur le français</div>
+            </div>
+            <div className="hidden sm:block w-px h-12 bg-border" />
+            <div className="text-center">
+              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">0€</div>
+              <div className="text-xs text-muted-foreground mt-1">pour commencer — sans CB</div>
+            </div>
+          </div>
+
+          {/* 3 colonnes : Besoin urgent / Rupture (dominante) / Plus-value */}
+          <div className="grid md:grid-cols-3 gap-6 md:items-start">
             {/* Besoin urgent */}
             <div className="rounded-2xl border bg-card/50 p-6 space-y-4">
               <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
@@ -336,21 +357,31 @@ export default function Pricing() {
               </p>
             </div>
 
-            {/* Rupture concurrentielle */}
-            <div className="rounded-2xl border-2 border-primary/30 bg-card/50 p-6 space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Target className="w-5 h-5 text-primary" />
+            {/* Rupture concurrentielle — carte dominante */}
+            <div className="rounded-2xl p-6 space-y-4 relative overflow-hidden"
+              style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.10) 0%, rgba(52,213,190,0.08) 100%)", border: "1.5px solid rgba(190,52,213,0.35)", boxShadow: "0 8px 32px -8px rgba(190,52,213,0.20)" }}
+            >
+              {/* Badge Exclusif */}
+              <div className="absolute top-4 right-4">
+                <span className="text-xs font-bold bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent border border-primary/30 rounded-full px-2 py-0.5">EXCLUSIF</span>
               </div>
-              <h3 className="font-semibold text-lg">Précision + Contrôle</h3>
+              <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Target className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-bold text-xl">Précision + Contrôle</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Horodatage au mot près, éditeur synchronisé avec Click-to-Seek, détection des passages incertains, remplacement global avec surbrillance. <strong className="text-foreground">Aucun concurrent</strong> ne propose ce niveau de contrôle sur votre transcription.
               </p>
+              <div className="pt-2 text-xs font-semibold text-primary flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                Unique sur le marché français
+              </div>
             </div>
 
             {/* Plus-value haute */}
             <div className="rounded-2xl border bg-card/50 p-6 space-y-4">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <ArrowRight className="w-5 h-5 text-accent" />
+                <Download className="w-5 h-5 text-accent" />
               </div>
               <h3 className="font-semibold text-lg">Sous-titres en 1 clic</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -371,46 +402,55 @@ export default function Pricing() {
       {/* ── Pricing Cards ── */}
       <section className="container pb-20">
         {/* Toggle mensuel / annuel — au-dessus des cartes */}
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <span
-            className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
-          >
-            Mensuel
-          </span>
-          <button
-            onClick={() => setIsAnnual(!isAnnual)}
-            className={`relative w-14 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${
-              isAnnual
-                ? "bg-gradient-to-r from-[#BE34D5] to-[#34D5BE]"
-                : "bg-muted"
-            }`}
-            aria-label="Basculer entre tarif mensuel et annuel"
-          >
+        <div className="flex flex-col items-center gap-3 mb-10 w-full">
+          <div className="flex items-center justify-center gap-3">
             <span
-              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
-                isAnnual ? "translate-x-7" : "translate-x-0"
+              className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              Mensuel
+            </span>
+            <button
+              onClick={() => setIsAnnual(!isAnnual)}
+              className={`relative w-14 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${
+                isAnnual
+                  ? "bg-gradient-to-r from-[#BE34D5] to-[#34D5BE]"
+                  : "bg-muted"
               }`}
-            />
-          </button>
-          <span
-            className={`text-sm font-medium transition-colors ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
-          >
-            Annuel
-          </span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
-            -33%
-          </span>
+              aria-label="Basculer entre tarif mensuel et annuel"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                  isAnnual ? "translate-x-7" : "translate-x-0"
+                }`}
+              />
+            </button>
+            <span
+              className={`text-sm font-medium transition-colors ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              Annuel
+            </span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-opacity duration-300 ${isAnnual ? "opacity-100 text-primary bg-primary/10" : "opacity-0"}`}>
+              -33%
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        {/* Grille avec plan Créateur surelevé */}
+        <div className="flex flex-col md:flex-row items-stretch gap-6 max-w-6xl mx-auto md:items-end">
+
           {/* Card 1 — Starter */}
-          <div className="relative rounded-2xl border bg-card p-8 flex flex-col">
+          <div className="relative rounded-2xl border bg-card p-7 flex flex-col flex-1">
+            {/* Accroche profil */}
+            <div className="inline-flex items-center gap-1.5 bg-muted/60 rounded-full px-3 py-1 text-xs text-muted-foreground font-medium mb-4 self-start">
+              <Zap className="w-3 h-3" />
+              Je transcris de temps en temps
+            </div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
                 <Zap className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Starter</h3>
+                <h3 className="text-xl font-bold">Starter</h3>
                 <p className="text-xs text-muted-foreground">À la minute</p>
               </div>
             </div>
@@ -426,8 +466,7 @@ export default function Pricing() {
             </div>
 
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              Pour les créateurs occasionnels qui transcrivent ponctuellement et
-              veulent payer uniquement ce qu'ils consomment.
+              Payez uniquement ce que vous consommez. Zéro abonnement, zéro engagement.
             </p>
 
             <Link href="/login" className="mt-auto">
@@ -439,7 +478,7 @@ export default function Pricing() {
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Recharges : 5€, 10€, 20€ ou 50€</span>
+                <span>Recharges : 5€, 10€, 20€ ou 50€</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
@@ -468,116 +507,124 @@ export default function Pricing() {
             </ul>
           </div>
 
-          {/* Card 2 — Créateur (Recommandé) */}
-          <div className="relative rounded-2xl border-2 border-primary bg-card p-8 flex flex-col shadow-lg shadow-primary/5">
+          {/* Card 2 — Créateur (Recommandé) — surelevée */}
+          <div className="relative rounded-2xl flex flex-col flex-1 md:scale-105 md:-translate-y-4 z-10"
+            style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)" }}
+          >
             {/* Badge populaire */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">
-                Le plus populaire
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg tracking-wide">
+                ⭐ Le plus populaire
               </span>
             </div>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Crown className="w-5 h-5 text-primary" />
+            <div className="p-8 flex flex-col h-full">
+              {/* Accroche profil */}
+              <div className="inline-flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1 text-xs text-primary font-semibold mb-4 self-start">
+                <Crown className="w-3 h-3" />
+                Je publie régulièrement
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">Créateur</h3>
-                <p className="text-xs text-muted-foreground">
-                  Abonnement mensuel
-                </p>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Crown className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold">Créateur</h3>
+                  <p className="text-xs text-muted-foreground">Abonnement mensuel</p>
+                </div>
               </div>
+
+              <div className="mb-2">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-5xl font-bold bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">
+                    {isAnnual
+                      ? creatorAnnual.toFixed(2).replace(".", ",")
+                      : creatorMonthly.toFixed(2).replace(".", ",")}€
+                  </span>
+                  <span className="text-muted-foreground">/mois</span>
+                </div>
+                {isAnnual ? (
+                  <p className="text-sm text-primary mt-1 font-semibold">
+                    Économisez 60€/an — facturé 118,80€/an
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    5 heures incluses / mois
+                  </p>
+                )}
+              </div>
+
+              {/* Indicateur valeur */}
+              <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-2 mb-5">
+                <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-xs font-medium text-primary">Revient à seulement <strong>0,05€/min</strong> — 67% moins cher que Starter</span>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                Pour les YouTubers et podcasters qui publient régulièrement et veulent un coût prévisible.
+              </p>
+
+              <Link href="/login" className="mt-auto">
+                <Button
+                  className="w-full bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white text-base py-6"
+                  size="lg"
+                >
+                  Commencer gratuitement
+                </Button>
+              </Link>
+
+              <ul className="mt-6 space-y-3 text-sm">
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>5 heures</strong> (300 min) incluses/mois</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Minutes supp. à <strong>0,12€/min</strong> (-20%)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Fichiers jusqu'à 2h (120 min)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>Roll-over 1 mois</strong> (minutes reportées)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Transcription prioritaire</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Historique illimité</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Stockage 90 jours</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Support email prioritaire (24h)</span>
+                </li>
+              </ul>
             </div>
-
-            <div className="mb-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold">
-                  {isAnnual
-                    ? creatorAnnual.toFixed(2).replace(".", ",")
-                    : creatorMonthly.toFixed(2).replace(".", ",")}
-                  €
-                </span>
-                <span className="text-muted-foreground">/mois</span>
-              </div>
-              {isAnnual && (
-                <p className="text-sm text-primary mt-1 font-medium">
-                  Économisez 60€/an (facturé 118,80€/an)
-                </p>
-              )}
-              {!isAnnual && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  5 heures incluses / mois
-                </p>
-              )}
-            </div>
-
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              Pour les YouTubers et podcasters réguliers qui publient plusieurs
-              vidéos par semaine ou une vidéo longue hebdomadaire.
-            </p>
-
-            <Link href="/login" className="mt-auto">
-              <Button
-                className="w-full bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white"
-                size="lg"
-              >
-                Commencer gratuitement
-              </Button>
-            </Link>
-
-            <ul className="mt-6 space-y-3 text-sm">
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>
-                  <strong>5 heures</strong> (300 min) incluses/mois
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>
-                  Minutes supp. à <strong>0,12€/min</strong> (-20%)
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Fichiers jusqu'à 2h (120 min)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>
-                  <strong>Roll-over 1 mois</strong> (minutes reportées)
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Transcription prioritaire</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Historique illimité</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Stockage 90 jours</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Support email prioritaire (24h)</span>
-              </li>
-            </ul>
           </div>
 
           {/* Card 3 — Agence */}
-          <div className="relative rounded-2xl border bg-card p-8 flex flex-col">
+          <div className="relative rounded-2xl border bg-card p-7 flex flex-col flex-1">
+            {/* Accroche profil */}
+            <div className="inline-flex items-center gap-1.5 bg-muted/60 rounded-full px-3 py-1 text-xs text-muted-foreground font-medium mb-4 self-start">
+              <Building2 className="w-3 h-3" />
+              Je gère plusieurs clients
+            </div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Agence</h3>
-                <p className="text-xs text-muted-foreground">
-                  Volume professionnel
-                </p>
+                <h3 className="text-xl font-bold">Agence</h3>
+                <p className="text-xs text-muted-foreground">Volume professionnel</p>
               </div>
             </div>
 
@@ -657,11 +704,43 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Mention sans engagement */}
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Tous les plans sont <strong>sans engagement</strong>. Résiliez à tout
-          moment, sans frais.
-        </p>
+        {/* Preuve sociale + Badge Stripe + CTA secondaire */}
+        <div className="max-w-6xl mx-auto mt-10 flex flex-col items-center gap-6">
+
+          {/* Ligne preuve sociale */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <span><strong className="text-foreground">+500 transcriptions</strong> réalisées ce mois</span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-border" />
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              <span>Sans engagement — résiliez à tout moment</span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-border" />
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-primary" />
+              <span>Paiements sécurisés par <strong className="text-foreground">Stripe</strong></span>
+            </div>
+          </div>
+
+          {/* Badge Stripe visuel */}
+          <div className="flex items-center gap-3 bg-card border rounded-xl px-5 py-3 shadow-sm">
+            <Lock className="w-4 h-4 text-[#635BFF]" />
+            <span className="text-sm text-muted-foreground">Paiements sécurisés par</span>
+            <span className="text-sm font-bold text-[#635BFF] tracking-tight">stripe</span>
+            <span className="text-xs text-muted-foreground">— Chiffrement SSL 256 bits</span>
+          </div>
+
+          {/* CTA secondaire pour les indécis */}
+          <p className="text-sm text-muted-foreground text-center">
+            Pas encore convaincu ? 
+            <Link href="/" className="text-primary hover:underline font-medium">
+              Voir comment ça fonctionne →
+            </Link>
+          </p>
+        </div>
       </section>
 
       {/* ── Tableau comparatif ── */}

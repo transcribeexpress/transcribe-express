@@ -1517,3 +1517,15 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Ajouter section avantage concurrentiel / rupture avec la concurrence
 - [x] Montrer en quoi le service répond à un besoin urgent des créateurs
 - [x] Démontrer la plus-value à haute valeur pour le travail des utilisateurs
+
+
+## 🎨 Refonte Page Pricing — Impact visuel + Conversion (21 juil 2026)
+
+- [x] Plan Créateur : élévation visuelle forte (ombre, bordure gradient, taille légèrement plus grande)
+- [x] Accroche courte sous chaque nom de plan (profil idéal en 5 mots)
+- [x] Preuve sociale : chiffre d'usage ou citation courte
+- [x] CTA secondaire pour les indécis ("Voir comment ça fonctionne")
+- [x] Toggle mobile : centrage correct avec les cartes
+- [x] Badge Stripe : "Paiements sécurisés par Stripe"
+- [x] Section avantage concurrentiel : colonne centrale visuellement dominante
+- [x] Effet de surprise visuel : compteur 150× / >95% / 0€
