@@ -273,27 +273,27 @@ export default function Home() {
 
       <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
         {/* Header */}
-        <header className="container py-6">
-          <nav className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <header className="container py-4 sm:py-6">
+          <nav className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png"
                 alt="Transcribe Express Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0"
+                className="w-7 h-7 sm:w-10 sm:h-10 object-contain flex-shrink-0"
                 style={{ mixBlendMode: "screen" }}
               />
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/wordmark-transparent_d2755219.webp"
                 alt="Transcribe Express"
-                className="h-10 sm:h-12 md:h-14 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain"
+                className="h-8 sm:h-12 md:h-14 w-auto max-w-[100px] sm:max-w-[180px] md:max-w-[220px] object-contain"
               />
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               <Link href="/pricing">
-                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">Tarifs</Button>
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Tarifs</Button>
               </Link>
               <Link href="/login">
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm">Se connecter</Button>
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Se connecter</Button>
               </Link>
             </div>
           </nav>

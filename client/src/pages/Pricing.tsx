@@ -248,31 +248,31 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
       {/* Header */}
-      <header className="container py-6">
-        <nav className="flex items-center justify-between">
+      <header className="container py-4 sm:py-6">
+        <nav className="flex items-center justify-between gap-2">
           <Link href="/">
-            <div className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer flex-shrink-0">
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png"
                 alt="Transcribe Express Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 object-contain flex-shrink-0"
+                className="w-7 h-7 sm:w-10 sm:h-10 object-contain flex-shrink-0"
                 style={{ mixBlendMode: "screen" }}
               />
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/wordmark-transparent_d2755219.webp"
                 alt="Transcribe Express"
-                className="h-10 sm:h-12 md:h-14 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain"
+                className="h-8 sm:h-12 md:h-14 w-auto max-w-[100px] sm:max-w-[180px] md:max-w-[220px] object-contain"
               />
             </div>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
                 Accueil
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
                 Se connecter
               </Button>
             </Link>
@@ -345,7 +345,7 @@ export default function Pricing() {
           </div>
 
           {/* 3 colonnes : Besoin urgent / Rupture (dominante) / Plus-value */}
-          <div className="grid md:grid-cols-3 gap-6 md:items-start">
+          <div className="grid md:grid-cols-3 gap-6 md:items-end">
             {/* Besoin urgent */}
             <div className="rounded-2xl border bg-card/50 p-6 space-y-4">
               <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
@@ -402,7 +402,7 @@ export default function Pricing() {
       {/* ── Pricing Cards ── */}
       <section className="container pb-20">
         {/* Toggle mensuel / annuel — centré sur toutes tailles, espacé des cartes */}
-        <div className="flex flex-col items-center gap-3 mb-16 w-full">
+        <div className="flex flex-col items-center gap-3 mb-20 max-w-6xl mx-auto w-full">
           <div className="flex items-center justify-center gap-3">
             <span
               className={`text-sm font-medium transition-colors ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}
@@ -435,7 +435,7 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Grille avec plan Créateur surelevé */}
+        {/* Grille avec plan Créateur surelevé — aligné par le bas */}
         <div className="flex flex-col md:flex-row gap-6 max-w-6xl mx-auto md:items-end">
 
           {/* Card 1 — Starter */}
@@ -508,12 +508,12 @@ export default function Pricing() {
           </div>
 
           {/* Card 2 — Créateur (Recommandé) — surelevée */}
-          <div className="relative rounded-2xl flex flex-col flex-1 md:scale-105 md:-translate-y-4 z-10 pt-6 md:pt-0"
-            style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)" }}
+          <div className="relative rounded-2xl flex flex-col flex-1 z-10 pt-8 md:pt-8 md:min-h-[calc(100%+3rem)] md:self-end"
+            style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.12) 0%, rgba(52,213,190,0.10) 100%)", border: "2px solid transparent", backgroundClip: "padding-box", boxShadow: "0 0 0 2px #BE34D5, 0 25px 50px -12px rgba(190,52,213,0.35)", transform: "scale(1.05) translateY(-1.5rem)" }}
           >
             {/* Badge populaire */}
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20">
-              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg tracking-wide">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+              <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg tracking-wide whitespace-nowrap">
                 ⭐ Le plus populaire
               </span>
             </div>
@@ -730,7 +730,7 @@ export default function Pricing() {
 
           {/* CTA secondaire pour les indécis */}
           <p className="text-sm text-muted-foreground text-center">
-            Pas encore convaincu ? 
+            Pas encore convaincu ?{" "}
             <Link href="/" className="text-primary hover:underline font-medium">
               Voir comment ça fonctionne →
             </Link>
