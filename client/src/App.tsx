@@ -15,6 +15,8 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import ProgressPage from "./pages/Progress";
 import Pricing from "./pages/Pricing";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 
 function Router() {
   return (
@@ -22,6 +24,8 @@ function Router() {
       {/* Pages publiques */}
       <Route path={"/"} component={Home} />
       <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/payment/success"} component={PaymentSuccess} />
+      <Route path={"/payment/cancel"} component={PaymentCancel} />
       <Route path={"/login"} component={Login} />
       
       {/* Callback OAuth Clerk */}

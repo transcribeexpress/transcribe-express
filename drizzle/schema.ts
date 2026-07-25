@@ -17,6 +17,14 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  /** Plan actif de l'utilisateur */
+  plan: mysqlEnum("plan", ["free", "starter", "creator", "agency"]).default("free").notNull(),
+  /** Stripe Customer ID pour lier l'utilisateur à Stripe */
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  /** Minutes de transcription restantes (crédits) */
+  creditsMinutes: int("creditsMinutes").default(30).notNull(),
+  /** Date d'expiration de l'essai gratuit */
+  trialExpiresAt: timestamp("trialExpiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -62,3 +70,27 @@ export const transcriptions = mysqlTable("transcriptions", {
 
 export type Transcription = typeof transcriptions.$inferSelect;
 export type InsertTranscription = typeof transcriptions.$inferInsert;
+
+/**
+ * Table subscriptions - Stocke les références Stripe des abonnements actifs
+ * Principe : stocker uniquement les IDs Stripe, pas les données redondantes
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** Stripe Subscription ID */
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }).notNull().unique(),
+  /** Stripe Price ID pour identifier le plan */
+  stripePriceId: varchar("stripePriceId", { length: 255 }).notNull(),
+  /** Statut syncé depuis Stripe (active, canceled, past_due, trialing) */
+  status: varchar("status", { length: 50 }).default("active").notNull(),
+  /** Période courante - début */
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  /** Période courante - fin */
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;

@@ -50,6 +50,13 @@
       "when": 1778502322737,
       "tag": "0006_greedy_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1784956288344,
+      "tag": "0007_petite_pixie",
+      "breakpoints": true
     }
   ]
 }

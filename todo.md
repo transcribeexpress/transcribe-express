@@ -1545,3 +1545,19 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Carte Créateur chevauche la carte Starter sur tablette/mobile — scale/translate uniquement sur md+ (desktop)
 - [x] Toggle : badge -33% toujours visible (gris par défaut, couleur magenta quand actif), enveloppé dans un span
 - [x] Badge Stripe : mot "stripe" en text-lg (plus gros que le reste) pour meilleure visibilité et centrage
+
+
+## 💳 Intégration Stripe Production (TERMINÉ - 25 juil 2026)
+
+- [x] Configurer les clés API Stripe Live via webdev_add_feature
+- [x] Sauvegarder les 8 Price IDs dans products.ts (centralisé)
+- [x] Mettre à jour le schéma BDD : table subscriptions + champs plan/creditsMinutes/stripeCustomerId sur users
+- [x] Créer server/stripe/stripe.ts avec les helpers Stripe (createCheckoutSession, createPortalSession, getSubscriptionDetails)
+- [x] Créer le webhook Stripe : /api/stripe/webhook (checkout.session.completed, subscription.updated, subscription.deleted, invoice.payment_failed)
+- [x] Créer les procédures tRPC : stripe.createCheckoutSession, stripe.createPortalSession, stripe.getSubscription, stripe.getUserPlan
+- [x] Connecter les boutons CTA de Pricing.tsx aux sessions Checkout Stripe (Créateur + Agence via mutation tRPC)
+- [x] Créer la page /payment/success (confirmation de paiement)
+- [x] Créer la page /payment/cancel (annulation de paiement)
+- [ ] Configurer le webhook endpoint dans le dashboard Stripe Live (action utilisateur requise)
+- [x] Tests vitest pour les procédures Stripe (309 tests passent)
+- [x] TypeScript 0 erreurs + tests passent

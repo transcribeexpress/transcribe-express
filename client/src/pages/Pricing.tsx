@@ -21,8 +21,13 @@ import {
   Lock,
   TrendingUp,
   Users,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import { toast } from "sonner";
 
 // ─── Données structurées JSON-LD pour AEO/SEO ─────────────────────────────────
 // Schema.org Product + FAQPage pour les moteurs de réponse IA
@@ -175,9 +180,51 @@ function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
 
 // ─── Page Pricing ───────────────────────────────────────────────────────────────
 
+// Price IDs Stripe Live
+const STRIPE_PRICES = {
+  starter: {
+    recharge5: "price_1TwxK69hT559d2yxU5n0lW76",
+    recharge10: "price_1TwxNS9hT559d2yxuigu3kT9",
+    recharge20: "price_1TwxOI9hT559d2yxu7FzUjXg",
+    recharge50: "price_1TwxPX9hT559d2yxIU58yFrN",
+  },
+  creator: {
+    monthly: "price_1TwxRa9hT559d2yxDYSMT4Og",
+    annual: "price_1TwxgP9hT559d2yxNO7T2RjU",
+  },
+  agency: {
+    monthly: "price_1TwxZt9hT559d2yx7Ac9QrXB",
+    annual: "price_1TwxZt9hT559d2yxTuuvzcok",
+  },
+} as const;
+
 export default function Pricing() {
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
   const [isAnnual, setIsAnnual] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+
+  // Mutation Stripe Checkout
+  const checkoutMutation = trpc.stripe.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        toast.success("Redirection vers le paiement sécurisé...");
+        window.open(data.url, "_blank");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "Erreur lors de la création du paiement");
+    },
+  });
+
+  // Handler de clic sur un bouton CTA
+  const handleCheckout = (priceId: string) => {
+    if (!isAuthenticated) {
+      toast.info("Connectez-vous pour accéder au paiement");
+      window.location.href = getLoginUrl();
+      return;
+    }
+    checkoutMutation.mutate({ priceId });
+  };
 
   // Inject JSON-LD on mount
   useEffect(() => {
@@ -469,16 +516,27 @@ export default function Pricing() {
               Payez uniquement ce que vous consommez. Zéro abonnement, zéro engagement.
             </p>
 
-            <Link href="/login" className="mt-auto">
-              <Button variant="outline" className="w-full" size="lg">
-                Commencer gratuitement
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="w-full mt-auto"
+              size="lg"
+              disabled={checkoutMutation.isPending}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  toast.info("Connectez-vous pour accéder au paiement");
+                  window.location.href = getLoginUrl();
+                  return;
+                }
+                window.location.href = "/dashboard";
+              }}
+            >
+              Commencer gratuitement
+            </Button>
 
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>Recharges : 5€, 10€, 20€ ou 50€</span>
+                <span>Recharges : 5€, 10€, 20€ ou 50€</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
@@ -565,14 +623,18 @@ export default function Pricing() {
                 Pour les YouTubers et podcasters qui publient régulièrement et veulent un coût prévisible.
               </p>
 
-              <Link href="/login" className="mt-auto">
-                <Button
-                  className="w-full bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white text-base py-6"
-                  size="lg"
-                >
-                  Commencer gratuitement
-                </Button>
-              </Link>
+              <Button
+                className="w-full mt-auto bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white text-base py-6"
+                size="lg"
+                disabled={checkoutMutation.isPending}
+                onClick={() => handleCheckout(isAnnual ? STRIPE_PRICES.creator.annual : STRIPE_PRICES.creator.monthly)}
+              >
+                {checkoutMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Chargement...</>
+                ) : (
+                  "S'abonner — Créateur"
+                )}
+              </Button>
 
               <ul className="mt-6 space-y-3 text-sm">
                 <li className="flex items-start gap-2">
@@ -655,11 +717,19 @@ export default function Pricing() {
               clients et ont besoin d'un très gros volume de transcription.
             </p>
 
-            <Link href="/login" className="mt-auto">
-              <Button variant="outline" className="w-full" size="lg">
-                Commencer gratuitement
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="w-full mt-auto"
+              size="lg"
+              disabled={checkoutMutation.isPending}
+              onClick={() => handleCheckout(isAnnual ? STRIPE_PRICES.agency.annual : STRIPE_PRICES.agency.monthly)}
+            >
+              {checkoutMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Chargement...</>
+              ) : (
+                "S'abonner — Agence"
+              )}
+            </Button>
 
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-start gap-2">

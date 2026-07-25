@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { uploadRouter } from "../uploadRoute";
+import { handleStripeWebhook } from "../stripe/webhook";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -33,6 +34,15 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Stripe webhook — DOIT être enregistré AVANT express.json()
+  // pour que le body reste en raw Buffer (nécessaire pour la vérification de signature)
+  app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    handleStripeWebhook
+  );
+
   // Configure body parser for JSON (tRPC) — pas besoin de 700mb maintenant
   // Les fichiers volumineux passent par la route multipart /api/upload
   app.use(express.json({ limit: "50mb" }));
