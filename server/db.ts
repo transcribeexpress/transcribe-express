@@ -64,6 +64,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.lastSignedIn = new Date();
     }
 
+    // Initialiser l'essai gratuit de 30 jours pour les nouveaux utilisateurs
+    const trialExpiry = new Date();
+    trialExpiry.setDate(trialExpiry.getDate() + 30);
+    values.trialExpiresAt = trialExpiry;
+    values.creditsMinutes = 30; // 30 minutes d'essai gratuit
+
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = new Date();
     }

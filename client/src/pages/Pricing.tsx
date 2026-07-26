@@ -207,8 +207,8 @@ export default function Pricing() {
   const checkoutMutation = trpc.stripe.createCheckoutSession.useMutation({
     onSuccess: (data) => {
       if (data.url) {
-        toast.success("Redirection vers le paiement sécurisé...");
-        window.open(data.url, "_blank");
+        // Redirection directe (pas window.open qui est bloqué par les navigateurs)
+        window.location.href = data.url;
       }
     },
     onError: (error) => {
@@ -318,11 +318,19 @@ export default function Pricing() {
                 Accueil
               </Button>
             </Link>
-            <Link href="/login">
-              <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                Se connecter
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+                  Mon espace
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+                  Se connecter
+                </Button>
+              </Link>
+            )}
           </div>
         </nav>
       </header>
@@ -349,6 +357,19 @@ export default function Pricing() {
             en <strong className="text-foreground">moins de 2 minutes</strong> — là où
             une transcription manuelle prend des heures.
           </p>
+
+          {/* CTA Essai gratuit zéro friction */}
+          {!isAuthenticated && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+              <Link href="/login">
+                <Button size="lg" className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white px-8 py-6 text-base font-semibold">
+                  <Gift className="w-5 h-5 mr-2" />
+                  Essayer gratuitement — 30 min offertes
+                </Button>
+              </Link>
+              <p className="text-xs text-muted-foreground">Sans carte bancaire • Accès immédiat</p>
+            </div>
+          )}
 
         </div>
       </section>
@@ -516,22 +537,31 @@ export default function Pricing() {
               Payez uniquement ce que vous consommez. Zéro abonnement, zéro engagement.
             </p>
 
-            <Button
-              variant="outline"
-              className="w-full mt-auto"
-              size="lg"
-              disabled={checkoutMutation.isPending}
-              onClick={() => {
-                if (!isAuthenticated) {
-                  toast.info("Connectez-vous pour accéder au paiement");
-                  window.location.href = getLoginUrl();
-                  return;
-                }
-                window.location.href = "/dashboard";
-              }}
-            >
-              Commencer gratuitement
-            </Button>
+            {/* Sélecteur de recharge Starter */}
+            <div className="space-y-3 mt-auto">
+              <p className="text-xs font-medium text-muted-foreground">Choisir une recharge :</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "5€", sublabel: "~33 min", priceId: STRIPE_PRICES.starter.recharge5 },
+                  { label: "10€", sublabel: "~66 min", priceId: STRIPE_PRICES.starter.recharge10 },
+                  { label: "20€", sublabel: "~133 min", priceId: STRIPE_PRICES.starter.recharge20 },
+                  { label: "50€", sublabel: "~333 min", priceId: STRIPE_PRICES.starter.recharge50 },
+                ].map((opt) => (
+                  <Button
+                    key={opt.priceId}
+                    variant="outline"
+                    size="sm"
+                    className="flex flex-col h-auto py-3 hover:border-primary hover:bg-primary/5 transition-all"
+                    disabled={checkoutMutation.isPending}
+                    onClick={() => handleCheckout(opt.priceId)}
+                  >
+                    <span className="font-bold text-base">{opt.label}</span>
+                    <span className="text-[10px] text-muted-foreground">{opt.sublabel}</span>
+                  </Button>
+                ))}
+              </div>
+              <p className="text-[10px] text-center text-muted-foreground">Crédits valables 12 mois • Paiement sécurisé Stripe</p>
+            </div>
 
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-start gap-2">
@@ -630,9 +660,9 @@ export default function Pricing() {
                 onClick={() => handleCheckout(isAnnual ? STRIPE_PRICES.creator.annual : STRIPE_PRICES.creator.monthly)}
               >
                 {checkoutMutation.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Chargement...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Redirection vers Stripe...</>
                 ) : (
-                  "S'abonner — Créateur"
+                  <><ArrowRight className="w-4 h-4 mr-2" /> S'abonner maintenant</>
                 )}
               </Button>
 
@@ -725,9 +755,9 @@ export default function Pricing() {
               onClick={() => handleCheckout(isAnnual ? STRIPE_PRICES.agency.annual : STRIPE_PRICES.agency.monthly)}
             >
               {checkoutMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Chargement...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Redirection vers Stripe...</>
               ) : (
-                "S'abonner — Agence"
+                <><ArrowRight className="w-4 h-4 mr-2" /> S'abonner maintenant</>
               )}
             </Button>
 

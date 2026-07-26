@@ -52,6 +52,7 @@ export async function createCheckoutSession({
       user_open_id: userOpenId,
       customer_email: userEmail,
       customer_name: userName,
+      price_id: priceId,
     },
   };
 

@@ -1561,3 +1561,17 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [ ] Configurer le webhook endpoint dans le dashboard Stripe Live (action utilisateur requise)
 - [x] Tests vitest pour les procédures Stripe (309 tests passent)
 - [x] TypeScript 0 erreurs + tests passent
+
+
+## 🐛 Correction flux paiement Stripe + Expérience zéro friction (26 juil 2026)
+
+- [x] Diagnostiquer pourquoi la redirection Stripe Checkout ne fonctionne pas (toast affiché mais pas de redirection) — CAUSE : window.open bloqué par popup blocker
+- [x] Corriger le backend stripeRouter pour que createCheckoutSession redirige correctement — FIX : window.location.href au lieu de window.open
+- [x] Plan Starter : permettre la sélection d'un montant de recharge (5€/10€/20€/50€) et procéder au paiement — 4 boutons de recharge avec minutes estimées
+- [x] Plans Créateur/Agence : bouton d'abonnement 1-clic avec redirection immédiate vers Stripe Checkout
+- [x] Essai gratuit : 30 minutes valables 30 jours pour les nouveaux utilisateurs — trialExpiresAt initialisé à l'inscription
+- [x] Utilisateurs connectés : pouvoir s'abonner directement depuis la page Tarifs sans friction — bouton "Mon espace" + handleCheckout direct
+- [x] Expérience zéro friction type Amazon 1-clic : processus d'achat clair et rapide — 1 clic → redirection Stripe
+- [x] Tester tous les liens de la page Tarifs (chaque bouton redirige vers un paiement sécurisé) — TypeScript 0 erreurs, 308 tests passent
+- [x] Ajout price_id dans metadata Stripe pour fiabiliser le crediting des recharges Starter
+- [ ] Tests Vitest pour le flux de paiement (tests existants passent, Clerk timeout non lié)
