@@ -25,8 +25,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+import { useAuth } from "@/hooks/useAuth";
+import { useClerkSync } from "@/hooks/useClerkSync";
 import { toast } from "sonner";
 
 // ─── Données structurées JSON-LD pour AEO/SEO ─────────────────────────────────
@@ -201,7 +201,8 @@ const STRIPE_PRICES = {
 export default function Pricing() {
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
   const [isAnnual, setIsAnnual] = useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isSignedIn } = useAuth();
+  const { isSessionReady, isSyncing } = useClerkSync();
 
   // Mutation Stripe Checkout
   const checkoutMutation = trpc.stripe.createCheckoutSession.useMutation({
@@ -218,9 +219,13 @@ export default function Pricing() {
 
   // Handler de clic sur un bouton CTA
   const handleCheckout = (priceId: string) => {
-    if (!isAuthenticated) {
+    if (!isSignedIn) {
       toast.info("Connectez-vous pour accéder au paiement");
-      window.location.href = getLoginUrl();
+      window.location.href = "/login";
+      return;
+    }
+    if (!isSessionReady) {
+      toast.info("Synchronisation en cours, veuillez patienter...");
       return;
     }
     checkoutMutation.mutate({ priceId });
@@ -318,7 +323,7 @@ export default function Pricing() {
                 Accueil
               </Button>
             </Link>
-            {isAuthenticated ? (
+            {isSignedIn ? (
               <Link href="/dashboard">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
                   Mon espace
@@ -359,7 +364,7 @@ export default function Pricing() {
           </p>
 
           {/* CTA Essai gratuit zéro friction */}
-          {!isAuthenticated && (
+          {!isSignedIn && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
               <Link href="/login">
                 <Button size="lg" className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] hover:opacity-90 text-white px-8 py-6 text-base font-semibold">

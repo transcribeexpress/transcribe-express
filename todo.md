@@ -1579,3 +1579,4 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 ## 🔧 Désactivation de Stripe Link (28 juil 2026)
 
 - [x] Désactiver Link comme méthode de paiement par défaut dans Stripe Checkout — les utilisateurs voient directement la page avec Carte, SEPA, etc.
+- [x] Corriger le conflit d'authentification : Pricing.tsx utilisait useAuth Manus (redirige vers manus.im) au lieu de useAuth Clerk (redirige vers /login)
