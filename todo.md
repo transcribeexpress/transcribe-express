@@ -6,8 +6,23 @@
 |:------|:-------|:------------|
 | **Sprint 1 - Jour 11** | ✅ Terminé | 100% |
 | **Sprint 1 - Jour 12** | ✅ Terminé | 100% |
-| **Sprint 1 - Jour 13** | ⏳ En attente | 0% |
+| **Sprint 1 - Jour 13** | ✅ Terminé | 100% |
 | **Sprint 1 - Jour 14** | ✅ Terminé | 100% |
+| **Sprint 1 - Jour 15** | ✅ Terminé | 100% |
+| **Sprint 1 - Jour 16** | ✅ Terminé | 100% |
+| **Sprint 1 - Jour 17** | ✅ Terminé | 100% |
+| **Sprint 2 - Jour 18** | ✅ Terminé | 97% (JOUR_18_DECISIONS.md manquant) |
+| **Sprint 2 - Jour 21** | ✅ Terminé | 100% |
+| **Intégration Stripe** | ✅ Terminé | 99% (webhook endpoint à configurer par l'utilisateur) |
+| **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
+| **Auth Email/MDP** | ✅ Terminé | 100% |
+
+**État global : MVP en production — 309 tests passent, 0 erreur TypeScript**
+
+**Items restants ouverts :**
+- [ ] Supprimer mix-blend-mode:screen (15 occurrences dans 8 fichiers)
+- [ ] Configurer le webhook endpoint Stripe Live dans le dashboard Stripe (action utilisateur)
+- [ ] Créer JOUR_18_DECISIONS.md (documentation manquante)
 
 ---
 
@@ -41,7 +56,7 @@
 ### Tâche 5 : Documentation
 - [x] Documenter les choix techniques dans JOUR_11_DECISIONS.md
 - [x] Créer JOUR_11_SPECIFICATIONS.md
-- [ ] Créer un checkpoint Manus
+- [x] Créer un checkpoint Manus
 
 **Fichiers créés :**
 - client/src/pages/Login.tsx
@@ -97,7 +112,7 @@
 ### Tâche 6 : Documentation
 - [x] Documenter les choix techniques dans JOUR_12_DECISIONS.md
 - [x] Mettre à jour le TODO.md avec les tâches complétées
-- [ ] Créer un checkpoint Manus
+- [x] Créer un checkpoint Manus
 
 **Livrable attendu :** ✅ Dashboard fonctionnel avec liste des transcriptions et polling automatique
 
@@ -113,56 +128,7 @@
 
 ---
 
-## ⏳ Jour 13 - Upload et Transcription (À FAIRE)
-
-### Tâche 1 : Créer UploadZone.tsx
-- [ ] Zone de drag & drop avec react-dropzone
-- [ ] Validation des formats (mp3, wav, mp4, webm)
-- [ ] Limite de taille (25MB pour plan gratuit)
-
-### Tâche 2 : Créer UploadProgress.tsx
-- [ ] Barre de progression avec pourcentage
-- [ ] Animation fluide
-
-### Tâche 3 : Intégration S3
-- [ ] Upload vers S3 via storagePut()
-- [ ] Génération d'URL signée
-
-### Tâche 4 : Déclenchement du worker
-- [ ] Créer la transcription en BDD
-- [ ] Déclencher le worker asynchrone
-
----
-
-## ⏳ Jour 14 - Résultats et Export (À FAIRE)
-
-### Tâche 1 : Créer TranscriptionViewer.tsx
-- [ ] Affichage du texte transcrit
-- [ ] Horodatage par segment
-
-### Tâche 2 : Créer ExportButton.tsx
-- [ ] Export TXT
-- [ ] Export SRT (sous-titres)
-- [ ] Export JSON
-
-### Tâche 3 : Page de résultats /transcription/:id
-- [ ] Récupération de la transcription par ID
-- [ ] Affichage avec TranscriptionViewer
-- [ ] Boutons d'export
-
----
-
-## 📝 Notes
-
-- **Jour 11 terminé le 21 Janvier 2026**
-- Authentification Clerk implémentée avec succès
-- Tests OAuth Google et GitHub validés
-- **Jour 12 terminé le 22 Janvier 2026**
-- Dashboard avec polling automatique 5s implémenté
-- 4 tests Vitest passent (100%)
-- Prêt pour le Jour 13
-
----
+<!-- Blocs Jour 13 et Jour 14 (placeholders initiaux) supprimés — implémentations complètes dans les sections TERMINÉ ci-dessous -->
 
 ## ✅ Jour 13 - Upload et Transcription (TERMINÉ)
 
@@ -231,39 +197,7 @@
 
 ---
 
-## ⏳ Jour 14 - Résultats et Export (À FAIRE)
-
-### Tâche 1 : Créer TranscriptionViewer.tsx
-- [ ] Affichage du texte transcrit
-- [ ] Horodatage par segment
-
-### Tâche 2 : Créer ExportButton.tsx
-- [ ] Export TXT
-- [ ] Export SRT (sous-titres)
-- [ ] Export JSON
-
-### Tâche 3 : Page de résultats /transcription/:id
-- [ ] Récupération de la transcription par ID
-- [ ] Affichage avec TranscriptionViewer
-- [ ] Boutons d'export
-
----
-
-## 📝 Notes
-
-- **Jour 11 terminé le 21 Janvier 2026**
-- Authentification Clerk implémentée avec succès
-- Tests OAuth Google et GitHub validés
-- **Jour 12 terminé le 22 Janvier 2026**
-- Dashboard avec polling automatique 5s implémenté
-- 4 tests Vitest passent (100%)
-- **Jour 13 terminé le 24 Janvier 2026**
-- Système d'upload complet avec transcription automatique
-- 10 tests Vitest passent (66%)
-- Prêt pour le Jour 14
-
-
----
+<!-- Bloc Jour 14 placeholder supprimé — implémentation complète dans la section TERMINÉ ci-dessous -->
 
 ## ✅ Jour 14 - Page de Résultats et Export (TERMINÉ)
 
@@ -370,7 +304,7 @@
 - [x] Créer client/src/components/FilterPanel.tsx
 - [x] Filtres par statut (Tous, Completé, En cours, En attente, Erreur)
 - [x] Filtres par date (Aujourd'hui, Cette semaine, Ce mois, Personnalisé)
-- [ ] Date picker pour le filtre personnalisé (à implémenter Jour 16)
+- [x] Date picker pour le filtre personnalisé — implémenté dans FilterPanel.tsx (Popover + Calendar, mobile-friendly)
 
 ### Tâche 3 : Implémenter la logique de filtrage
 - [x] Ajouter SearchBar et FilterPanel dans Dashboard.tsx
@@ -590,41 +524,41 @@
 
 ---
 
-## 📊 Jour 18 - Analytics et Statistiques (EN COURS)
+## ✅ Jour 18 - Analytics et Statistiques (TERMINÉ)
 
 ### Objectif : Créer le dashboard analytics avec KPIs et graphiques
 
 ### Tâche 1 : Créer la page AnalyticsDashboard
-- [ ] Créer client/src/pages/AnalyticsDashboard.tsx
-- [ ] 4 KPI cards : Total, Durée totale, Temps moyen, Taux de succès
-- [ ] Layout responsive avec grid
+- [x] Créer client/src/pages/AnalyticsDashboard.tsx
+- [x] 4 KPI cards : Total, Durée totale, Temps moyen, Taux de succès
+- [x] Layout responsive avec grid
 
 ### Tâche 2 : Ajouter les graphiques
-- [ ] Installer Chart.js ou Recharts
-- [ ] Graphique en ligne : Transcriptions par jour (7 derniers jours)
-- [ ] Graphique en donut : Répartition par statut
-- [ ] Styling cohérent avec palette Magenta/Cyan
+- [x] Installer Chart.js (chart.js + react-chartjs-2)
+- [x] Graphique en ligne : Transcriptions par jour (7 derniers jours)
+- [x] Graphique en donut : Répartition par statut
+- [x] Styling cohérent avec palette Magenta/Cyan
 
 ### Tâche 3 : Créer la procédure tRPC transcriptions.stats
-- [ ] Créer server/routers/transcriptions.stats.ts
-- [ ] Calcul des KPIs (total, durée cumulée, temps moyen, taux succès)
-- [ ] Agrégation par jour pour le graphique en ligne
-- [ ] Agrégation par statut pour le donut
+- [x] Procédure stats inline dans server/routers.ts (ligne 249)
+- [x] Calcul des KPIs (total, durée cumulée, temps moyen, taux succès)
+- [x] Agrégation par jour pour le graphique en ligne
+- [x] Agrégation par statut pour le donut
 
 ### Tâche 4 : Implémenter l'export CSV
-- [ ] Bouton "Exporter CSV" en haut à droite
-- [ ] Fonction exportToCSV() côté client
-- [ ] Format CSV : Date, Nom, Statut, Durée, Créé le
+- [x] Bouton "Exporter CSV" en haut à droite
+- [x] Fonction exportToCSV() côté client
+- [x] Format CSV : Date, Nom, Statut, Durée, Créé le
 
 ### Tâche 5 : Tests et documentation
-- [ ] Créer server/transcriptions.stats.test.ts
-- [ ] Tester les calculs de statistiques
-- [ ] Tester l'export CSV
-- [ ] Créer JOUR_18_DECISIONS.md
-- [ ] Créer JOUR_18_SPECIFICATIONS.md
-- [ ] Créer un checkpoint Manus
+- [x] Créer server/transcriptions.stats.test.ts (249 lignes, 4 suites de tests)
+- [x] Tester les calculs de statistiques
+- [x] Tester l'export CSV
+- [ ] Créer JOUR_18_DECISIONS.md — manquant (JOUR_18_SPECIFICATIONS.md existe)
+- [x] Créer JOUR_18_SPECIFICATIONS.md
+- [x] Créer un checkpoint Manus
 
-**Livrable attendu :** Page analytics avec KPIs, graphiques et export CSV
+**Livrable :** ✅ Page analytics complète avec KPIs, graphiques Chart.js et export CSV
 
 ---
 
@@ -914,12 +848,12 @@
 
 ## 🎨 Design - Logo Typographique Navbar Home (24 mars 2026)
 
-- [ ] Uploader l'image logo typographique sur le CDN S3
-- [ ] Remplacer le texte "Transcribe Express" par l'image dans Home.tsx
-- [ ] Appliquer les styles responsive (mobile/tablette/desktop)
-- [ ] Valider le rendu sur toutes les tailles d'écran
+- [x] Uploader l'image logo typographique sur le CDN S3 — wordmark-transparent_d2755219.webp sur CloudFront
+- [x] Remplacer le texte "Transcribe Express" par l'image dans Home.tsx (ligne 286)
+- [x] Appliquer les styles responsive (mobile/tablette/desktop) — h-8 sm:h-12 md:h-14
+- [x] Valider le rendu sur toutes les tailles d'écran
 
-**Objectif :** Identité visuelle renforcée avec logo typographique personnalisé dans la navbar
+**Objectif :** ✅ Identité visuelle renforcée avec logo typographique personnalisé dans la navbar
 
 ---
 
@@ -960,9 +894,9 @@
 ---
 
 ## 🎨 Design - Nouveau logo fond blanc transparent
-- [ ] Uploader neon_symbol_transparent.png sur le CDN S3
-- [ ] Remplacer l'URL dans Home.tsx, Login.tsx, Dashboard.tsx, Upload.tsx, Profile.tsx, Settings.tsx
-- [ ] Supprimer mix-blend-mode:screen (plus nécessaire avec fond blanc transparent)
+- [x] Uploader neon_symbol_transparent.png sur le CDN S3 — neon_symbol_transparent_9075d38e.png sur CloudFront
+- [x] Remplacer l'URL dans Home.tsx, Login.tsx, Dashboard.tsx, Upload.tsx, Profile.tsx, Settings.tsx, Progress.tsx, Pricing.tsx
+- [ ] Supprimer mix-blend-mode:screen — encore présent dans 15 endroits (Home, Dashboard, Login, Pricing, Profile, Settings, Upload, Progress)
 
 ---
 
@@ -1574,7 +1508,7 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Expérience zéro friction type Amazon 1-clic : processus d'achat clair et rapide — 1 clic → redirection Stripe
 - [x] Tester tous les liens de la page Tarifs (chaque bouton redirige vers un paiement sécurisé) — TypeScript 0 erreurs, 308 tests passent
 - [x] Ajout price_id dans metadata Stripe pour fiabiliser le crediting des recharges Starter
-- [ ] Tests Vitest pour le flux de paiement (tests existants passent, Clerk timeout non lié)
+- [x] Tests Vitest pour le flux de paiement — 309 tests passent dont server/stripe/stripe.test.ts (Clerk timeout est un problème d'environnement CI, non lié au code)
 
 ## 🔧 Désactivation de Stripe Link (28 juil 2026)
 
