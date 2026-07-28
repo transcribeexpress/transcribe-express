@@ -1575,3 +1575,7 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Tester tous les liens de la page Tarifs (chaque bouton redirige vers un paiement sécurisé) — TypeScript 0 erreurs, 308 tests passent
 - [x] Ajout price_id dans metadata Stripe pour fiabiliser le crediting des recharges Starter
 - [ ] Tests Vitest pour le flux de paiement (tests existants passent, Clerk timeout non lié)
+
+## 🔧 Désactivation de Stripe Link (28 juil 2026)
+
+- [x] Désactiver Link comme méthode de paiement par défaut dans Stripe Checkout — les utilisateurs voient directement la page avec Carte, SEPA, etc.

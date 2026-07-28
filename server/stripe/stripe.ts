@@ -47,6 +47,10 @@ export async function createCheckoutSession({
     cancel_url: `${origin}/payment/cancel`,
     client_reference_id: userId.toString(),
     allow_promotion_codes: true,
+    // Désactiver Link pour afficher directement la page classique avec tous les moyens de paiement
+    payment_method_types: mode === "subscription"
+      ? ["card", "sepa_debit"]
+      : ["card", "sepa_debit"],
     metadata: {
       user_id: userId.toString(),
       user_open_id: userOpenId,
