@@ -86,11 +86,15 @@ export function LoginButton({ provider, className }: LoginButtonProps) {
   const handleSignIn = async () => {
     if (!isLoaded || !signIn) return;
 
+    // Récupérer l'URL de retour depuis les paramètres de la page login
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get("redirect") || "/dashboard";
+
     try {
       await signIn.authenticateWithRedirect({
         strategy: config.strategy,
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectUrlComplete: redirectTo,
       });
     } catch (error) {
       console.error("Erreur de connexion OAuth:", error);

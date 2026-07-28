@@ -149,7 +149,7 @@ export default function Login() {
                 Autres options de connexion
               </button>
 
-              <EmailSignIn onSwitchToSignUp={() => setAuthMode("email_signup")} />
+              <EmailSignIn onSwitchToSignUp={() => setAuthMode("email_signup")} redirectTo={redirectTo} />
             </>
           )}
 
@@ -165,7 +165,7 @@ export default function Login() {
                 Autres options de connexion
               </button>
 
-              <EmailSignUp onSwitchToSignIn={() => setAuthMode("email_signin")} />
+              <EmailSignUp onSwitchToSignIn={() => setAuthMode("email_signin")} redirectTo={redirectTo} />
             </>
           )}
 

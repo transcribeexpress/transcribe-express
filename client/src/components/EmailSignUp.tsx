@@ -17,9 +17,10 @@ import { Eye, EyeOff, Loader2, Mail, Lock, User, ArrowRight, CheckCircle2 } from
 
 interface EmailSignUpProps {
   onSwitchToSignIn: () => void;
+  redirectTo?: string;
 }
 
-export function EmailSignUp({ onSwitchToSignIn }: EmailSignUpProps) {
+export function EmailSignUp({ onSwitchToSignIn, redirectTo = "/dashboard" }: EmailSignUpProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
   const [, setLocation] = useLocation();
 
@@ -84,7 +85,7 @@ export function EmailSignUp({ onSwitchToSignIn }: EmailSignUpProps) {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else {
         setError("Vérification incomplète. Veuillez réessayer.");
       }

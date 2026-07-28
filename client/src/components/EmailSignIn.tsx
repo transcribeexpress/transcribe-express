@@ -25,9 +25,10 @@ type EmailSignInMode =
 
 interface EmailSignInProps {
   onSwitchToSignUp: () => void;
+  redirectTo?: string;
 }
 
-export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
+export function EmailSignIn({ onSwitchToSignUp, redirectTo = "/dashboard" }: EmailSignInProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
   const [, setLocation] = useLocation();
 
@@ -70,7 +71,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else if (result.status === "needs_first_factor") {
         // Clerk demande une vérification supplémentaire (OTP email)
         // Récupérer le emailAddressId depuis supportedFirstFactors
@@ -137,7 +138,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
         setError("Aucun compte trouvé avec cet email.");
       } else if (code === "session_exists") {
         // Session déjà active → rediriger directement
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else {
         setError(message || "Une erreur est survenue. Veuillez réessayer.");
       }
@@ -162,7 +163,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else if (result.status === "needs_second_factor") {
         setSuccessMessage("Entrez le code de votre application d'authentification.");
         setMode("otp_second_factor");
@@ -200,7 +201,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else {
         setError("Vérification MFA incomplète. Veuillez réessayer.");
       }
@@ -257,7 +258,7 @@ export function EmailSignIn({ onSwitchToSignUp }: EmailSignInProps) {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
+        setLocation(redirectTo);
       } else if (result.status === "needs_second_factor") {
         setSuccessMessage("Entrez le code de votre application d'authentification.");
         setMode("otp_second_factor");
