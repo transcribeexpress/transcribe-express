@@ -1580,3 +1580,4 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 
 - [x] Désactiver Link comme méthode de paiement par défaut dans Stripe Checkout — les utilisateurs voient directement la page avec Carte, SEPA, etc.
 - [x] Corriger le conflit d'authentification : Pricing.tsx utilisait useAuth Manus (redirige vers manus.im) au lieu de useAuth Clerk (redirige vers /login)
+- [x] Corriger la redirection post-login : après connexion, l'utilisateur est redirigé vers Stripe Checkout (pas vers /dashboard) grâce au paramètre ?redirect= + auto-checkout

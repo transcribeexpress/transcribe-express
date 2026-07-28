@@ -221,7 +221,8 @@ export default function Pricing() {
   const handleCheckout = (priceId: string) => {
     if (!isSignedIn) {
       toast.info("Connectez-vous pour accéder au paiement");
-      window.location.href = "/login";
+      // Rediriger vers login avec retour automatique vers pricing + priceId
+      window.location.href = `/login?redirect=${encodeURIComponent(`/pricing?checkout=${priceId}`)}`;
       return;
     }
     if (!isSessionReady) {
@@ -230,6 +231,18 @@ export default function Pricing() {
     }
     checkoutMutation.mutate({ priceId });
   };
+
+  // Auto-checkout après connexion : si l'URL contient ?checkout=priceId, lancer le paiement automatiquement
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutPriceId = params.get("checkout");
+    if (checkoutPriceId && isSignedIn && isSessionReady) {
+      // Nettoyer l'URL pour éviter un double déclenchement
+      window.history.replaceState({}, "", "/pricing");
+      // Lancer le checkout automatiquement
+      checkoutMutation.mutate({ priceId: checkoutPriceId });
+    }
+  }, [isSignedIn, isSessionReady]);
 
   // Inject JSON-LD on mount
   useEffect(() => {

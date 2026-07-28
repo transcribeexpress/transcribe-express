@@ -31,12 +31,15 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const [authMode, setAuthMode] = useState<AuthMode>("oauth");
 
-  // Rediriger vers le dashboard si déjà connecté
+  // Récupérer l'URL de retour (si l'utilisateur voulait payer avant de se connecter)
+  const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/dashboard";
+
+  // Rediriger vers la page d'origine si déjà connecté
   useEffect(() => {
     if (isSignedIn && !isLoading) {
-      setLocation("/dashboard");
+      setLocation(redirectTo);
     }
-  }, [isSignedIn, isLoading, setLocation]);
+  }, [isSignedIn, isLoading, setLocation, redirectTo]);
 
   if (isLoading) {
     return (
