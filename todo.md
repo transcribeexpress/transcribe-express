@@ -1578,4 +1578,4 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 ### Tests et validation
 - [x] Tests Vitest — 309 tests passent (20 fichiers, 0 échec)
 - [x] TypeScript 0 erreurs (npx tsc --noEmit)
-- [ ] Cohérence visuelle avec le reste du SaaS
+- [x] Cohérence visuelle avec le reste du SaaS — même palette Magenta/Cyan, mêmes composants shadcn/ui, même header sticky

@@ -20,8 +20,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Settings, CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, Settings, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+
+/** Mapping plan → label et couleur du badge */
+const PLAN_BADGE: Record<string, { label: string; className: string }> = {
+  free:    { label: "Gratuit",  className: "bg-muted text-muted-foreground border-border" },
+  starter: { label: "Starter",  className: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" },
+  creator: { label: "Créateur", className: "bg-primary/10 text-primary border-primary/30" },
+  agency:  { label: "Agence",   className: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
+};
 
 interface UserMenuProps {
   className?: string;
@@ -30,6 +40,15 @@ interface UserMenuProps {
 export function UserMenu({ className }: UserMenuProps) {
   const { user, signOut, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Récupérer le plan de l'utilisateur (uniquement si connecté)
+  const { data: planData } = trpc.stripe.getUserPlan.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // cache 5 min pour éviter les requêtes excessives
+  });
+
+  const plan = planData?.plan ?? "free";
+  const badge = PLAN_BADGE[plan] ?? PLAN_BADGE.free;
 
   // Générer les initiales de l'utilisateur
   const getInitials = () => {
@@ -93,13 +112,19 @@ export function UserMenu({ className }: UserMenuProps) {
       
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col space-y-1.5">
             <p className="text-sm font-medium leading-none">
               {user.fullName || "Utilisateur"}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>
+            <Badge
+              variant="outline"
+              className={`w-fit text-[10px] px-1.5 py-0 h-4 font-medium mt-0.5 ${badge.className}`}
+            >
+              {badge.label}
+            </Badge>
           </div>
         </DropdownMenuLabel>
         
