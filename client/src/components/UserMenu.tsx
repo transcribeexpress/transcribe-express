@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Settings } from "lucide-react";
+import { User, LogOut, Settings, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface UserMenuProps {
@@ -106,15 +106,15 @@ export function UserMenu({ className }: UserMenuProps) {
         <DropdownMenuSeparator />
         
         <DropdownMenuItem 
-          onClick={() => setLocation("/profile")}
+          onClick={() => setLocation("/account")}
           className="cursor-pointer"
         >
-          <User className="mr-2 h-4 w-4" />
-          <span>Profil</span>
+          <CreditCard className="mr-2 h-4 w-4" />
+          <span>Mon Compte</span>
         </DropdownMenuItem>
         
         <DropdownMenuItem 
-          onClick={() => setLocation("/settings")}
+          onClick={() => setLocation("/account?tab=preferences")}
           className="cursor-pointer"
         >
           <Settings className="mr-2 h-4 w-4" />

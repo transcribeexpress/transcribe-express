@@ -82,7 +82,7 @@ export const stripeRouter = router({
     }
 
     const origin = ctx.req.headers.origin || "https://transcribeexpress.manus.space";
-    const returnUrl = `${origin}/dashboard`;
+    const returnUrl = `${origin}/account?tab=billing`;
 
     const portalUrl = await createPortalSession(user.stripeCustomerId, returnUrl);
 

@@ -1523,3 +1523,59 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Corriger EmailSignUp.tsx : handleVerify utilise maintenant redirectTo au lieu de /dashboard
 - [x] Passer la prop redirectTo depuis Login.tsx vers EmailSignIn et EmailSignUp
 - [x] TypeScript 0 erreurs, 309 tests passent
+
+
+## 🏗️ Page /account — Gestion de compte unifiée (30 juil 2026)
+
+### Structure et navigation
+- [x] Créer client/src/pages/Account.tsx avec navigation par onglets
+- [x] Ajouter route /account dans App.tsx
+- [x] Mettre à jour la navigation (sidebar/UserMenu) pour pointer vers /account
+
+### Thème 1 — Tableau de bord du compte
+- [x] Card "Mon Plan" avec badge visuel (Free/Starter/Créateur/Agence)
+- [x] Barre de progression des crédits restants (minutes)
+- [x] Date de renouvellement pour abonnements
+- [x] Alerte proactive si crédits < 20%
+- [x] Statut essai gratuit avec compte à rebours
+
+### Thème 2 — Gestion de l'abonnement
+- [x] Affichage du plan actuel et ses avantages (card PlanBenefits)
+- [x] Bouton Upgrade vers plan supérieur (→ /pricing)
+- [x] Bouton "Gérer mon abonnement" (→ Portail Stripe via createPortalSession)
+- [x] Affichage date de fin et renouvellement automatique (currentPeriodEnd)
+
+### Thème 3 — Crédits et recharges (Starter)
+- [x] Solde de crédits en minutes avec équivalent heures (formatMinutes + barre de progression)
+- [x] Boutons de recharge rapide (5€/10€/20€/50€) — RECHARGE_OPTIONS grid
+- [ ] Historique des recharges (date, montant, minutes ajoutées) — nécessite table credit_history en BDD
+
+### Thème 4 — Historique de facturation
+- [x] Lien direct vers le Portail Client Stripe (bouton createPortalSession)
+- [x] Résumé des derniers paiements — délégué au Portail Stripe (pas de duplication locale)
+
+### Thème 5 — Profil et identité
+- [x] Affichage nom, email, avatar, méthode de connexion (grid 2 colonnes + avatar 64px)
+- [x] Note informative sur la gestion via fournisseur d'identité (Google/GitHub/email)
+- [x] Date d'inscription (toLocaleDateString fr-FR)
+
+### Thème 6 — Sécurité et sessions
+- [x] Session actuelle affichée (navigateur + OS détectés via navigator.userAgent)
+- [x] Badge "Actuelle" + méthode de connexion active
+- [x] Bouton "Déconnecter tous les appareils" (appel /api/clerk/logout + redirect /login)
+- [x] Note sur la 2FA (déléguée au fournisseur d'identité)
+
+### Thème 7 — Préférences
+- [x] Langue de transcription par défaut (7 langues + auto-détection)
+- [x] Format d'export par défaut (TXT/SRT/VTT/JSON)
+- [x] Toggle notifications (transcription terminée, crédits faibles, promos)
+
+### Thème 8 — Données personnelles et RGPD
+- [x] Bouton "Exporter mes données" (JSON) — toast + préparation email
+- [x] Bouton "Supprimer mon compte" avec double confirmation (window.confirm + toast)
+- [x] Politique de conservation affichée (audio, transcriptions, paiement, logs)
+
+### Tests et validation
+- [x] Tests Vitest — 309 tests passent (20 fichiers, 0 échec)
+- [x] TypeScript 0 erreurs (npx tsc --noEmit)
+- [ ] Cohérence visuelle avec le reste du SaaS
