@@ -1586,3 +1586,10 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Mettre à jour les avantages du plan : ajouter MOV dans les formats supportés
 - [x] Mettre à jour les avantages du plan : ajouter export VTT
 - [x] Mettre à jour les avantages du plan : ajouter l'éditeur synchronisé (avantage concurrentiel)
+
+## 🎯 Encart Contact page /account (31 juillet 2026)
+
+- [x] Remplacer le bouton "Recharger mes crédits" redondant dans la grille d'actions rapides par un encart "Nous contacter"
+- [x] Créer la page /contact avec formulaire à choix (type de demande : bug, question, facturation, suggestion)
+- [x] Ajouter la route /contact dans App.tsx
+- [x] Connecter l'encart contact à la page /contact

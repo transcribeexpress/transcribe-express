@@ -40,6 +40,7 @@ import {
   Receipt,
   ExternalLink,
   LogOut,
+  MessageCircle,
 } from "lucide-react";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png";
@@ -409,24 +410,22 @@ export default function Account() {
                   </Card>
                 )}
 
-                {/* Recharger (Starter) */}
-                {(plan === "starter" || plan === "free") && (
-                  <Card className="hover:border-cyan-500/40 transition-colors cursor-pointer" onClick={() => setLocation("/pricing")}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                          <Zap className="w-5 h-5 text-cyan-400" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Recharger mes crédits</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            À partir de 5€ — crédits ajoutés instantanément
-                          </p>
-                        </div>
+                {/* Encart Contact — remplacement du bouton recharge redondant */}
+                <Card className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setLocation("/contact")}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-primary" />
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      <div>
+                        <p className="font-medium">Nous contacter</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Question, bug, facturation — réponse rapide garantie
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Recharges rapides (Starter / Free) */}

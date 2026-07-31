@@ -18,6 +18,7 @@ import Pricing from "./pages/Pricing";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Account from "./pages/Account";
+import Contact from "./pages/Contact";
 
 function Router() {
   return (
@@ -39,6 +40,7 @@ function Router() {
       <Route path={"/progress/:id"} component={ProgressPage} />
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/account"} component={Account} />
+      <Route path={"/contact"} component={Contact} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/settings"} component={Settings} />
       
