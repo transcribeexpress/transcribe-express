@@ -868,14 +868,15 @@ function PlanBenefits({ plan }: { plan: string }) {
   const benefits = {
     free: [
       "30 minutes de transcription gratuites",
-      "Formats audio : MP3, WAV, OGG, M4A",
-      "Export TXT et SRT",
+      "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
+      "Export TXT, SRT, VTT",
+      "Éditeur synchronisé (texte + audio)",
       "Transcription IA (Whisper)",
     ],
     starter: [
       "Recharges à la demande (5€ à 50€)",
       "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
-      "Export TXT, SRT, VTT, JSON",
+      "Export TXT, SRT, VTT",
       "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Crédits sans expiration",
@@ -883,7 +884,7 @@ function PlanBenefits({ plan }: { plan: string }) {
     creator: [
       "300 minutes / mois (5 heures)",
       "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
-      "Export TXT, SRT, VTT, JSON",
+      "Export TXT, SRT, VTT",
       "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Renouvellement automatique mensuel",
@@ -892,7 +893,7 @@ function PlanBenefits({ plan }: { plan: string }) {
     agency: [
       "1 500 minutes / mois (25 heures)",
       "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
-      "Export TXT, SRT, VTT, JSON",
+      "Export TXT, SRT, VTT",
       "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Renouvellement automatique mensuel",
