@@ -1579,3 +1579,10 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Tests Vitest — 309 tests passent (20 fichiers, 0 échec)
 - [x] TypeScript 0 erreurs (npx tsc --noEmit)
 - [x] Cohérence visuelle avec le reste du SaaS — même palette Magenta/Cyan, mêmes composants shadcn/ui, même header sticky
+
+## 🔧 Corrections UX/UI page /account (31 juillet 2026)
+
+- [x] Renommer l'onglet "Préférences" → "Paramètres" dans Account.tsx (cohérence avec UserMenu)
+- [x] Mettre à jour les avantages du plan : ajouter MOV dans les formats supportés
+- [x] Mettre à jour les avantages du plan : ajouter export VTT
+- [x] Mettre à jour les avantages du plan : ajouter l'éditeur synchronisé (avantage concurrentiel)

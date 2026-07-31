@@ -240,8 +240,8 @@ export default function Account() {
             </TabsTrigger>
             <TabsTrigger value="preferences" className="gap-1.5">
               <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Préférences</span>
-              <span className="sm:hidden">Prefs</span>
+              <span className="hidden sm:inline">Paramètres</span>
+              <span className="sm:hidden">Params</span>
             </TabsTrigger>
             <TabsTrigger value="data" className="gap-1.5">
               <Database className="w-4 h-4" />
@@ -705,7 +705,7 @@ export default function Account() {
                       <Settings className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle>Préférences</CardTitle>
+                      <CardTitle>Paramètres</CardTitle>
                       <CardDescription>Personnalisez votre expérience de transcription</CardDescription>
                     </div>
                   </div>
@@ -874,23 +874,26 @@ function PlanBenefits({ plan }: { plan: string }) {
     ],
     starter: [
       "Recharges à la demande (5€ à 50€)",
-      "Tous les formats audio et vidéo",
+      "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
       "Export TXT, SRT, VTT, JSON",
+      "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Crédits sans expiration",
     ],
     creator: [
       "300 minutes / mois (5 heures)",
-      "Tous les formats audio et vidéo",
+      "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
       "Export TXT, SRT, VTT, JSON",
+      "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Renouvellement automatique mensuel",
       "Support prioritaire",
     ],
     agency: [
       "1 500 minutes / mois (25 heures)",
-      "Tous les formats audio et vidéo",
+      "Formats : MP3, WAV, OGG, M4A, MP4, MOV, WEBM",
       "Export TXT, SRT, VTT, JSON",
+      "Éditeur synchronisé (texte + audio)",
       "Transcription IA haute précision",
       "Renouvellement automatique mensuel",
       "Support prioritaire dédié",
