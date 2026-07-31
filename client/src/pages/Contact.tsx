@@ -22,6 +22,7 @@ import {
   CreditCard,
   Lightbulb,
   MessageCircle,
+  ShieldCheck,
   ArrowLeft,
   CheckCircle2,
   Send,
@@ -66,6 +67,15 @@ const CONTACT_TYPES = [
     color: "text-primary",
     bg: "bg-primary/10",
     border: "border-primary/30 hover:border-primary/60",
+  },
+  {
+    id: "dpo",
+    icon: ShieldCheck,
+    label: "Données personnelles & RGPD",
+    description: "Exercice de vos droits, conformité RGPD, utilisation des pixels et traceurs",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30 hover:border-emerald-500/60",
   },
   {
     id: "other",
@@ -253,6 +263,7 @@ export default function Contact() {
                         selectedType === "question" ? "Ex : Comment changer la langue de transcription ?" :
                         selectedType === "billing" ? "Ex : Je souhaite obtenir un remboursement" :
                         selectedType === "suggestion" ? "Ex : Ajouter l'export DOCX" :
+                        selectedType === "dpo" ? "Ex : Je souhaite exercer mon droit d'accès à mes données" :
                         "Décrivez brièvement votre demande"
                       }
                       required
@@ -272,6 +283,8 @@ export default function Contact() {
                       placeholder={
                         selectedType === "bug"
                           ? "Décrivez le problème : que s'est-il passé ? Quelles étapes pour reproduire ? Quel navigateur utilisez-vous ?"
+                          : selectedType === "dpo"
+                          ? "Décrivez votre demande RGPD : droit d'accès, rectification, suppression, portabilité, opposition, question sur les pixels ou traceurs..."
                           : "Décrivez votre demande en détail..."
                       }
                       required
