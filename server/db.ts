@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, transcriptions, InsertTranscription } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -251,4 +251,112 @@ export async function deleteTranscription(id: number) {
     .where(eq(transcriptions.id, id));
   
   return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUOTA & CRÉDITS — Gestion des minutes de transcription
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Déduire des minutes du quota d'un utilisateur après une transcription terminée.
+ * Utilise une opération atomique SQL pour éviter les race conditions.
+ * Ne descend jamais en dessous de 0.
+ * 
+ * @param userOpenId - L'openId de l'utilisateur
+ * @param minutesUsed - Le nombre de minutes à déduire (arrondi au supérieur)
+ * @returns Le nouveau solde de crédits
+ */
+export async function deductCredits(userOpenId: string, minutesUsed: number): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for credit deduction");
+  }
+
+  // Arrondir au supérieur (1 min 43s = 2 minutes déduites)
+  const minutesToDeduct = Math.ceil(minutesUsed);
+
+  // Opération atomique : GREATEST(creditsMinutes - X, 0) pour ne jamais descendre sous 0
+  await db
+    .update(users)
+    .set({
+      creditsMinutes: sql`GREATEST(${users.creditsMinutes} - ${minutesToDeduct}, 0)`,
+    })
+    .where(eq(users.openId, userOpenId));
+
+  // Récupérer le nouveau solde
+  const [updated] = await db
+    .select({ creditsMinutes: users.creditsMinutes })
+    .from(users)
+    .where(eq(users.openId, userOpenId));
+
+  const newBalance = updated?.creditsMinutes ?? 0;
+  console.log(`[Quota] Deducted ${minutesToDeduct} min from user ${userOpenId}. New balance: ${newBalance} min`);
+  
+  return newBalance;
+}
+
+/**
+ * Vérifier si un utilisateur a suffisamment de crédits pour lancer une transcription.
+ * Retourne le solde actuel et si l'utilisateur peut transcrire.
+ * 
+ * @param userOpenId - L'openId de l'utilisateur
+ * @returns { canTranscribe, creditsMinutes, plan }
+ */
+export async function checkQuota(userOpenId: string): Promise<{
+  canTranscribe: boolean;
+  creditsMinutes: number;
+  plan: string;
+  trialExpiresAt: Date | null;
+}> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for quota check");
+  }
+
+  const [user] = await db
+    .select({
+      creditsMinutes: users.creditsMinutes,
+      plan: users.plan,
+      trialExpiresAt: users.trialExpiresAt,
+    })
+    .from(users)
+    .where(eq(users.openId, userOpenId));
+
+  if (!user) {
+    return { canTranscribe: false, creditsMinutes: 0, plan: "free", trialExpiresAt: null };
+  }
+
+  // Vérifier si l'essai gratuit est expiré pour le plan free
+  if (user.plan === "free" && user.trialExpiresAt) {
+    const now = new Date();
+    if (now > new Date(user.trialExpiresAt)) {
+      // Essai expiré — pas de crédits
+      return { canTranscribe: false, creditsMinutes: 0, plan: user.plan, trialExpiresAt: user.trialExpiresAt };
+    }
+  }
+
+  // L'utilisateur peut transcrire s'il a au moins 1 minute de crédits
+  const canTranscribe = user.creditsMinutes > 0;
+
+  return {
+    canTranscribe,
+    creditsMinutes: user.creditsMinutes,
+    plan: user.plan,
+    trialExpiresAt: user.trialExpiresAt,
+  };
+}
+
+/**
+ * Récupérer les crédits d'un utilisateur par son ID numérique
+ */
+export async function getUserCreditsById(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const [user] = await db
+    .select({ creditsMinutes: users.creditsMinutes })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  return user?.creditsMinutes ?? 0;
 }

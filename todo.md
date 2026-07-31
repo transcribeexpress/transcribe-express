@@ -1593,3 +1593,12 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Créer la page /contact avec formulaire à choix (type de demande : bug, question, facturation, suggestion)
 - [x] Ajouter la route /contact dans App.tsx
 - [x] Connecter l'encart contact à la page /contact
+
+## 🚨 CRITIQUE — Décompte des crédits (31 juillet 2026)
+
+- [x] Audit : comprendre pourquoi les minutes ne sont pas décomptées — le worker ne déduisait jamais creditsMinutes
+- [x] Backend : deductCredits() — déduction atomique SQL GREATEST(credits - X, 0) après transcription
+- [x] Backend : checkQuota() — vérification avant lancement (confirmUpload + uploadRoute)
+- [x] Backend : logique commune pour tous les plans (même champ creditsMinutes, arrondi au supérieur)
+- [x] Frontend : getUserPlan lit creditsMinutes depuis la BDD (pas de valeur hardcodée)
+- [x] Tests Vitest : 15 tests dans server/quota.test.ts (324 tests passent au total)

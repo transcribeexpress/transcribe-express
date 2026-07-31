@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited } from "./db";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
@@ -70,6 +70,15 @@ export const appRouter = router({
         fileUrl: z.string().min(1),
       }))
       .mutation(async ({ ctx, input }) => {
+        // === VÉRIFICATION DU QUOTA AVANT TRANSCRIPTION ===
+        const quota = await checkQuota(ctx.user.openId);
+        if (!quota.canTranscribe) {
+          if (quota.plan === 'free' && quota.trialExpiresAt && new Date() > new Date(quota.trialExpiresAt)) {
+            throw new Error('Votre essai gratuit de 30 jours est expiré. Passez à un plan payant pour continuer à transcrire.');
+          }
+          throw new Error('Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.');
+        }
+
         // Vérifier que le fichier existe bien sur S3
         const exists = await verifyFileExists(input.fileKey);
         if (!exists) {

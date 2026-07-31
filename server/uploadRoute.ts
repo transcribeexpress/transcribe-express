@@ -20,7 +20,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { randomBytes } from 'crypto';
 import { storagePut } from './storage';
-import { createTranscription } from './db';
+import { createTranscription, checkQuota } from './db';
 import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
 
@@ -89,7 +89,18 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
     const fileName = req.body.fileName || file.originalname;
     const mimeType = file.mimetype || 'application/octet-stream';
 
-    // 4. Upload vers S3
+    // 4. Vérification du quota AVANT upload S3
+    const quota = await checkQuota(user.openId);
+    if (!quota.canTranscribe) {
+      // Nettoyer le fichier temporaire
+      try { fs.unlinkSync(file.path); } catch {}
+      if (quota.plan === 'free' && quota.trialExpiresAt && new Date() > new Date(quota.trialExpiresAt)) {
+        return res.status(403).json({ error: 'Votre essai gratuit de 30 jours est expiré. Passez à un plan payant pour continuer à transcrire.' });
+      }
+      return res.status(403).json({ error: 'Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.' });
+    }
+
+    // 5. Upload vers S3
     const randomId = randomBytes(8).toString('hex');
     const timestamp = Date.now();
     const extension = fileName.split('.').pop()?.toLowerCase() || 'bin';

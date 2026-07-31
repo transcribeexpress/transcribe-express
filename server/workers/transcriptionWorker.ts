@@ -21,7 +21,7 @@
  * Supporte l'annulation : vérifie le statut en BDD avant chaque étape.
  */
 
-import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments } from '../db';
+import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments, deductCredits } from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
 import { processMediaFile, isAudioFormat, MAX_AUDIO_CHUNK_SIZE_BYTES } from '../audioProcessor';
 import { needsChunking, splitAudioIntoChunks, splitAudioIntoChunksFromFile, transcribeChunksParallel, reassembleTranscriptions, reassembleSegments } from '../audioChunker';
@@ -311,6 +311,19 @@ async function processAudioDirect(
       processingProgress: 100,
     });
 
+    // === DÉDUCTION DES CRÉDITS ===
+    // Récupérer le userId (openId) depuis la transcription pour déduire les minutes
+    const completedTranscription = await getTranscriptionById(transcriptionId);
+    if (completedTranscription?.userId) {
+      const minutesUsed = totalDuration / 60; // Convertir secondes en minutes
+      try {
+        const newBalance = await deductCredits(completedTranscription.userId, minutesUsed);
+        log(`CREDITS: Deducted ${Math.ceil(minutesUsed)} min. New balance: ${newBalance} min`);
+      } catch (e) {
+        log(`WARNING: Failed to deduct credits: ${e}`);
+      }
+    }
+
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     log(`COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
 
@@ -497,6 +510,18 @@ async function processVideoFull(
     processingStep: 'completed',
     processingProgress: 100,
   });
+
+  // === DÉDUCTION DES CRÉDITS (MODE B) ===
+  const completedVideoTranscription = await getTranscriptionById(transcriptionId);
+  if (completedVideoTranscription?.userId) {
+    const minutesUsed = totalDuration / 60;
+    try {
+      const newBalance = await deductCredits(completedVideoTranscription.userId, minutesUsed);
+      log(`CREDITS: Deducted ${Math.ceil(minutesUsed)} min. New balance: ${newBalance} min`);
+    } catch (e) {
+      log(`WARNING: Failed to deduct credits: ${e}`);
+    }
+  }
 
   const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   log(`COMPLETED: ${transcriptText.length} chars, ${Math.floor(totalDuration)}s, total time: ${totalElapsed}s`);
