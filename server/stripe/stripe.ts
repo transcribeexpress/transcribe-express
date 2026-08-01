@@ -47,10 +47,20 @@ export async function createCheckoutSession({
     cancel_url: `${origin}/payment/cancel`,
     client_reference_id: userId.toString(),
     allow_promotion_codes: true,
-    // Désactiver Link pour afficher directement la page classique avec tous les moyens de paiement
-    payment_method_types: mode === "subscription"
-      ? ["card", "sepa_debit"]
-      : ["card", "sepa_debit"],
+    // Forcer Carte bancaire et SEPA comme seules méthodes de paiement
+    payment_method_types: ["card", "sepa_debit"],
+    // Désactiver Link (wallet Stripe) pour éviter la page intermédiaire de numéro de téléphone
+    payment_method_options: {
+      card: {
+        setup_future_usage: mode === "subscription" ? undefined : "none" as any,
+      },
+    },
+    // wallet_options : désactiver Link explicitement (API basil 2025-04-30+)
+    ...({
+      wallet_options: {
+        link: { display: "never" },
+      },
+    } as any),
     metadata: {
       user_id: userId.toString(),
       user_open_id: userOpenId,

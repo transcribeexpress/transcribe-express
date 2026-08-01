@@ -1612,3 +1612,8 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Frontend : alerte visuelle + bouton bloqué si crédits insuffisants
 - [x] Frontend : afficher le pourcentage réel de crédits restants (label corrigé)
 - [x] Tests Vitest : 26 tests dans server/quota.test.ts (337 tests passent au total)
+
+## 🔧 Corrections UX — 1 août 2026 (session 2)
+
+- [x] Stripe : désactiver Link via wallet_options: { link: { display: "never" } } + payment_method_types forcés
+- [x] Account.tsx : afficher la date de fin d'essai + jours restants dans l'encart "Mon Plan" pour les utilisateurs free
