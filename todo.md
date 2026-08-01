@@ -1617,3 +1617,8 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 
 - [x] Stripe : désactiver Link via wallet_options: { link: { display: "never" } } + payment_method_types forcés
 - [x] Account.tsx : afficher la date de fin d'essai + jours restants dans l'encart "Mon Plan" pour les utilisateurs free
+
+## 🔧 Corrections UX — 1 août 2026 (session 3)
+
+- [x] PaymentCancel.tsx : carte "Besoin d'aide ?" cliquable avec lien vers /contact + chevron hover
+- [x] PaymentCancel.tsx : design harmonisé (bg-background, palette #BE34D5, logo + wordmark, animations framer-motion)
