@@ -68,15 +68,28 @@ export const appRouter = router({
         fileName: z.string().min(1),
         fileKey: z.string().min(1),
         fileUrl: z.string().min(1),
+        fileSize: z.number().optional(), // Taille du fichier en octets pour estimation de durée
+        estimatedDuration: z.number().optional(), // Durée estimée en secondes (depuis le frontend)
       }))
       .mutation(async ({ ctx, input }) => {
+        // === ESTIMATION DE LA DURÉE ===
+        // Priorité : estimatedDuration (frontend, précis) > fileSize (estimation par bitrate)
+        let estimatedMinutes: number | undefined;
+        if (input.estimatedDuration && input.estimatedDuration > 0) {
+          estimatedMinutes = input.estimatedDuration / 60;
+        } else if (input.fileSize && input.fileSize > 0) {
+          // Estimation conservative : audio ~128kbps = ~1 Mo/min
+          // Pour les vidéos (si fallback), on utilise un ratio plus élevé
+          const ext = input.fileName.split('.').pop()?.toLowerCase() || '';
+          const isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+          const bytesPerMinute = isVideo ? 5 * 1024 * 1024 : 1 * 1024 * 1024; // 5 Mo/min vidéo, 1 Mo/min audio
+          estimatedMinutes = input.fileSize / bytesPerMinute;
+        }
+
         // === VÉRIFICATION DU QUOTA AVANT TRANSCRIPTION ===
-        const quota = await checkQuota(ctx.user.openId);
+        const quota = await checkQuota(ctx.user.openId, estimatedMinutes);
         if (!quota.canTranscribe) {
-          if (quota.plan === 'free' && quota.trialExpiresAt && new Date() > new Date(quota.trialExpiresAt)) {
-            throw new Error('Votre essai gratuit de 30 jours est expiré. Passez à un plan payant pour continuer à transcrire.');
-          }
-          throw new Error('Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.');
+          throw new Error(quota.message || 'Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.');
         }
 
         // Vérifier que le fichier existe bien sur S3

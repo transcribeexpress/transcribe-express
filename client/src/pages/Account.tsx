@@ -297,7 +297,7 @@ export default function Account() {
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>≈ {Math.round(creditsMinutes / 5)} fichiers de 5 min</span>
-                      <span>{creditsPercentage}% utilisé</span>
+                      <span>{creditsPercentage}% restant</span>
                     </div>
                   </div>
 

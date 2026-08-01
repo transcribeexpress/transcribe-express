@@ -89,15 +89,17 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
     const fileName = req.body.fileName || file.originalname;
     const mimeType = file.mimetype || 'application/octet-stream';
 
-    // 4. Vérification du quota AVANT upload S3
-    const quota = await checkQuota(user.openId);
+    // 4. Vérification du quota AVANT upload S3 (avec estimation de durée)
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+    const bytesPerMinute = isVideo ? 5 * 1024 * 1024 : 1 * 1024 * 1024;
+    const estimatedMinutes = file.size / bytesPerMinute;
+
+    const quota = await checkQuota(user.openId, estimatedMinutes);
     if (!quota.canTranscribe) {
       // Nettoyer le fichier temporaire
       try { fs.unlinkSync(file.path); } catch {}
-      if (quota.plan === 'free' && quota.trialExpiresAt && new Date() > new Date(quota.trialExpiresAt)) {
-        return res.status(403).json({ error: 'Votre essai gratuit de 30 jours est expiré. Passez à un plan payant pour continuer à transcrire.' });
-      }
-      return res.status(403).json({ error: 'Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.' });
+      return res.status(403).json({ error: quota.message || 'Crédits insuffisants. Rechargez vos crédits ou passez à un plan supérieur pour continuer.' });
     }
 
     // 5. Upload vers S3
