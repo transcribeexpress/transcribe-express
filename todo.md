@@ -17,7 +17,7 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 337 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 309 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
 - [ ] Supprimer mix-blend-mode:screen (15 occurrences dans 8 fichiers)
@@ -1603,22 +1603,6 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Frontend : getUserPlan lit creditsMinutes depuis la BDD (pas de valeur hardcodée)
 - [x] Tests Vitest : 15 tests dans server/quota.test.ts (324 tests passent au total)
 
-## 🚨 CRITIQUE V2 — Blocage de quota non fonctionnel (1 août 2026)
+## 🐛 Bug critique — 3 août 2026
 
-- [x] Audit : identifier pourquoi checkQuota() ne bloque pas quand crédits < durée du fichier
-- [x] Backend : checkQuota accepte estimatedMinutes, bloque si crédits < durée estimée
-- [x] Backend : confirmUpload et uploadRoute passent fileSize/estimatedDuration à checkQuota
-- [x] Frontend : vérifier les crédits AVANT l'upload via getDurationFromFile + getUserPlan
-- [x] Frontend : alerte visuelle + bouton bloqué si crédits insuffisants
-- [x] Frontend : afficher le pourcentage réel de crédits restants (label corrigé)
-- [x] Tests Vitest : 26 tests dans server/quota.test.ts (337 tests passent au total)
-
-## 🔧 Corrections UX — 1 août 2026 (session 2)
-
-- [x] Stripe : désactiver Link via wallet_options: { link: { display: "never" } } + payment_method_types forcés
-- [x] Account.tsx : afficher la date de fin d'essai + jours restants dans l'encart "Mon Plan" pour les utilisateurs free
-
-## 🔧 Corrections UX — 1 août 2026 (session 3)
-
-- [x] PaymentCancel.tsx : carte "Besoin d'aide ?" cliquable avec lien vers /contact + chevron hover
-- [x] PaymentCancel.tsx : design harmonisé (bg-background, palette #BE34D5, logo + wordmark, animations framer-motion)
+- [x] Stripe : corrigé — retiré payment_method_types explicite, utilisé payment_method_options.card.setup_future_usage: "on_session" pour mode payment

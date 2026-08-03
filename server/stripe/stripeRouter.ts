@@ -146,9 +146,6 @@ export const stripeRouter = router({
       creditsMinutes: user.creditsMinutes,
       isTrialActive,
       hasStripeAccount: !!user.stripeCustomerId,
-      trialExpiresAt: user.plan === "free" && user.trialExpiresAt
-        ? new Date(user.trialExpiresAt).toISOString()
-        : null,
     };
   }),
 });

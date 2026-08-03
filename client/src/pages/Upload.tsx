@@ -31,11 +31,11 @@ import { UploadZone } from "@/components/UploadZone";
 import { UploadProgress } from "@/components/UploadProgress";
 import { TranscriptionProgress, useTranscriptionProgress } from "@/components/TranscriptionProgress";
 import { trpc } from "@/lib/trpc";
-import { validateFormat, isVideoFile, getDurationFromFile } from "@/utils/audioValidation";
+import { validateFormat, isVideoFile } from "@/utils/audioValidation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { needsAudioExtraction, extractAudioFromVideo, isFFmpegSupported } from "@/utils/audioExtractor";
 import type { ExtractionProgressCallback } from "@/utils/audioExtractor";
-import { ArrowLeft, Wand2, Zap, AlertTriangle, Clock } from "lucide-react";
+import { ArrowLeft, Wand2, Zap, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,20 +87,10 @@ export default function Upload() {
   const getUploadUrl = trpc.transcriptions.getUploadUrl.useMutation();
   const confirmUpload = trpc.transcriptions.confirmUpload.useMutation();
 
-  // Query pour vérifier les crédits restants AVANT l'upload
-  const { data: planData } = trpc.stripe.getUserPlan.useQuery(undefined, {
-    enabled: isSignedIn && isSessionReady,
-    staleTime: 30_000, // Cache 30s pour éviter les requêtes excessives
-  });
-  const [quotaWarning, setQuotaWarning] = useState<string | null>(null);
-  const [estimatedDuration, setEstimatedDuration] = useState<number | null>(null);
-
   const handleFileSelect = useCallback(async (file: File) => {
     setValidationError(null);
     setCompressionInfo(null);
     setUsedFallback(false);
-    setQuotaWarning(null);
-    setEstimatedDuration(null);
     
     // Valider le format
     if (!validateFormat(file)) {
@@ -126,39 +116,7 @@ export default function Upload() {
     }
     
     setSelectedFile(file);
-
-    // === VÉRIFICATION DES CRÉDITS AVANT UPLOAD ===
-    // Estimer la durée du fichier via les métadonnées audio/vidéo
-    const duration = await getDurationFromFile(file);
-    if (duration !== null) {
-      setEstimatedDuration(duration);
-      const estimatedMinutes = Math.ceil(duration / 60);
-      const creditsRemaining = planData?.creditsMinutes ?? 0;
-      
-      if (creditsRemaining < estimatedMinutes) {
-        const warningMsg = `Crédits insuffisants : il vous reste ${creditsRemaining} min mais ce fichier dure environ ${estimatedMinutes} min.`;
-        setQuotaWarning(warningMsg);
-        toast.warning("Crédits insuffisants", {
-          description: warningMsg,
-        });
-      }
-    } else {
-      // Fallback : estimer depuis la taille du fichier
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      const isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
-      const bytesPerMinute = isVideo ? 5 * 1024 * 1024 : 1 * 1024 * 1024;
-      const estimatedMinutes = Math.ceil(file.size / bytesPerMinute);
-      const creditsRemaining = planData?.creditsMinutes ?? 0;
-      
-      if (creditsRemaining < estimatedMinutes) {
-        const warningMsg = `Crédits insuffisants : il vous reste ${creditsRemaining} min mais ce fichier nécessite environ ${estimatedMinutes} min.`;
-        setQuotaWarning(warningMsg);
-        toast.warning("Crédits insuffisants", {
-          description: warningMsg,
-        });
-      }
-    }
-  }, [planData]);
+  }, []);
 
   /**
    * Upload un fichier vers S3 via URL pré-signée avec progression XHR
@@ -303,8 +261,6 @@ export default function Upload() {
         fileName: fileToUpload.name,
         fileKey,
         fileUrl,
-        fileSize: fileToUpload.size,
-        estimatedDuration: estimatedDuration ?? undefined,
       });
 
       setUploadProgress(100);
@@ -327,7 +283,7 @@ export default function Upload() {
       setPipelineStage('idle');
       setExtractionState(null);
     }
-  }, [selectedFile, uploadToS3, confirmUpload, usedFallback, setLocation, estimatedDuration]);
+  }, [selectedFile, uploadToS3, confirmUpload, usedFallback, setLocation]);
 
   /** Annuler le processus en cours */
   const handleCancel = useCallback(() => {
@@ -440,41 +396,12 @@ export default function Upload() {
                 disabled={isProcessing}
               />
 
-              {/* Alerte crédits insuffisants */}
-              {quotaWarning && selectedFile && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30"
-                >
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-amber-300">
-                        {quotaWarning}
-                      </p>
-                      <p className="text-xs text-amber-300/70 mt-1">
-                        Rechargez vos crédits ou choisissez un fichier plus court.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
-                        onClick={() => setLocation("/pricing")}
-                      >
-                        Recharger mes crédits
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
               {selectedFile && (
                 <div className="flex justify-end">
                   <Button
                     size="lg"
                     onClick={handleUpload}
-                    disabled={isProcessing || !!quotaWarning}
+                    disabled={isProcessing}
                     className="min-w-[200px]"
                   >
                     {isVideoFile(selectedFile) ? (

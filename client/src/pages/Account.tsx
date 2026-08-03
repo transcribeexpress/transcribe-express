@@ -143,23 +143,6 @@ export default function Account() {
     });
   }, [subscription?.currentPeriodEnd]);
 
-  // Date de fin d'essai formatée
-  const trialEndDate = useMemo(() => {
-    if (!planData?.trialExpiresAt) return null;
-    return new Date(planData.trialExpiresAt).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }, [planData?.trialExpiresAt]);
-
-  // Jours restants avant fin d'essai
-  const trialDaysRemaining = useMemo(() => {
-    if (!planData?.trialExpiresAt) return null;
-    const diff = new Date(planData.trialExpiresAt).getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }, [planData?.trialExpiresAt]);
-
   // --- États de chargement et d'erreur ---
   if (isLoading || isSyncing) {
     return <DashboardSkeleton />;
@@ -314,7 +297,7 @@ export default function Account() {
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>≈ {Math.round(creditsMinutes / 5)} fichiers de 5 min</span>
-                      <span>{creditsPercentage}% restant</span>
+                      <span>{creditsPercentage}% utilisé</span>
                     </div>
                   </div>
 
@@ -365,15 +348,6 @@ export default function Account() {
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Profitez de 30 minutes de transcription gratuites pour découvrir le service.
                         </p>
-                        {trialEndDate && (
-                          <p className="text-xs text-primary/80 mt-1 font-medium">
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            Expire le {trialEndDate}
-                            {trialDaysRemaining !== null && trialDaysRemaining > 0 && (
-                              <span className="text-muted-foreground font-normal"> ({trialDaysRemaining} jour{trialDaysRemaining > 1 ? 's' : ''} restant{trialDaysRemaining > 1 ? 's' : ''})</span>
-                            )}
-                          </p>
-                        )}
                       </div>
                     </div>
                   )}

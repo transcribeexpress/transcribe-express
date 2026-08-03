@@ -300,17 +300,13 @@ export async function deductCredits(userOpenId: string, minutesUsed: number): Pr
  * Retourne le solde actuel et si l'utilisateur peut transcrire.
  * 
  * @param userOpenId - L'openId de l'utilisateur
- * @param estimatedMinutes - Durée estimée du fichier en minutes (optionnel).
- *   Si fourni, bloque si les crédits sont insuffisants pour cette durée.
- *   Si non fourni, bloque seulement si crédits = 0.
- * @returns { canTranscribe, creditsMinutes, plan, message }
+ * @returns { canTranscribe, creditsMinutes, plan }
  */
-export async function checkQuota(userOpenId: string, estimatedMinutes?: number): Promise<{
+export async function checkQuota(userOpenId: string): Promise<{
   canTranscribe: boolean;
   creditsMinutes: number;
   plan: string;
   trialExpiresAt: Date | null;
-  message?: string;
 }> {
   const db = await getDb();
   if (!db) {
@@ -327,7 +323,7 @@ export async function checkQuota(userOpenId: string, estimatedMinutes?: number):
     .where(eq(users.openId, userOpenId));
 
   if (!user) {
-    return { canTranscribe: false, creditsMinutes: 0, plan: "free", trialExpiresAt: null, message: "Utilisateur introuvable." };
+    return { canTranscribe: false, creditsMinutes: 0, plan: "free", trialExpiresAt: null };
   }
 
   // Vérifier si l'essai gratuit est expiré pour le plan free
@@ -335,37 +331,15 @@ export async function checkQuota(userOpenId: string, estimatedMinutes?: number):
     const now = new Date();
     if (now > new Date(user.trialExpiresAt)) {
       // Essai expiré — pas de crédits
-      return { canTranscribe: false, creditsMinutes: 0, plan: user.plan, trialExpiresAt: user.trialExpiresAt, message: "Votre essai gratuit de 30 jours est expiré." };
+      return { canTranscribe: false, creditsMinutes: 0, plan: user.plan, trialExpiresAt: user.trialExpiresAt };
     }
   }
 
-  // Crédits à 0 → blocage immédiat
-  if (user.creditsMinutes <= 0) {
-    return {
-      canTranscribe: false,
-      creditsMinutes: 0,
-      plan: user.plan,
-      trialExpiresAt: user.trialExpiresAt,
-      message: "Crédits épuisés. Rechargez vos crédits ou passez à un plan supérieur.",
-    };
-  }
-
-  // Si une estimation de durée est fournie, vérifier que les crédits couvrent la durée
-  if (estimatedMinutes !== undefined && estimatedMinutes > 0) {
-    const requiredMinutes = Math.ceil(estimatedMinutes);
-    if (user.creditsMinutes < requiredMinutes) {
-      return {
-        canTranscribe: false,
-        creditsMinutes: user.creditsMinutes,
-        plan: user.plan,
-        trialExpiresAt: user.trialExpiresAt,
-        message: `Crédits insuffisants. Il vous reste ${user.creditsMinutes} min mais ce fichier nécessite environ ${requiredMinutes} min. Rechargez vos crédits ou choisissez un fichier plus court.`,
-      };
-    }
-  }
+  // L'utilisateur peut transcrire s'il a au moins 1 minute de crédits
+  const canTranscribe = user.creditsMinutes > 0;
 
   return {
-    canTranscribe: true,
+    canTranscribe,
     creditsMinutes: user.creditsMinutes,
     plan: user.plan,
     trialExpiresAt: user.trialExpiresAt,
