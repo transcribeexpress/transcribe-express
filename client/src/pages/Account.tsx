@@ -54,13 +54,33 @@ const PLAN_CONFIG = {
   agency: { label: "Agence", icon: TrendingUp, color: "bg-amber-500/10 text-amber-400 border-amber-500/30", maxMinutes: 1500 },
 } as const;
 
-/** Options de recharge Starter */
-const RECHARGE_OPTIONS = [
-  { priceId: "price_1TwxK69hT559d2yxU5n0lW76", price: "5€", minutes: 33 },
-  { priceId: "price_1TwxNS9hT559d2yxuigu3kT9", price: "10€", minutes: 66 },
-  { priceId: "price_1TwxOI9hT559d2yxu7FzUjXg", price: "20€", minutes: 133 },
-  { priceId: "price_1TwxPX9hT559d2yxIU58yFrN", price: "50€", minutes: 333 },
-] as const;
+/** Grilles de recharge par plan (importé depuis products.ts côté client) */
+const RECHARGE_GRIDS = {
+  free: [
+    { priceId: "price_1TwxK69hT559d2yxU5n0lW76", price: "5€", minutes: 33 },
+    { priceId: "price_1TwxNS9hT559d2yxuigu3kT9", price: "10€", minutes: 66 },
+    { priceId: "price_1TwxOI9hT559d2yxu7FzUjXg", price: "20€", minutes: 133 },
+    { priceId: "price_1TwxPX9hT559d2yxIU58yFrN", price: "50€", minutes: 333 },
+  ],
+  starter: [
+    { priceId: "price_1TwxK69hT559d2yxU5n0lW76", price: "5€", minutes: 33 },
+    { priceId: "price_1TwxNS9hT559d2yxuigu3kT9", price: "10€", minutes: 66 },
+    { priceId: "price_1TwxOI9hT559d2yxu7FzUjXg", price: "20€", minutes: 133 },
+    { priceId: "price_1TwxPX9hT559d2yxIU58yFrN", price: "50€", minutes: 333 },
+  ],
+  creator: [
+    { priceId: "price_1U0Do1KGW1kSnF8G6eJmeOYY", price: "5€", minutes: 42 },
+    { priceId: "price_1U0Do2KGW1kSnF8GTXImvQ1h", price: "10€", minutes: 83 },
+    { priceId: "price_1U0Do2KGW1kSnF8GiyDDjFlO", price: "20€", minutes: 167 },
+    { priceId: "price_1U0Do2KGW1kSnF8Gmn5OjD95", price: "50€", minutes: 417 },
+  ],
+  agency: [
+    { priceId: "price_1U0Do3KGW1kSnF8GW7cLPN2Q", price: "5€", minutes: 63 },
+    { priceId: "price_1U0Do3KGW1kSnF8GXd3g6W17", price: "10€", minutes: 125 },
+    { priceId: "price_1U0Do3KGW1kSnF8GkOhwTeRm", price: "20€", minutes: 250 },
+    { priceId: "price_1U0Do4KGW1kSnF8GIoNp28Ve", price: "50€", minutes: 625 },
+  ],
+} as const;
 
 export default function Account() {
   const { user, isSignedIn, isLoading } = useAuth();
@@ -428,40 +448,52 @@ export default function Account() {
                 </Card>
               </div>
 
-              {/* Recharges rapides (Starter / Free) */}
-              {(plan === "starter" || plan === "free") && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                        <Zap className="w-5 h-5 text-cyan-400" />
+              {/* Recharges rapides — disponibles pour tous les plans */}
+              {["free", "starter", "creator", "agency"].includes(plan) && (() => {
+                const rechargeGrid = RECHARGE_GRIDS[plan as keyof typeof RECHARGE_GRIDS];
+                const isPreferred = plan === "creator" || plan === "agency";
+                const accentColor = plan === "agency" ? "amber" : "cyan";
+                const accentClasses = plan === "agency"
+                  ? { icon: "bg-amber-500/10", iconColor: "text-amber-400", hover: "hover:border-amber-500/50 hover:bg-amber-500/5", text: "group-hover:text-amber-400" }
+                  : { icon: "bg-cyan-500/10", iconColor: "text-cyan-400", hover: "hover:border-cyan-500/50 hover:bg-cyan-500/5", text: "group-hover:text-cyan-400" };
+                return (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg ${accentClasses.icon} flex items-center justify-center`}>
+                          <Zap className={`w-5 h-5 ${accentClasses.iconColor}`} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">Recharger mes crédits</CardTitle>
+                          <CardDescription>
+                            {isPreferred
+                              ? `Tarif préférentiel ${plan === "creator" ? "0,12€/min" : "0,08€/min"} — réservé aux abonnés ${plan === "creator" ? "Créateur" : "Agence"}`
+                              : "Crédits ajoutés instantanément après paiement"}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-base">Recharger mes crédits</CardTitle>
-                        <CardDescription>Crédits ajoutés instantanément après paiement</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {rechargeGrid.map((option) => (
+                          <button
+                            key={option.priceId}
+                            onClick={() => createCheckoutSession.mutate({ priceId: option.priceId })}
+                            disabled={createCheckoutSession.isPending}
+                            className={`flex flex-col items-center gap-1.5 p-4 rounded-lg border border-border ${accentClasses.hover} transition-all group disabled:opacity-50`}
+                          >
+                            <span className={`text-lg font-bold text-foreground ${accentClasses.text} transition-colors`}>{option.price}</span>
+                            <span className="text-xs text-muted-foreground">≈ {option.minutes} min</span>
+                          </button>
+                        ))}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {RECHARGE_OPTIONS.map((option) => (
-                        <button
-                          key={option.priceId}
-                          onClick={() => createCheckoutSession.mutate({ priceId: option.priceId })}
-                          disabled={createCheckoutSession.isPending}
-                          className="flex flex-col items-center gap-1.5 p-4 rounded-lg border border-border hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all group disabled:opacity-50"
-                        >
-                          <span className="text-lg font-bold text-foreground group-hover:text-cyan-400 transition-colors">{option.price}</span>
-                          <span className="text-xs text-muted-foreground">≈ {option.minutes} min</span>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3 text-center">
-                      Paiement sécurisé par Stripe — crédits sans expiration
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                      <p className="text-xs text-muted-foreground mt-3 text-center">
+                        Paiement sécurisé par Stripe — crédits sans expiration
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Avantages du plan */}
               <Card>

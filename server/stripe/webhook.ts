@@ -122,22 +122,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       const planInfo = PRICE_TO_PLAN[priceId as keyof typeof PRICE_TO_PLAN];
       if (planInfo.type === "one_time") {
         // Ajouter les minutes au compte de l'utilisateur
+        // Conserver le plan actuel de l'utilisateur (ne pas rétrograder un Créateur/Agence vers Starter)
         const [user] = await db
-          .select({ creditsMinutes: users.creditsMinutes })
+          .select({ creditsMinutes: users.creditsMinutes, plan: users.plan })
           .from(users)
           .where(eq(users.id, numericUserId));
 
         if (user) {
+          // Conserver le plan actuel si c'est creator ou agency, sinon passer à starter
+          const newPlan = (user.plan === "creator" || user.plan === "agency")
+            ? user.plan
+            : "starter";
+
           await db
             .update(users)
             .set({
-              plan: "starter",
+              plan: newPlan,
               creditsMinutes: user.creditsMinutes + planInfo.minutes,
             })
             .where(eq(users.id, numericUserId));
         }
 
-        console.log(`[Stripe Webhook] Recharge ${planInfo.minutes} min pour user ${userId}`);
+        console.log(`[Stripe Webhook] Recharge ${planInfo.minutes} min pour user ${userId} (plan: ${planInfo.plan})`);
       }
     }
   } else if (session.mode === "subscription") {

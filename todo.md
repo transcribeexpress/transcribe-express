@@ -1606,3 +1606,11 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 ## 🐛 Bug critique — 3 août 2026
 
 - [x] Stripe : corrigé — retiré payment_method_types explicite, utilisé payment_method_options.card.setup_future_usage: "on_session" pour mode payment
+
+## 💳 Recharges préférentielles Créateur & Agence — 3 août 2026
+
+- [x] Stripe : 4 Price IDs Créateur créés (0,12€/min) — 42/83/167/417 min
+- [x] Stripe : 4 Price IDs Agence créés (0,08€/min) — 63/125/250/625 min
+- [x] products.ts : STRIPE_PRICES, PRICE_TO_PLAN, RECHARGE_GRIDS mis à jour avec les 16 Price IDs
+- [x] Account.tsx : RECHARGE_GRIDS dynamique selon le plan, description tarif préférentiel affichée
+- [x] Webhook : corrigé — conserve le plan creator/agency lors d'une recharge one_time
