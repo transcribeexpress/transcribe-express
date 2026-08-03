@@ -1614,3 +1614,10 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] products.ts : STRIPE_PRICES, PRICE_TO_PLAN, RECHARGE_GRIDS mis à jour avec les 16 Price IDs
 - [x] Account.tsx : RECHARGE_GRIDS dynamique selon le plan, description tarif préférentiel affichée
 - [x] Webhook : corrigé — conserve le plan creator/agency lors d'une recharge one_time
+
+## 🔑 Migration Stripe Test → Production — 3 août 2026
+
+- [x] Récupéré les Price IDs live des abonnements Creator/Agency (monthly + annual) via MCP Stripe
+- [x] Créé 8 produits/prix recharge préférentielle en mode live (Créateur + Agence) via MCP Stripe
+- [x] products.ts mis à jour avec tous les 16 Price IDs live
+- [x] STRIPE_SECRET_KEY, VITE_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET configurés en mode live

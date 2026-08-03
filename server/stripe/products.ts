@@ -1,9 +1,9 @@
 /**
  * Produits et prix Stripe — Transcribe Express
- * 
- * Ce fichier centralise tous les Price IDs Stripe (mode test).
+ *
+ * Ce fichier centralise tous les Price IDs Stripe (mode LIVE / production).
  * Les prix sont définis dans le dashboard Stripe et référencés ici.
- * 
+ *
  * Grilles tarifaires des recharges :
  * - Starter  : 0,15€/min (tarif standard)
  * - Créateur : 0,12€/min (tarif préférentiel abonné)
@@ -11,36 +11,36 @@
  */
 
 export const STRIPE_PRICES = {
-  // Recharges Starter (paiement unique — 0,15€/min)
+  // Recharges Starter (paiement unique — 0,15€/min) — LIVE
   starter: {
     recharge5:  "price_1TwxK69hT559d2yxU5n0lW76", // 5€  = ~33 min
     recharge10: "price_1TwxNS9hT559d2yxuigu3kT9", // 10€ = ~66 min
     recharge20: "price_1TwxOI9hT559d2yxu7FzUjXg", // 20€ = ~133 min
     recharge50: "price_1TwxPX9hT559d2yxIU58yFrN", // 50€ = ~333 min
   },
-  // Recharges Créateur (paiement unique — 0,12€/min — tarif préférentiel)
+  // Recharges Créateur (paiement unique — 0,12€/min — tarif préférentiel) — LIVE
   creatorRecharge: {
-    recharge5:  "price_1U0Do1KGW1kSnF8G6eJmeOYY", // 5€  = 42 min
-    recharge10: "price_1U0Do2KGW1kSnF8GTXImvQ1h", // 10€ = 83 min
-    recharge20: "price_1U0Do2KGW1kSnF8GiyDDjFlO", // 20€ = 167 min
-    recharge50: "price_1U0Do2KGW1kSnF8Gmn5OjD95", // 50€ = 417 min
+    recharge5:  "price_1U0E5i9hT559d2yx6RjFhrR2", // 5€  = 42 min
+    recharge10: "price_1U0E5r9hT559d2yx4JDOfCqK", // 10€ = 83 min
+    recharge20: "price_1U0E619hT559d2yxFrkFad2B", // 20€ = 167 min
+    recharge50: "price_1U0E6A9hT559d2yxMFa9KsfH", // 50€ = 417 min
   },
-  // Recharges Agence (paiement unique — 0,08€/min — meilleur tarif)
+  // Recharges Agence (paiement unique — 0,08€/min — meilleur tarif) — LIVE
   agencyRecharge: {
-    recharge5:  "price_1U0Do3KGW1kSnF8GW7cLPN2Q", // 5€  = 63 min
-    recharge10: "price_1U0Do3KGW1kSnF8GXd3g6W17", // 10€ = 125 min
-    recharge20: "price_1U0Do3KGW1kSnF8GkOhwTeRm", // 20€ = 250 min
-    recharge50: "price_1U0Do4KGW1kSnF8GIoNp28Ve", // 50€ = 625 min
+    recharge5:  "price_1U0E6K9hT559d2yxN4GYk8FK", // 5€  = 63 min
+    recharge10: "price_1U0E6U9hT559d2yx30KAXp2w", // 10€ = 125 min
+    recharge20: "price_1U0E6e9hT559d2yx8PWK1QPX", // 20€ = 250 min
+    recharge50: "price_1U0E6p9hT559d2yxZAOzQFTc", // 50€ = 625 min
   },
-  // Plan Créateur (abonnement)
+  // Plan Créateur (abonnement) — LIVE
   creator: {
-    monthly: "price_1TwxRa9hT559d2yxDYSMT4Og",
-    annual:  "price_1TwxgP9hT559d2yxNO7T2RjU",
+    monthly: "price_1TwxRa9hT559d2yxDYSMT4Og", // 14,90€/mois
+    annual:  "price_1TwxgP9hT559d2yxNO7T2RjU", // 118,80€/an (économisez 60€)
   },
-  // Plan Agence (abonnement)
+  // Plan Agence (abonnement) — LIVE
   agency: {
-    monthly: "price_1TwxZt9hT559d2yx7Ac9QrXB",
-    annual:  "price_1TwxZt9hT559d2yxTuuvzcok",
+    monthly: "price_1TwxZt9hT559d2yx7Ac9QrXB", // 49,90€/mois
+    annual:  "price_1TwxZt9hT559d2yxTuuvzcok", // 478,80€/an (économisez 120€)
   },
 } as const;
 
