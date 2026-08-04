@@ -1621,3 +1621,19 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Créé 8 produits/prix recharge préférentielle en mode live (Créateur + Agence) via MCP Stripe
 - [x] products.ts mis à jour avec tous les 16 Price IDs live
 - [x] STRIPE_SECRET_KEY, VITE_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET configurés en mode live
+
+## 🐛 Bug critique — Webhook Stripe Live — 3 août 2026
+
+- [ ] Diagnostiquer les 14 échecs webhook live (14/14 en échec depuis le 28/07)
+- [ ] Corriger la cause racine (signature, route, body parser, ou clé incorrecte)
+
+## 📊 Tables priorité haute — 4 août 2026
+
+- [x] Schema : table `creditRechargeHistory` créée (userId, stripePaymentIntentId, stripeSessionId, amountCents, currency, minutesAdded, priceId, planAtPurchase, status, createdAt)
+- [x] Schema : table `userPreferences` créée (userId, defaultLanguage, defaultExportFormat, emailNotifications, notifyOnComplete, notifyOnLowCredits, updatedAt)
+- [x] Migration : 2 tables créées via SQL direct (drizzle/schema.ts mis à jour)
+- [x] Helpers BDD : insertRechargeHistory, getRechargeHistory, getUserPreferences, upsertUserPreferences
+- [x] tRPC : procédures preferences.get, preferences.update, rechargeHistory.list
+- [x] Webhook : chaque recharge one_time est persistée dans creditRechargeHistory
+- [x] Frontend : onglet Paramètres connecté au backend (lecture + sauvegarde auto)
+- [x] Tests : 331 tests passent, 0 erreur TypeScript

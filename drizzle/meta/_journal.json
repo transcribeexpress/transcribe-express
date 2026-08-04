@@ -57,6 +57,13 @@
       "when": 1784956288344,
       "tag": "0007_petite_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1785816255327,
+      "tag": "0008_petite_luminals",
+      "breakpoints": true
     }
   ]
 }

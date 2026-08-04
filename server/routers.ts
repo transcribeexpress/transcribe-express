@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota } from "./db";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
@@ -22,6 +22,47 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRÉFÉRENCES UTILISATEUR
+  // ═══════════════════════════════════════════════════════════════════════════
+  preferences: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const prefs = await getUserPreferences(ctx.user.id);
+      // Retourner des valeurs par défaut si pas encore créées
+      return prefs ?? {
+        defaultLanguage: "fr",
+        defaultExportFormat: "txt" as const,
+        emailNotifications: 1,
+        notifyOnComplete: 1,
+        notifyOnLowCredits: 1,
+      };
+    }),
+
+    update: protectedProcedure
+      .input(z.object({
+        defaultLanguage: z.string().max(10).optional(),
+        defaultExportFormat: z.enum(["txt", "srt", "vtt"]).optional(),
+        emailNotifications: z.number().min(0).max(1).optional(),
+        notifyOnComplete: z.number().min(0).max(1).optional(),
+        notifyOnLowCredits: z.number().min(0).max(1).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await upsertUserPreferences(ctx.user.id, input);
+        return { success: true };
+      }),
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HISTORIQUE DES RECHARGES
+  // ═══════════════════════════════════════════════════════════════════════════
+  rechargeHistory: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await getRechargeHistory(ctx.user.id, input?.limit ?? 20);
+      }),
   }),
 
   transcriptions: router({

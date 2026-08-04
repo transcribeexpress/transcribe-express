@@ -11,7 +11,7 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { constructWebhookEvent } from "./stripe";
 import { PRICE_TO_PLAN } from "./products";
-import { getDb } from "../db";
+import { getDb, insertRechargeHistory } from "../db";
 import { users, subscriptions } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -144,6 +144,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         }
 
         console.log(`[Stripe Webhook] Recharge ${planInfo.minutes} min pour user ${userId} (plan: ${planInfo.plan})`);
+
+        // Persister dans l'historique des recharges
+        await insertRechargeHistory({
+          userId: numericUserId,
+          stripePaymentIntentId: session.payment_intent as string | null,
+          stripeSessionId: session.id,
+          amountCents: session.amount_total ?? 0,
+          currency: (session.currency ?? "eur").toLowerCase(),
+          minutesAdded: planInfo.minutes,
+          priceId: priceId,
+          planAtPurchase: user?.plan ?? "starter",
+          status: "completed",
+        });
       }
     }
   } else if (session.mode === "subscription") {

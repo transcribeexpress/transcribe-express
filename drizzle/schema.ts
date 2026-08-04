@@ -94,3 +94,58 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * Table creditRechargeHistory - Historique des recharges de crédits (paiements one_time)
+ * Persiste chaque recharge pour traçabilité, réconciliation Stripe et support client.
+ */
+export const creditRechargeHistory = mysqlTable("creditRechargeHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Référence vers users.id */
+  userId: int("userId").notNull(),
+  /** Stripe Payment Intent ID pour traçabilité */
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  /** Stripe Checkout Session ID */
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
+  /** Montant payé en centimes (ex: 500 = 5€) */
+  amountCents: int("amountCents").notNull(),
+  /** Devise (EUR par défaut) */
+  currency: varchar("currency", { length: 10 }).default("eur").notNull(),
+  /** Minutes ajoutées au compte */
+  minutesAdded: int("minutesAdded").notNull(),
+  /** Price ID Stripe utilisé */
+  priceId: varchar("priceId", { length: 255 }).notNull(),
+  /** Plan de l'utilisateur au moment de la recharge */
+  planAtPurchase: varchar("planAtPurchase", { length: 50 }).notNull(),
+  /** Statut du paiement */
+  status: mysqlEnum("status", ["completed", "pending", "failed", "refunded"]).default("completed").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreditRechargeHistory = typeof creditRechargeHistory.$inferSelect;
+export type InsertCreditRechargeHistory = typeof creditRechargeHistory.$inferInsert;
+
+/**
+ * Table userPreferences - Préférences utilisateur persistées
+ * Stocke les choix de langue, format d'export et notifications.
+ */
+export const userPreferences = mysqlTable("userPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Référence vers users.id (unique — 1 préférence par utilisateur) */
+  userId: int("userId").notNull().unique(),
+  /** Langue par défaut pour la transcription (ISO 639-1) */
+  defaultLanguage: varchar("defaultLanguage", { length: 10 }).default("fr"),
+  /** Format d'export par défaut */
+  defaultExportFormat: mysqlEnum("defaultExportFormat", ["txt", "srt", "vtt"]).default("txt"),
+  /** Notifications par email activées */
+  emailNotifications: int("emailNotifications").default(1).notNull(),
+  /** Notification quand transcription terminée */
+  notifyOnComplete: int("notifyOnComplete").default(1).notNull(),
+  /** Notification quand crédits faibles (<20%) */
+  notifyOnLowCredits: int("notifyOnLowCredits").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;

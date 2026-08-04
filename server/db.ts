@@ -1,6 +1,6 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, transcriptions, InsertTranscription } from "../drizzle/schema";
+import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -359,4 +359,85 @@ export async function getUserCreditsById(userId: number): Promise<number> {
     .where(eq(users.id, userId));
 
   return user?.creditsMinutes ?? 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREDIT RECHARGE HISTORY — Historique des recharges de crédits
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Enregistrer une recharge de crédits dans l'historique.
+ */
+export async function insertRechargeHistory(data: InsertCreditRechargeHistory): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot insert recharge history: database not available");
+    return;
+  }
+
+  await db.insert(creditRechargeHistory).values(data);
+  console.log(`[Recharge] Recorded: ${data.minutesAdded} min for user ${data.userId} (${data.amountCents / 100}€)`);
+}
+
+/**
+ * Récupérer l'historique des recharges d'un utilisateur (les plus récentes en premier).
+ */
+export async function getRechargeHistory(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(creditRechargeHistory)
+    .where(eq(creditRechargeHistory.userId, userId))
+    .orderBy(desc(creditRechargeHistory.createdAt))
+    .limit(limit);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER PREFERENCES — Préférences utilisateur persistées
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Récupérer les préférences d'un utilisateur (ou null si pas encore créées).
+ */
+export async function getUserPreferences(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [prefs] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId));
+
+  return prefs ?? null;
+}
+
+/**
+ * Créer ou mettre à jour les préférences d'un utilisateur (upsert).
+ */
+export async function upsertUserPreferences(userId: number, prefs: Partial<Omit<InsertUserPreferences, "id" | "userId" | "createdAt" | "updatedAt">>): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot upsert preferences: database not available");
+    return;
+  }
+
+  const existing = await getUserPreferences(userId);
+
+  if (existing) {
+    // Update
+    await db
+      .update(userPreferences)
+      .set(prefs)
+      .where(eq(userPreferences.userId, userId));
+  } else {
+    // Insert
+    await db.insert(userPreferences).values({
+      userId,
+      ...prefs,
+    });
+  }
+
+  console.log(`[Preferences] Upserted for user ${userId}`);
 }

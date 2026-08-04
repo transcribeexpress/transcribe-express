@@ -723,95 +723,7 @@ export default function Account() {
 
           {/* ===== ONGLET PRÉFÉRENCES (Thème 7) ===== */}
           <TabsContent value="preferences">
-            <motion.div
-              className="space-y-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Settings className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Paramètres</CardTitle>
-                      <CardDescription>Personnalisez votre expérience de transcription</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Langue de transcription par défaut */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Langue de transcription par défaut</h4>
-                    <p className="text-xs text-muted-foreground">
-                      La langue sélectionnée sera utilisée automatiquement pour chaque nouvelle transcription.
-                    </p>
-                    <select
-                      className="w-full sm:w-64 h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      defaultValue="fr"
-                      onChange={() => toast.success("Préférence enregistrée")}
-                    >
-                      <option value="fr">Français</option>
-                      <option value="en">Anglais</option>
-                      <option value="es">Espagnol</option>
-                      <option value="de">Allemand</option>
-                      <option value="it">Italien</option>
-                      <option value="pt">Portugais</option>
-                      <option value="auto">Détection automatique</option>
-                    </select>
-                  </div>
-
-                  {/* Format d'export par défaut */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Format d'export par défaut</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Le format sélectionné sera proposé en premier lors du téléchargement de vos transcriptions.
-                    </p>
-                    <select
-                      className="w-full sm:w-64 h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      defaultValue="txt"
-                      onChange={() => toast.success("Préférence enregistrée")}
-                    >
-                      <option value="txt">Texte brut (.txt)</option>
-                      <option value="srt">Sous-titres SRT (.srt)</option>
-                      <option value="vtt">Sous-titres VTT (.vtt)</option>
-                      <option value="json">JSON structuré (.json)</option>
-                    </select>
-                  </div>
-
-                  {/* Notifications */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Notifications</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Choisissez quand vous souhaitez être notifié.
-                    </p>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                        <span className="text-sm">Transcription terminée</span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                        <span className="text-sm">Crédits faibles (moins de 20%)</span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                        <span className="text-sm">Offres promotionnelles et nouveautés</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Note */}
-                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                    <p className="text-xs text-muted-foreground">
-                      Les préférences sont sauvegardées localement. La persistance serveur sera disponible prochainement.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <PreferencesTab />
           </TabsContent>
 
           {/* ===== ONGLET DONNÉES (Thème 8) ===== */}
@@ -944,5 +856,155 @@ function PlanBenefits({ plan }: { plan: string }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Onglet Préférences — connecté au backend via trpc.preferences
+ */
+function PreferencesTab() {
+  const { data: prefs, isLoading } = trpc.preferences.get.useQuery();
+  const updatePrefs = trpc.preferences.update.useMutation({
+    onSuccess: () => {
+      toast.success("Préférence enregistrée");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la sauvegarde");
+    },
+  });
+
+  const handleLanguageChange = (value: string) => {
+    updatePrefs.mutate({ defaultLanguage: value });
+  };
+
+  const handleFormatChange = (value: string) => {
+    updatePrefs.mutate({ defaultExportFormat: value as "txt" | "srt" | "vtt" });
+  };
+
+  const handleNotificationChange = (field: "notifyOnComplete" | "notifyOnLowCredits" | "emailNotifications", checked: boolean) => {
+    updatePrefs.mutate({ [field]: checked ? 1 : 0 });
+  };
+
+  if (isLoading) {
+    return (
+      <motion.div
+        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Chargement des préférences...
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Settings className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Paramètres</CardTitle>
+              <CardDescription>Personnalisez votre expérience de transcription</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Langue de transcription par défaut */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Langue de transcription par défaut</h4>
+            <p className="text-xs text-muted-foreground">
+              La langue sélectionnée sera utilisée automatiquement pour chaque nouvelle transcription.
+            </p>
+            <select
+              className="w-full sm:w-64 h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={prefs?.defaultLanguage ?? "fr"}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+            >
+              <option value="fr">Français</option>
+              <option value="en">Anglais</option>
+              <option value="es">Espagnol</option>
+              <option value="de">Allemand</option>
+              <option value="it">Italien</option>
+              <option value="pt">Portugais</option>
+              <option value="auto">Détection automatique</option>
+            </select>
+          </div>
+
+          {/* Format d'export par défaut */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Format d'export par défaut</h4>
+            <p className="text-xs text-muted-foreground">
+              Le format sélectionné sera proposé en premier lors du téléchargement de vos transcriptions.
+            </p>
+            <select
+              className="w-full sm:w-64 h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={prefs?.defaultExportFormat ?? "txt"}
+              onChange={(e) => handleFormatChange(e.target.value)}
+            >
+              <option value="txt">Texte brut (.txt)</option>
+              <option value="srt">Sous-titres SRT (.srt)</option>
+              <option value="vtt">Sous-titres VTT (.vtt)</option>
+            </select>
+          </div>
+
+          {/* Notifications */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Notifications</h4>
+            <p className="text-xs text-muted-foreground">
+              Choisissez quand vous souhaitez être notifié.
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prefs?.notifyOnComplete === 1}
+                  onChange={(e) => handleNotificationChange("notifyOnComplete", e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-sm">Transcription terminée</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prefs?.notifyOnLowCredits === 1}
+                  onChange={(e) => handleNotificationChange("notifyOnLowCredits", e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-sm">Crédits faibles (moins de 20%)</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prefs?.emailNotifications === 1}
+                  onChange={(e) => handleNotificationChange("emailNotifications", e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-sm">Notifications par email</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Confirmation */}
+          <div className="p-4 rounded-lg bg-muted/50 border border-border">
+            <p className="text-xs text-muted-foreground">
+              Vos préférences sont sauvegardées automatiquement sur nos serveurs et synchronisées sur tous vos appareils.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
