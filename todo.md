@@ -1637,3 +1637,14 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Webhook : chaque recharge one_time est persistée dans creditRechargeHistory
 - [x] Frontend : onglet Paramètres connecté au backend (lecture + sauvegarde auto)
 - [x] Tests : 331 tests passent, 0 erreur TypeScript
+
+## 📋 Tables priorité moyenne — 4 août 2026
+
+- [x] Schema : table `supportTickets` créée (userId, name, email, subject, category, message, status, priority, createdAt, updatedAt)
+- [x] Schema : table `gdprRequests` créée (userId, email, requestType, reason, status, processedAt, createdAt)
+- [x] Migration : 2 tables créées en BDD via SQL direct + schema.ts mis à jour
+- [x] Helpers BDD : insertSupportTicket, getSupportTickets (admin), insertGdprRequest, getGdprRequests, updateGdprRequestStatus
+- [x] tRPC : procédures support.create, support.list (admin), gdpr.request, gdpr.list
+- [x] Frontend : Contact.tsx connecte à trpc.support.create + notifyOwner en parallèle
+- [x] Frontend : onglet Données de Account.tsx connecte à gdpr.request et gdpr.list (composant GdprSection)
+- [x] Tests : 331 tests passent, 0 erreur TypeScript

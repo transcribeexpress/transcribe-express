@@ -749,21 +749,7 @@ export default function Account() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Export des données */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Exporter mes données</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Téléchargez une copie de toutes vos données personnelles (profil, transcriptions, historique) au format JSON.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => toast.info("Votre export est en préparation. Vous recevrez un email avec le lien de téléchargement.")}
-                    >
-                      <Database className="w-4 h-4" />
-                      Demander un export
-                    </Button>
-                  </div>
+                  <GdprSection />
 
                   {/* Politique de conservation */}
                   <div className="space-y-3">
@@ -1006,5 +992,128 @@ function PreferencesTab() {
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+/**
+ * GdprSection — Section RGPD connectée au backend
+ * Permet de soumettre des demandes d'export, suppression, rectification, portabilité.
+ */
+function GdprSection() {
+  const utils = trpc.useUtils();
+  const { data: gdprRequests, isLoading } = trpc.gdpr.list.useQuery();
+  const requestGdpr = trpc.gdpr.request.useMutation({
+    onSuccess: () => {
+      utils.gdpr.list.invalidate();
+      toast.success("Votre demande RGPD a été enregistrée. Nous vous répondrons dans les 30 jours.");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Une erreur est survenue.");
+    },
+  });
+
+  const handleRequest = (requestType: "export" | "deletion" | "rectification" | "portability") => {
+    const labels = {
+      export: "export de vos données",
+      deletion: "suppression de votre compte",
+      rectification: "rectification de vos données",
+      portability: "portabilité de vos données",
+    };
+    if (requestType === "deletion") {
+      if (!window.confirm(`Êtes-vous sûr de vouloir demander la suppression de votre compte ? Cette action est irréversible.`)) return;
+    }
+    requestGdpr.mutate({ requestType });
+  };
+
+  const statusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      pending: "En attente",
+      processing: "En cours",
+      completed: "Traitée",
+      rejected: "Refusée",
+    };
+    return labels[status] ?? status;
+  };
+
+  const statusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "text-amber-400",
+      processing: "text-cyan-400",
+      completed: "text-emerald-400",
+      rejected: "text-red-400",
+    };
+    return colors[status] ?? "text-muted-foreground";
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Export des données */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Exporter mes données</h4>
+        <p className="text-xs text-muted-foreground">
+          Téléchargez une copie de toutes vos données personnelles (profil, transcriptions, historique) au format JSON.
+          Délai de traitement : jusqu'à 30 jours.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => handleRequest("export")}
+          disabled={requestGdpr.isPending}
+        >
+          <Database className="w-4 h-4" />
+          Demander un export
+        </Button>
+      </div>
+
+      {/* Autres droits RGPD */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Autres droits RGPD</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 justify-start"
+            onClick={() => handleRequest("rectification")}
+            disabled={requestGdpr.isPending}
+          >
+            <Shield className="w-4 h-4" />
+            Rectification
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 justify-start"
+            onClick={() => handleRequest("portability")}
+            disabled={requestGdpr.isPending}
+          >
+            <Database className="w-4 h-4" />
+            Portabilité
+          </Button>
+        </div>
+      </div>
+
+      {/* Historique des demandes RGPD */}
+      {!isLoading && gdprRequests && gdprRequests.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Mes demandes RGPD</h4>
+          <div className="space-y-2">
+            {gdprRequests.map((req) => (
+              <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border text-xs">
+                <div>
+                  <span className="font-medium capitalize">{req.requestType}</span>
+                  <span className="text-muted-foreground ml-2">
+                    {new Date(req.createdAt).toLocaleDateString("fr-FR")}
+                  </span>
+                </div>
+                <span className={`font-medium ${statusColor(req.status)}`}>
+                  {statusLabel(req.status)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

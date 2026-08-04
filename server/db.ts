@@ -1,6 +1,6 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences } from "../drizzle/schema";
+import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences, supportTickets, InsertSupportTicket, gdprRequests, InsertGdprRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -440,4 +440,98 @@ export async function upsertUserPreferences(userId: number, prefs: Partial<Omit<
   }
 
   console.log(`[Preferences] Upserted for user ${userId}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUPPORT TICKETS — Tickets de support client
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Créer un nouveau ticket de support.
+ */
+export async function createSupportTicket(data: InsertSupportTicket): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(supportTickets).values(data);
+  const insertId = (result as unknown as { insertId: number }).insertId;
+  console.log(`[Support] Ticket #${insertId} created for ${data.email}`);
+  return insertId;
+}
+
+/**
+ * Récupérer les tickets d'un utilisateur (les plus récents en premier).
+ */
+export async function getSupportTicketsByUser(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(supportTickets)
+    .where(eq(supportTickets.userId, userId))
+    .orderBy(desc(supportTickets.createdAt))
+    .limit(limit);
+}
+
+/**
+ * Récupérer tous les tickets (admin uniquement).
+ */
+export async function getAllSupportTickets(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(supportTickets)
+    .orderBy(desc(supportTickets.createdAt))
+    .limit(limit);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GDPR REQUESTS — Demandes RGPD (export, suppression, rectification)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Créer une nouvelle demande RGPD.
+ */
+export async function createGdprRequest(data: InsertGdprRequest): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(gdprRequests).values(data);
+  const insertId = (result as unknown as { insertId: number }).insertId;
+  console.log(`[GDPR] Request #${insertId} created: ${data.requestType} for ${data.email}`);
+  return insertId;
+}
+
+/**
+ * Récupérer les demandes RGPD d'un utilisateur.
+ */
+export async function getGdprRequestsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(gdprRequests)
+    .where(eq(gdprRequests.userId, userId))
+    .orderBy(desc(gdprRequests.createdAt));
+}
+
+/**
+ * Vérifier si une demande RGPD en attente existe déjà pour un utilisateur.
+ * Évite les doublons de demandes de suppression/export.
+ */
+export async function hasPendingGdprRequest(userId: number, requestType: "export" | "deletion" | "rectification" | "portability"): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const [existing] = await db
+    .select({ id: gdprRequests.id })
+    .from(gdprRequests)
+    .where(eq(gdprRequests.userId, userId))
+    .limit(1);
+
+  return !!existing;
 }

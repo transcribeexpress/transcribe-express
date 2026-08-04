@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory } from "./db";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory, createSupportTicket, getSupportTicketsByUser, createGdprRequest, getGdprRequestsByUser, hasPendingGdprRequest } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
@@ -63,6 +63,67 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return await getRechargeHistory(ctx.user.id, input?.limit ?? 20);
       }),
+  }),
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // SUPPORT TICKETS
+  // ═════════════════════════════════════════════════════════════════════════
+  support: router({
+    create: publicProcedure
+      .input(z.object({
+        name: z.string().min(1).max(255),
+        email: z.string().email(),
+        subject: z.string().min(1).max(500),
+        category: z.enum(["technical", "billing", "account", "feature", "other"]).default("other"),
+        message: z.string().min(10).max(5000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const ticketId = await createSupportTicket({
+          userId: ctx.user?.id ?? null,
+          name: input.name,
+          email: input.email,
+          subject: input.subject,
+          category: input.category,
+          message: input.message,
+        });
+        return { success: true, ticketId };
+      }),
+
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().min(1).max(50).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await getSupportTicketsByUser(ctx.user.id, input?.limit ?? 20);
+      }),
+  }),
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // DEMANDES RGPD
+  // ═════════════════════════════════════════════════════════════════════════
+  gdpr: router({
+    request: protectedProcedure
+      .input(z.object({
+        requestType: z.enum(["export", "deletion", "rectification", "portability"]),
+        reason: z.string().max(2000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Vérifier si une demande en attente existe déjà
+        const hasPending = await hasPendingGdprRequest(ctx.user.id, input.requestType);
+        if (hasPending) {
+          throw new Error("Une demande de ce type est déjà en cours de traitement. Nous vous contacterons dans les 30 jours.");
+        }
+        const requestId = await createGdprRequest({
+          userId: ctx.user.id,
+          email: ctx.user.email ?? "",
+          requestType: input.requestType,
+          reason: input.reason,
+          status: "pending",
+        });
+        return { success: true, requestId };
+      }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await getGdprRequestsByUser(ctx.user.id);
+    }),
   }),
 
   transcriptions: router({

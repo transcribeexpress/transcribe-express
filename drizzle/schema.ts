@@ -149,3 +149,54 @@ export const userPreferences = mysqlTable("userPreferences", {
 
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+
+/**
+ * Table supportTickets - Tickets de support client
+ * Persiste les demandes envoyées depuis la page Contact.
+ */
+export const supportTickets = mysqlTable("supportTickets", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Référence vers users.id (null si utilisateur non connecté) */
+  userId: int("userId"),
+  /** Nom de l'expéditeur */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Email de l'expéditeur */
+  email: varchar("email", { length: 255 }).notNull(),
+  /** Sujet du ticket */
+  subject: varchar("subject", { length: 500 }).notNull(),
+  /** Catégorie du ticket */
+  category: mysqlEnum("category", ["technical", "billing", "account", "feature", "other"]).default("other").notNull(),
+  /** Message complet */
+  message: text("message").notNull(),
+  /** Statut du ticket */
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "closed"]).default("open").notNull(),
+  /** Priorité du ticket */
+  priority: mysqlEnum("priority", ["low", "normal", "high", "urgent"]).default("normal").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = typeof supportTickets.$inferInsert;
+
+/**
+ * Table gdprRequests - Demandes RGPD (export, suppression, rectification)
+ * Conformité RGPD obligatoire — délai légal de traitement : 30 jours.
+ */
+export const gdprRequests = mysqlTable("gdprRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Référence vers users.id */
+  userId: int("userId"),
+  /** Email de l'utilisateur au moment de la demande */
+  email: varchar("email", { length: 255 }).notNull(),
+  /** Type de demande RGPD */
+  requestType: mysqlEnum("requestType", ["export", "deletion", "rectification", "portability"]).notNull(),
+  /** Raison ou contexte de la demande (optionnel) */
+  reason: text("reason"),
+  /** Statut de traitement */
+  status: mysqlEnum("status", ["pending", "processing", "completed", "rejected"]).default("pending").notNull(),
+  /** Date de traitement effectif */
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GdprRequest = typeof gdprRequests.$inferSelect;
+export type InsertGdprRequest = typeof gdprRequests.$inferInsert;

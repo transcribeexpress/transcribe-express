@@ -104,6 +104,8 @@ export default function Contact() {
   const [isSending, setIsSending] = useState(false);
 
   const notifyOwner = trpc.system.notifyOwner.useMutation();
+  const createTicket = trpc.support.create.useMutation();
+  const [name, setName] = useState(user?.fullName ?? "");
 
   const selectedTypeData = CONTACT_TYPES.find((t) => t.id === selectedType);
 
@@ -115,17 +117,38 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!subject.trim() || !message.trim()) {
+    if (!subject.trim() || !message.trim() || !email.trim()) {
       toast.error("Veuillez remplir tous les champs obligatoires.");
       return;
     }
 
+    // Mapper le type de contact vers la catégorie support
+    const categoryMap: Record<string, "technical" | "billing" | "account" | "feature" | "other"> = {
+      bug: "technical",
+      question: "other",
+      billing: "billing",
+      suggestion: "feature",
+      dpo: "other",
+      other: "other",
+    };
+
     setIsSending(true);
     try {
-      await notifyOwner.mutateAsync({
-        title: `[Contact] ${selectedTypeData?.label} — ${subject}`,
-        content: `**Type :** ${selectedTypeData?.label}\n**De :** ${email || "Non connecté"}\n**Utilisateur :** ${user?.fullName ?? "Anonyme"}\n\n**Sujet :** ${subject}\n\n**Message :**\n${message}`,
+      // 1. Persister le ticket en BDD
+      await createTicket.mutateAsync({
+        name: name || user?.fullName || "Anonyme",
+        email,
+        subject,
+        category: categoryMap[selectedType ?? "other"] ?? "other",
+        message,
       });
+
+      // 2. Notifier l'owner en parallèle (non bloquant)
+      notifyOwner.mutate({
+        title: `[Contact] ${selectedTypeData?.label} — ${subject}`,
+        content: `**Type :** ${selectedTypeData?.label}\n**De :** ${email || "Non connecté"}\n**Utilisateur :** ${name || (user?.fullName ?? "Anonyme")}\n\n**Sujet :** ${subject}\n\n**Message :**\n${message}`,
+      });
+
       setStep("success");
     } catch {
       toast.error("Une erreur est survenue. Veuillez réessayer.");
