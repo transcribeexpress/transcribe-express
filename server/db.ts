@@ -1,6 +1,6 @@
 import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences, supportTickets, InsertSupportTicket, gdprRequests, InsertGdprRequest } from "../drizzle/schema";
+import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences, supportTickets, InsertSupportTicket, gdprRequests, InsertGdprRequest, subscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -534,4 +534,189 @@ export async function hasPendingGdprRequest(userId: number, requestType: "export
     .limit(1);
 
   return !!existing;
+}
+
+
+// ============================================================
+// SUPPRESSION DE COMPTE — Procédure complète avec cascade
+// ============================================================
+
+import { storageDelete } from "./storage";
+import { stripe } from "./stripe/stripe";
+import { createClerkClient } from "@clerk/express";
+
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY || "",
+});
+
+export interface DeleteAccountResult {
+  success: boolean;
+  deletedTranscriptions: number;
+  deletedS3Files: number;
+  cancelledSubscriptions: number;
+  clerkDeleted: boolean;
+  stripeCustomerDeleted: boolean;
+  errors: string[];
+}
+
+/**
+ * Supprime complètement un compte utilisateur et toutes ses données associées.
+ * 
+ * Ordre de suppression :
+ * 1. Fichiers S3 (transcriptions)
+ * 2. Abonnements Stripe (cancel)
+ * 3. Client Stripe (delete)
+ * 4. Tables BDD (transcriptions, subscriptions, creditRechargeHistory, userPreferences, gdprRequests, supportTickets)
+ * 5. Utilisateur Clerk
+ * 6. Ligne users
+ * 
+ * @param userId - L'ID interne de l'utilisateur (users.id)
+ * @param initiator - "self" pour auto-suppression, "admin" pour suppression manuelle
+ */
+export async function deleteUserAccount(userId: number, initiator: "self" | "admin" = "self"): Promise<DeleteAccountResult> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+
+  const result: DeleteAccountResult = {
+    success: false,
+    deletedTranscriptions: 0,
+    deletedS3Files: 0,
+    cancelledSubscriptions: 0,
+    clerkDeleted: false,
+    stripeCustomerDeleted: false,
+    errors: [],
+  };
+
+  // 1. Récupérer l'utilisateur
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) {
+    result.errors.push(`Utilisateur ${userId} introuvable`);
+    return result;
+  }
+
+  console.log(`[DeleteAccount] Début suppression pour user ${userId} (${user.email}) — initiateur: ${initiator}`);
+
+  // 2. Supprimer les fichiers S3 des transcriptions
+  const userTranscriptions = await db
+    .select({ id: transcriptions.id, fileKey: transcriptions.fileKey })
+    .from(transcriptions)
+    .where(eq(transcriptions.userId, user.openId));
+
+  for (const t of userTranscriptions) {
+    if (t.fileKey) {
+      try {
+        await storageDelete(t.fileKey);
+        result.deletedS3Files++;
+      } catch (error) {
+        result.errors.push(`S3 delete failed for fileKey ${t.fileKey}: ${(error as Error).message}`);
+      }
+    }
+  }
+  result.deletedTranscriptions = userTranscriptions.length;
+
+  // 3. Annuler les abonnements Stripe actifs
+  const userSubscriptions = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId));
+
+  for (const sub of userSubscriptions) {
+    if (sub.status === "active" || sub.status === "trialing") {
+      try {
+        await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+        result.cancelledSubscriptions++;
+        console.log(`[DeleteAccount] Annulé abonnement Stripe ${sub.stripeSubscriptionId}`);
+      } catch (error) {
+        result.errors.push(`Stripe cancel subscription failed: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  // 4. Supprimer le client Stripe
+  if (user.stripeCustomerId) {
+    try {
+      await stripe.customers.del(user.stripeCustomerId);
+      result.stripeCustomerDeleted = true;
+      console.log(`[DeleteAccount] Supprimé client Stripe ${user.stripeCustomerId}`);
+    } catch (error) {
+      result.errors.push(`Stripe delete customer failed: ${(error as Error).message}`);
+    }
+  }
+
+  // 5. Supprimer toutes les données BDD (cascade manuelle)
+  try {
+    // Transcriptions (userId = openId string)
+    await db.delete(transcriptions).where(eq(transcriptions.userId, user.openId));
+    // Subscriptions (userId = users.id INT)
+    await db.delete(subscriptions).where(eq(subscriptions.userId, userId));
+    // Credit recharge history
+    await db.delete(creditRechargeHistory).where(eq(creditRechargeHistory.userId, userId));
+    // User preferences
+    await db.delete(userPreferences).where(eq(userPreferences.userId, userId));
+    // GDPR requests
+    await db.delete(gdprRequests).where(eq(gdprRequests.userId, userId));
+    // Support tickets
+    await db.delete(supportTickets).where(eq(supportTickets.userId, userId));
+    
+    console.log(`[DeleteAccount] Données BDD supprimées pour user ${userId}`);
+  } catch (error) {
+    result.errors.push(`BDD cascade delete failed: ${(error as Error).message}`);
+    return result;
+  }
+
+  // 6. Supprimer l'utilisateur Clerk (si openId commence par "clerk_")
+  if (user.openId.startsWith("clerk_")) {
+    const clerkUserId = user.openId.replace("clerk_", "");
+    try {
+      await clerkClient.users.deleteUser(clerkUserId);
+      result.clerkDeleted = true;
+      console.log(`[DeleteAccount] Supprimé utilisateur Clerk ${clerkUserId}`);
+    } catch (error) {
+      // Clerk peut échouer si l'utilisateur a déjà été supprimé manuellement
+      result.errors.push(`Clerk delete failed: ${(error as Error).message}`);
+    }
+  }
+
+  // 7. Supprimer la ligne users
+  await db.delete(users).where(eq(users.id, userId));
+  console.log(`[DeleteAccount] Utilisateur ${userId} (${user.email}) définitivement supprimé — initiateur: ${initiator}`);
+
+  result.success = true;
+  return result;
+}
+
+// ============================================================
+// ADMIN — Liste des utilisateurs
+// ============================================================
+
+export async function getAllUsers(limit = 100, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      plan: users.plan,
+      creditsMinutes: users.creditsMinutes,
+      loginMethod: users.loginMethod,
+      lastSignedIn: users.lastSignedIn,
+      createdAt: users.createdAt,
+      stripeCustomerId: users.stripeCustomerId,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getUserCount(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const [result] = await db.select({ count: sql<number>`COUNT(*)` }).from(users);
+  return result?.count ?? 0;
 }

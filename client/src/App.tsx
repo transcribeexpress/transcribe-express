@@ -19,6 +19,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Account from "./pages/Account";
 import Contact from "./pages/Contact";
+import Admin from "./pages/Admin";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/analytics"} component={AnalyticsDashboard} />
       <Route path={"/account"} component={Account} />
       <Route path={"/contact"} component={Contact} />
+      <Route path={"/admin"} component={Admin} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/settings"} component={Settings} />
       

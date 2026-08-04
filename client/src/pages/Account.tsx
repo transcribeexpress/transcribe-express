@@ -764,23 +764,7 @@ export default function Account() {
 
                   {/* Suppression du compte */}
                   <div className="space-y-3 pt-4 border-t border-border">
-                    <h4 className="text-sm font-medium text-destructive">Zone de danger</h4>
-                    <p className="text-xs text-muted-foreground">
-                      La suppression de votre compte est irréversible. Toutes vos transcriptions, vos crédits restants et votre historique seront définitivement supprimés.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => {
-                        if (window.confirm("\u00cates-vous s\u00fbr de vouloir supprimer votre compte ? Cette action est irr\u00e9versible.")) {
-                          toast.info("Pour supprimer votre compte, contactez-nous à support@transcribeexpress.com");
-                        }
-                      }}
-                    >
-                      <AlertTriangle className="w-4 h-4" />
-                      Supprimer mon compte
-                    </Button>
+                    <DeleteAccountSection />
                   </div>
                 </CardContent>
               </Card>
@@ -1115,5 +1099,146 @@ function GdprSection() {
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================
+// DeleteAccountSection — Double confirmation avant suppression
+// ============================================================
+function DeleteAccountSection() {
+  const [, navigate] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [confirmText, setConfirmText] = useState("");
+
+  const deleteMutation = trpc.account.deleteMyAccount.useMutation({
+    onSuccess: () => {
+      toast.success("Votre compte a été supprimé avec succès.");
+      setTimeout(() => navigate("/"), 1500);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erreur lors de la suppression du compte");
+    },
+  });
+
+  const handleClose = () => {
+    setOpen(false);
+    setStep(1);
+    setConfirmText("");
+  };
+
+  const handleConfirm = () => {
+    if (confirmText !== "SUPPRIMER") return;
+    deleteMutation.mutate({ confirmation: "SUPPRIMER" });
+  };
+
+  return (
+    <>
+      <h4 className="text-sm font-medium text-destructive">Zone de danger</h4>
+      <p className="text-xs text-muted-foreground">
+        La suppression de votre compte est irréversible. Toutes vos transcriptions, vos crédits restants et votre historique seront définitivement supprimés.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+        onClick={() => setOpen(true)}
+      >
+        <AlertTriangle className="w-4 h-4" />
+        Supprimer mon compte
+      </Button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+          {/* Dialog */}
+          <div className="relative w-full max-w-md mx-4 rounded-xl border border-destructive/30 bg-background p-6 shadow-2xl space-y-4">
+            {step === 1 && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Supprimer votre compte</h3>
+                    <p className="text-xs text-muted-foreground">Cette action est irréversible</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm text-muted-foreground bg-destructive/5 rounded-lg p-4 border border-destructive/20">
+                  <p className="font-medium text-foreground">Les données suivantes seront supprimées :</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Toutes vos transcriptions et fichiers associés</li>
+                    <li>Vos crédits restants (non remboursables)</li>
+                    <li>Votre abonnement Stripe (annulé immédiatement)</li>
+                    <li>Votre historique de facturation</li>
+                    <li>Vos préférences et données de profil</li>
+                    <li>Votre compte d'authentification</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button variant="outline" size="sm" onClick={handleClose}>
+                    Annuler
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setStep(2)}
+                  >
+                    Je comprends, continuer
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Confirmation finale</h3>
+                    <p className="text-xs text-muted-foreground">Tapez SUPPRIMER pour confirmer</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Pour confirmer la suppression définitive de votre compte, tapez{" "}
+                    <span className="font-mono font-bold text-destructive">SUPPRIMER</span> dans le champ ci-dessous.
+                  </p>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="Tapez SUPPRIMER"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/50"
+                    autoFocus
+                    disabled={deleteMutation.isPending}
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button variant="outline" size="sm" onClick={handleClose} disabled={deleteMutation.isPending}>
+                    Annuler
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleConfirm}
+                    disabled={confirmText !== "SUPPRIMER" || deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? "Suppression en cours..." : "Supprimer définitivement"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

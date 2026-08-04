@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory, createSupportTicket, getSupportTicketsByUser, createGdprRequest, getGdprRequestsByUser, hasPendingGdprRequest } from "./db";
+import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory, createSupportTicket, getSupportTicketsByUser, createGdprRequest, getGdprRequestsByUser, hasPendingGdprRequest, deleteUserAccount, getAllUsers, getUserCount } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
@@ -399,6 +399,72 @@ export const appRouter = router({
         transcriptionsByDay,
         transcriptionsByStatus,
       };
+    }),
+  }),
+
+  // ============================================================
+  // ACCOUNT — Self-delete
+  // ============================================================
+  account: router({
+    deleteMyAccount: protectedProcedure
+      .input(z.object({
+        confirmation: z.literal("SUPPRIMER"),
+      }))
+      .mutation(async ({ ctx }) => {
+        const result = await deleteUserAccount(ctx.user.id, "self");
+        if (result.success) {
+          // Clear session cookie
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        }
+        return result;
+      }),
+  }),
+
+  // ============================================================
+  // ADMIN — Gestion des utilisateurs (admin only)
+  // ============================================================
+  admin: router({
+    listUsers: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new Error("Accès refusé — rôle admin requis");
+        }
+        const limit = input?.limit ?? 50;
+        const offset = input?.offset ?? 0;
+        const [usersList, totalCount] = await Promise.all([
+          getAllUsers(limit, offset),
+          getUserCount(),
+        ]);
+        return { users: usersList, total: totalCount };
+      }),
+
+    deleteUser: protectedProcedure
+      .input(z.object({
+        userId: z.number(),
+        confirmation: z.literal("CONFIRMER_SUPPRESSION"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new Error("Accès refusé — rôle admin requis");
+        }
+        if (input.userId === ctx.user.id) {
+          throw new Error("Impossible de supprimer votre propre compte admin depuis ce panneau");
+        }
+        const result = await deleteUserAccount(input.userId, "admin");
+        return result;
+      }),
+
+    stats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new Error("Accès refusé — rôle admin requis");
+      }
+      const totalUsers = await getUserCount();
+      return { totalUsers };
     }),
   }),
 });

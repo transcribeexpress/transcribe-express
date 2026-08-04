@@ -1548,7 +1548,7 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 ### Thème 3 — Crédits et recharges (Starter)
 - [x] Solde de crédits en minutes avec équivalent heures (formatMinutes + barre de progression)
 - [x] Boutons de recharge rapide (5€/10€/20€/50€) — RECHARGE_OPTIONS grid
-- [ ] Historique des recharges (date, montant, minutes ajoutées) — nécessite table credit_history en BDD
+- [x] Historique des recharges — implémenté via table creditRechargeHistory (4 août 2026)
 
 ### Thème 4 — Historique de facturation
 - [x] Lien direct vers le Portail Client Stripe (bouton createPortalSession)
@@ -1624,8 +1624,8 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 
 ## 🐛 Bug critique — Webhook Stripe Live — 3 août 2026
 
-- [ ] Diagnostiquer les 14 échecs webhook live (14/14 en échec depuis le 28/07)
-- [ ] Corriger la cause racine (signature, route, body parser, ou clé incorrecte)
+- [x] Diagnostiquer les 14 échecs webhook live — cause : clé test utilisée avant configuration live (28/07-01/08)
+- [x] Corriger la cause racine — clé live STRIPE_WEBHOOK_SECRET configurée le 3 août 2026
 
 ## 📊 Tables priorité haute — 4 août 2026
 
@@ -1648,3 +1648,12 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Frontend : Contact.tsx connecte à trpc.support.create + notifyOwner en parallèle
 - [x] Frontend : onglet Données de Account.tsx connecte à gdpr.request et gdpr.list (composant GdprSection)
 - [x] Tests : 331 tests passent, 0 erreur TypeScript
+
+## 🗑️ Suppression de compte complète — 4 août 2026
+
+- [x] Backend : fonction deleteUserAccount() dans db.ts — suppression cascade (S3, BDD 6 tables, Stripe cancel, Clerk delete)
+- [x] Backend : procédure tRPC account.deleteMyAccount (self-delete avec double vérification)
+- [x] Backend : procédures tRPC admin.listUsers, admin.deleteUser (suppression manuelle par admin)
+- [x] Frontend : dialog de confirmation sécurisé (double confirmation + saisie texte) dans Account.tsx
+- [x] Frontend : page Admin /admin avec liste des utilisateurs et bouton de suppression
+- [x] Tests : 331 tests passent, 0 erreur TypeScript, fichier notes-delete-account.md supprimé
