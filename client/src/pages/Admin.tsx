@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png";
+const WORDMARK_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/wordmark-transparent_d2755219.webp";
 
 const PLAN_BADGE: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   free: { label: "Gratuit", className: "bg-muted text-muted-foreground", icon: Sparkles },
@@ -59,21 +60,97 @@ export default function Admin() {
   // Rediriger si pas admin
   if (!authLoading && (!currentUser || currentUser.role !== "admin")) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-              <Shield className="w-8 h-8 text-destructive" />
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header identité visuelle */}
+        <header className="border-b border-border bg-background/80 backdrop-blur-xl">
+          <div className="container flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <img src={LOGO_URL} alt="Logo" className="w-8 h-8" />
+              <img src={WORDMARK_URL} alt="Transcribe Express" className="h-7 w-auto object-contain" />
             </div>
-            <h2 className="text-xl font-bold text-foreground">Accès refusé</h2>
-            <p className="text-sm text-muted-foreground">
-              Cette page est réservée aux administrateurs.
+            <Badge variant="outline" className="gap-1 border-primary/30 text-primary text-xs">
+              <Shield className="w-3 h-3" />
+              Espace Administration
+            </Badge>
+          </div>
+        </header>
+
+        {/* Contenu centré */}
+        <div className="flex-1 flex items-center justify-center px-4">
+          <motion.div
+            className="w-full max-w-md"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Logo néon mis en valeur */}
+            <div className="flex justify-center mb-8">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl scale-150" />
+                <img src={LOGO_URL} alt="Logo" className="relative w-20 h-20 drop-shadow-[0_0_24px_rgba(190,52,213,0.6)]" />
+              </div>
+            </div>
+
+            <Card className="border-destructive/20 bg-card">
+              <CardContent className="p-8 text-center space-y-6">
+                {/* Icône et titre */}
+                <div className="space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto">
+                    <Shield className="w-7 h-7 text-destructive" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">Accès refusé</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Cette page est réservée aux administrateurs de Transcribe Express.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Explication */}
+                <div className="p-4 rounded-lg bg-muted/40 border border-border text-left">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Votre compte ne dispose pas des droits d'administration nécessaires pour accéder à ce panneau. Si vous êtes administrateur, connectez-vous avec le compte admin ou contactez le support.
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  {!currentUser ? (
+                    <Button
+                      className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      onClick={() => navigate("/login")}
+                    >
+                      <Shield className="w-4 h-4" />
+                      Se connecter en tant qu'admin
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                      onClick={() => navigate("/login")}
+                    >
+                      <Shield className="w-4 h-4" />
+                      Connexion avec un compte admin
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Footer discret */}
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              Transcribe Express — Panneau d'administration sécurisé
             </p>
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              Retour au tableau de bord
-            </Button>
-          </CardContent>
-        </Card>
+          </motion.div>
+        </div>
       </div>
     );
   }
