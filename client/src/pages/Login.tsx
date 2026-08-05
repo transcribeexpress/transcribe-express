@@ -15,6 +15,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useClerkSync } from "@/hooks/useClerkSync";
 import { LoginButton } from "@/components/LoginButton";
 import { EmailSignIn } from "@/components/EmailSignIn";
 import { EmailSignUp } from "@/components/EmailSignUp";
@@ -28,25 +29,28 @@ type AuthMode = "oauth" | "email_signin" | "email_signup";
 
 export default function Login() {
   const { isSignedIn, isLoading } = useAuth();
+  const { isSessionReady, isSyncing } = useClerkSync();
   const [, setLocation] = useLocation();
   const [authMode, setAuthMode] = useState<AuthMode>("oauth");
 
   // Récupérer l'URL de retour (si l'utilisateur voulait payer avant de se connecter)
   const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/dashboard";
 
-  // Rediriger vers la page d'origine si déjà connecté
+  // Rediriger vers la page d'origine UNIQUEMENT après que la session Manus est synchronisée
+  // Cela garantit que le cookie app_session_id est posé avant la redirection vers /admin
   useEffect(() => {
-    if (isSignedIn && !isLoading) {
+    if (isSignedIn && !isLoading && isSessionReady) {
       setLocation(redirectTo);
     }
-  }, [isSignedIn, isLoading, setLocation, redirectTo]);
+  }, [isSignedIn, isLoading, isSessionReady, setLocation, redirectTo]);
 
-  if (isLoading) {
+  // Afficher un loader pendant le chargement Clerk OU la synchronisation de session
+  if (isLoading || (isSignedIn && isSyncing)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20" />
-          <div className="h-4 w-32 bg-muted rounded" />
+        <div className="flex flex-col items-center gap-4">
+          <img src={LOGO_URL} alt="Logo" className="w-14 h-14 animate-pulse drop-shadow-[0_0_16px_rgba(190,52,213,0.5)]" />
+          <p className="text-sm text-muted-foreground">{isSyncing ? "Synchronisation de la session…" : "Chargement…"}</p>
         </div>
       </div>
     );

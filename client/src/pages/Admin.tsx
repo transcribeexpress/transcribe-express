@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useClerkSync } from "@/hooks/useClerkSync";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,8 +44,14 @@ export default function Admin() {
   const [offset, setOffset] = useState(0);
   const limit = 50;
 
-  // Vérifier le rôle admin via trpc.auth.me
-  const { data: currentUser, isLoading: authLoading } = trpc.auth.me.useQuery();
+  // Synchroniser la session Clerk → Manus OAuth (cookie) avant tout appel tRPC
+  const { isSessionReady, isSyncing } = useClerkSync();
+
+  // Vérifier le rôle admin via trpc.auth.me — uniquement quand la session est prête
+  const { data: currentUser, isLoading: authLoading } = trpc.auth.me.useQuery(
+    undefined,
+    { enabled: isSessionReady }
+  );
 
   // Stats
   const { data: stats } = trpc.admin.stats.useQuery(undefined, {
@@ -56,6 +63,35 @@ export default function Admin() {
     { limit, offset },
     { enabled: currentUser?.role === "admin" }
   );
+
+  // Afficher un loader pendant la synchronisation de session ou le chargement auth
+  if (isSyncing || (isSessionReady && authLoading)) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b border-border bg-background/80 backdrop-blur-xl">
+          <div className="container flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <img src={LOGO_URL} alt="Logo" className="w-8 h-8" />
+              <img src={WORDMARK_URL} alt="Transcribe Express" className="h-7 w-auto object-contain" />
+            </div>
+            <Badge variant="outline" className="gap-1 border-primary/30 text-primary text-xs">
+              <Shield className="w-3 h-3" />
+              Espace Administration
+            </Badge>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl scale-150" />
+              <img src={LOGO_URL} alt="Logo" className="relative w-16 h-16 animate-pulse drop-shadow-[0_0_16px_rgba(190,52,213,0.5)]" />
+            </div>
+            <p className="text-muted-foreground text-sm">Vérification des droits d'accès…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Rediriger si pas admin
   if (!authLoading && (!currentUser || currentUser.role !== "admin")) {
@@ -118,7 +154,7 @@ export default function Admin() {
                   {!currentUser ? (
                     <Button
                       className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate("/login?redirect=/admin")}
                     >
                       <Shield className="w-4 h-4" />
                       Se connecter en tant qu'admin
@@ -127,7 +163,7 @@ export default function Admin() {
                     <Button
                       variant="outline"
                       className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate("/login?redirect=/admin")}
                     >
                       <Shield className="w-4 h-4" />
                       Connexion avec un compte admin
