@@ -1657,3 +1657,14 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Frontend : dialog de confirmation sécurisé (double confirmation + saisie texte) dans Account.tsx
 - [x] Frontend : page Admin /admin avec liste des utilisateurs et bouton de suppression
 - [x] Tests : 331 tests passent, 0 erreur TypeScript, fichier notes-delete-account.md supprimé
+
+## 📧 Système d'envoi d'emails via Brevo — 6 août 2026
+
+- [x] Secret : BREVO_API_KEY configuré et validé par test Vitest (3/3 tests passent)
+- [x] Helper : server/_core/email.ts — sendEmail(), sendContactEmail(), sendConfirmationEmail() via Brevo API v3
+- [x] Mapping thème → email : bug@, ask@, paiement@, suggest@, dpo@, other@transcribeexpress.fr
+- [x] Intégration : procédure support.create envoie l'email au destinataire du thème + champ contactType ajouté
+- [x] Email de confirmation : accusé de réception envoyé à l'utilisateur (template HTML professionnel)
+- [x] Tests Vitest : 334 tests passent (dont 3 Brevo : auth, relay, envoi réel)
+- [x] Contrainte : contact@transcribeexpress.fr utilisé uniquement comme expéditeur (sender), pas comme destinataire du formulaire
+- [x] categoryMap corrigé : question → technical, dpo → account (routing correct)

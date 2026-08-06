@@ -8,6 +8,7 @@ import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
+import { sendContactEmail, sendConfirmationEmail } from "./_core/email";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -75,9 +76,11 @@ export const appRouter = router({
         email: z.string().email(),
         subject: z.string().min(1).max(500),
         category: z.enum(["technical", "billing", "account", "feature", "other"]).default("other"),
+        contactType: z.string().optional().default("other"),
         message: z.string().min(10).max(5000),
       }))
       .mutation(async ({ ctx, input }) => {
+        // 1. Enregistrer le ticket en BDD
         const ticketId = await createSupportTicket({
           userId: ctx.user?.id ?? null,
           name: input.name,
@@ -86,6 +89,27 @@ export const appRouter = router({
           category: input.category,
           message: input.message,
         });
+
+        // 2. Envoyer l'email vers l'adresse dédiée au thème (non bloquant)
+        sendContactEmail({
+          contactType: input.contactType ?? "other",
+          category: input.category,
+          senderName: input.name,
+          senderEmail: input.email,
+          subject: input.subject,
+          message: input.message,
+          ticketId,
+        }).catch(err => console.error("[Email] Failed to send contact email:", err));
+
+        // 3. Envoyer un accusé de réception à l'utilisateur (non bloquant)
+        sendConfirmationEmail({
+          recipientEmail: input.email,
+          recipientName: input.name,
+          subject: input.subject,
+          ticketId,
+          category: input.category,
+        }).catch(err => console.error("[Email] Failed to send confirmation email:", err));
+
         return { success: true, ticketId };
       }),
 

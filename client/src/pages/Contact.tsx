@@ -125,10 +125,10 @@ export default function Contact() {
     // Mapper le type de contact vers la catégorie support
     const categoryMap: Record<string, "technical" | "billing" | "account" | "feature" | "other"> = {
       bug: "technical",
-      question: "other",
+      question: "technical",
       billing: "billing",
       suggestion: "feature",
-      dpo: "other",
+      dpo: "account",
       other: "other",
     };
 
@@ -140,6 +140,7 @@ export default function Contact() {
         email,
         subject,
         category: categoryMap[selectedType ?? "other"] ?? "other",
+        contactType: selectedType ?? "other",
         message,
       });
 
