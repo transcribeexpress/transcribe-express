@@ -344,7 +344,7 @@ export default function Pricing() {
             {isSignedIn ? (
               <Link href="/dashboard">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                  Mon espace
+                  Mon Transcribe
                 </Button>
               </Link>
             ) : (
