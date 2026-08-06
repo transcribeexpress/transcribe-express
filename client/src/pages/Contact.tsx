@@ -9,7 +9,7 @@
  */
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -23,7 +23,6 @@ import {
   Lightbulb,
   MessageCircle,
   ShieldCheck,
-  ArrowLeft,
   CheckCircle2,
   Send,
   ChevronRight,
@@ -93,7 +92,7 @@ type ContactTypeId = (typeof CONTACT_TYPES)[number]["id"];
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export default function Contact() {
-  const { user } = useAuth();
+  const { user, isSignedIn } = useAuth();
   const [, setLocation] = useLocation();
 
   const [step, setStep] = useState<"type" | "form" | "success">("type");
@@ -153,19 +152,44 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center gap-4">
-          <button
-            onClick={() => (step === "form" ? setStep("type") : setLocation("/account"))}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {step === "form" ? "Changer de type" : "Retour au compte"}
-          </button>
-          <div className="h-4 w-px bg-border" />
-          <span className="text-sm font-medium">Nous contacter</span>
-        </div>
+      {/* Header — harmonisé avec Home et Pricing */}
+      <header className="container py-4 sm:py-6">
+        <nav className="flex items-center justify-between gap-2">
+          {/* Logo cliquable → Home */}
+          <Link href="/">
+            <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer flex-shrink-0">
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png"
+                alt="Transcribe Express Logo"
+                className="w-7 h-7 sm:w-10 sm:h-10 object-contain flex-shrink-0"
+                style={{ mixBlendMode: "screen" }}
+              />
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/wordmark-transparent_d2755219.webp"
+                alt="Transcribe Express"
+                className="h-8 sm:h-12 md:h-14 w-auto max-w-[100px] sm:max-w-[180px] md:max-w-[220px] object-contain"
+              />
+            </div>
+          </Link>
+          {/* Navigation */}
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Accueil</Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Tarifs</Button>
+            </Link>
+            {isSignedIn ? (
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Mon espace</Button>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Se connecter</Button>
+              </Link>
+            )}
+          </div>
+        </nav>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-10">
