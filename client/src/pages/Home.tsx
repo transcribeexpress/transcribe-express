@@ -292,6 +292,9 @@ export default function Home() {
               <Link href="/pricing">
                 <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Tarifs</Button>
               </Link>
+              <Link href="/contact">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Contact</Button>
+              </Link>
               <Link href="/login">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Se connecter</Button>
               </Link>
@@ -573,9 +576,7 @@ export default function Home() {
               <a href="#" className="hover:text-foreground transition-colors">
                 Confidentialité
               </a>
-              <a href="#" className="hover:text-foreground transition-colors">
-                Contact
-              </a>
+
             </div>
           </div>
         </footer>

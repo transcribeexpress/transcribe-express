@@ -336,6 +336,11 @@ export default function Pricing() {
                 Accueil
               </Button>
             </Link>
+            <Link href="/contact">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+                Contact
+              </Button>
+            </Link>
             {isSignedIn ? (
               <Link href="/dashboard">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
@@ -1067,9 +1072,7 @@ export default function Pricing() {
             <a href="#" className="hover:text-foreground transition-colors">
               Confidentialité
             </a>
-            <a href="#" className="hover:text-foreground transition-colors">
-              Contact
-            </a>
+
           </div>
         </div>
       </footer>
