@@ -80,7 +80,7 @@ export const appRouter = router({
         message: z.string().min(10).max(5000),
       }))
       .mutation(async ({ ctx, input }) => {
-        // 1. Enregistrer le ticket en BDD
+        // 1. Enregistrer le ticket en BDD (supportTickets)
         const ticketId = await createSupportTicket({
           userId: ctx.user?.id ?? null,
           name: input.name,
@@ -90,7 +90,17 @@ export const appRouter = router({
           message: input.message,
         });
 
-        // 2. Envoyer l'email vers l'adresse dédiée au thème (non bloquant)
+        // 2. Si demande DPO, enregistrer également dans gdprRequests (conformité RGPD)
+        if (input.contactType === "dpo" && ctx.user?.id) {
+          createGdprRequest({
+            userId: ctx.user.id,
+            email: input.email,
+            requestType: "export", // type par défaut, sera affiné par l'admin
+            reason: `[Contact DPO] ${input.subject}\n\n${input.message}`,
+          }).catch(err => console.error("[GDPR] Failed to create GDPR request:", err));
+        }
+
+        // 3. Envoyer l'email vers l'adresse dédiée au thème (non bloquant)
         sendContactEmail({
           contactType: input.contactType ?? "other",
           category: input.category,
@@ -101,7 +111,7 @@ export const appRouter = router({
           ticketId,
         }).catch(err => console.error("[Email] Failed to send contact email:", err));
 
-        // 3. Envoyer un accusé de réception à l'utilisateur (non bloquant)
+        // 4. Envoyer un accusé de réception à l'utilisateur (non bloquant)
         sendConfirmationEmail({
           recipientEmail: input.email,
           recipientName: input.name,

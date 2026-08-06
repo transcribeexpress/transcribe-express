@@ -4,7 +4,7 @@
  * Permet à l'utilisateur de contacter le support sans friction :
  * - Sélection du type de demande (bug, question, facturation, suggestion, autre)
  * - Formulaire pré-rempli avec l'email de l'utilisateur connecté
- * - Envoi via notifyOwner (notification interne)
+ * - Envoi via Brevo (email vers adresse dédiée au thème + accusé de réception)
  * - Confirmation visuelle après envoi
  */
 
@@ -103,7 +103,6 @@ export default function Contact() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [isSending, setIsSending] = useState(false);
 
-  const notifyOwner = trpc.system.notifyOwner.useMutation();
   const createTicket = trpc.support.create.useMutation();
   const [name, setName] = useState(user?.fullName ?? "");
 
@@ -142,12 +141,6 @@ export default function Contact() {
         category: categoryMap[selectedType ?? "other"] ?? "other",
         contactType: selectedType ?? "other",
         message,
-      });
-
-      // 2. Notifier l'owner en parallèle (non bloquant)
-      notifyOwner.mutate({
-        title: `[Contact] ${selectedTypeData?.label} — ${subject}`,
-        content: `**Type :** ${selectedTypeData?.label}\n**De :** ${email || "Non connecté"}\n**Utilisateur :** ${name || (user?.fullName ?? "Anonyme")}\n\n**Sujet :** ${subject}\n\n**Message :**\n${message}`,
       });
 
       setStep("success");

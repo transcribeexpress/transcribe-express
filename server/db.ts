@@ -454,7 +454,8 @@ export async function createSupportTicket(data: InsertSupportTicket): Promise<nu
   if (!db) throw new Error("Database not available");
 
   const result = await db.insert(supportTickets).values(data);
-  const insertId = (result as unknown as { insertId: number }).insertId;
+  // Drizzle + MySQL2 retourne [ResultSetHeader, FieldPacket[]] — insertId est dans result[0]
+  const insertId = (result as unknown as [{ insertId: number }, unknown])[0].insertId;
   console.log(`[Support] Ticket #${insertId} created for ${data.email}`);
   return insertId;
 }
@@ -500,7 +501,8 @@ export async function createGdprRequest(data: InsertGdprRequest): Promise<number
   if (!db) throw new Error("Database not available");
 
   const result = await db.insert(gdprRequests).values(data);
-  const insertId = (result as unknown as { insertId: number }).insertId;
+  // Drizzle + MySQL2 retourne [ResultSetHeader, FieldPacket[]] — insertId est dans result[0]
+  const insertId = (result as unknown as [{ insertId: number }, unknown])[0].insertId;
   console.log(`[GDPR] Request #${insertId} created: ${data.requestType} for ${data.email}`);
   return insertId;
 }

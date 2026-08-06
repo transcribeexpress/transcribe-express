@@ -1668,3 +1668,9 @@ mais l'éditeur Tiptap ne met pas à jour visuellement le texte — l'ancien mot
 - [x] Tests Vitest : 334 tests passent (dont 3 Brevo : auth, relay, envoi réel)
 - [x] Contrainte : contact@transcribeexpress.fr utilisé uniquement comme expéditeur (sender), pas comme destinataire du formulaire
 - [x] categoryMap corrigé : question → technical, dpo → account (routing correct)
+
+## 🐛 Corrections page Contact — 6 août 2026
+
+- [x] Bug #undefined : corrigé — insertId accédait au mauvais niveau du tuple Drizzle/MySQL2 (result[0].insertId)
+- [x] Double email : notifyOwner supprimé du flux Contact — seul Brevo envoie les emails
+- [x] DPO → table gdprRequests : les demandes dpo s'enregistrent désormais dans gdprRequests ET supportTickets (conformité RGPD)
