@@ -161,9 +161,10 @@ export default function Privacy() {
                 <tr><td className="py-2 pr-4 font-medium text-foreground">SIREN</td><td className="py-2">451 824 197</td></tr>
                 <tr><td className="py-2 pr-4 font-medium text-foreground">SIRET (siège)</td><td className="py-2">451 824 197 00029</td></tr>
                 <tr><td className="py-2 pr-4 font-medium text-foreground">N° TVA intracommunautaire</td><td className="py-2">FR35451824197</td></tr>
-                <tr><td className="py-2 pr-4 font-medium text-foreground">N° RCS</td><td className="py-2">451 824 197 R.C.S. Paris (inscrit au greffe de Paris le 27/05/2026)</td></tr>
-                <tr><td className="py-2 pr-4 font-medium text-foreground">Inscription RNE</td><td className="py-2">Inscrit</td></tr>
-                <tr><td className="py-2 pr-4 font-medium text-foreground">Service</td><td className="py-2">Transcribe Express — Transcription Audio/Vidéo par IA</td></tr>
+               <tr><td className="py-2 pr-4 font-medium text-foreground">N° RCS</td><td className="py-2">451 824 197 R.C.S. Paris (inscrit au greffe de Paris le 27/05/2026)</td></tr>
+               <tr><td className="py-2 pr-4 font-medium text-foreground">Inscription RNE</td><td className="py-2">Inscrit</td></tr>
+                <tr><td className="py-2 pr-4 font-medium text-foreground">Code APE / NAF</td><td className="py-2">62.02A — Conseil en systèmes et logiciels informatiques</td></tr>
+               <tr><td className="py-2 pr-4 font-medium text-foreground">Service</td><td className="py-2">Transcribe Express — Transcription Audio/Vidéo par IA</td></tr>
                 <tr><td className="py-2 pr-4 font-medium text-foreground">Contact DPO</td><td className="py-2"><a href="mailto:dpo@transcribeexpress.fr" className="text-primary hover:underline">dpo@transcribeexpress.fr</a></td></tr>
               </tbody>
             </table>
