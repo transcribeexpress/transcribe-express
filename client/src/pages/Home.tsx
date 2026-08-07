@@ -573,9 +573,9 @@ export default function Home() {
               <a href="#" className="hover:text-foreground transition-colors">
                 Conditions
               </a>
-              <a href="#" className="hover:text-foreground transition-colors">
+              <Link href="/privacy" className="hover:text-foreground transition-colors">
                 Confidentialité
-              </a>
+              </Link>
 
             </div>
           </div>
