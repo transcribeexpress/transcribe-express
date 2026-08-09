@@ -1065,14 +1065,10 @@ export default function Pricing() {
               className="hover:text-foreground transition-colors"
             >
               Accueil
-            </Link>
-            <a href="#" className="hover:text-foreground transition-colors">
-              Conditions
-            </a>
-            <Link href="/privacy" className="hover:text-foreground transition-colors">
-              Confidentialité
-            </Link>
-
+           </Link>
+           <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
+            <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
           </div>
         </div>
       </footer>

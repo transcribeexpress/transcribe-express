@@ -21,6 +21,8 @@ import Account from "./pages/Account";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
 import Privacy from "./pages/Privacy";
+import Legal from "./pages/Legal";
+import CGV from "./pages/CGV";
 
 function Router() {
   return (
@@ -45,6 +47,8 @@ function Router() {
       <Route path={"/contact"} component={Contact} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/privacy"} component={Privacy} />
+      <Route path={"/legal"} component={Legal} />
+      <Route path={"/cgv"} component={CGV} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/settings"} component={Settings} />
       

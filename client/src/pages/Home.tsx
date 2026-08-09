@@ -569,15 +569,12 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               © 2026 Transcribe Express. Tous droits réservés.
             </p>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">
-                Conditions
-              </a>
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Confidentialité
-              </Link>
-
-            </div>
+           <div className="flex gap-6 text-sm text-muted-foreground">
+              <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
+              <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
+              <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
+              <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+           </div>
           </div>
         </footer>
       </div>

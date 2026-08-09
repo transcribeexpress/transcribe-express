@@ -163,7 +163,8 @@ export default function Privacy() {
                 <tr><td className="py-2 pr-4 font-medium text-foreground">N° TVA intracommunautaire</td><td className="py-2">FR35451824197</td></tr>
                <tr><td className="py-2 pr-4 font-medium text-foreground">N° RCS</td><td className="py-2">451 824 197 R.C.S. Paris (inscrit au greffe de Paris le 27/05/2026)</td></tr>
                <tr><td className="py-2 pr-4 font-medium text-foreground">Inscription RNE</td><td className="py-2">Inscrit</td></tr>
-                <tr><td className="py-2 pr-4 font-medium text-foreground">Code APE / NAF</td><td className="py-2">62.02A — Conseil en systèmes et logiciels informatiques</td></tr>
+               <tr><td className="py-2 pr-4 font-medium text-foreground">Code APE / NAF</td><td className="py-2">62.02A — Conseil en systèmes et logiciels informatiques</td></tr>
+                <tr><td className="py-2 pr-4 font-medium text-foreground">Adresse postale</td><td className="py-2">47 rue Vivienne — 75002 Paris, France</td></tr>
                <tr><td className="py-2 pr-4 font-medium text-foreground">Service</td><td className="py-2">Transcribe Express — Transcription Audio/Vidéo par IA</td></tr>
                 <tr><td className="py-2 pr-4 font-medium text-foreground">Contact DPO</td><td className="py-2"><a href="mailto:dpo@transcribeexpress.fr" className="text-primary hover:underline">dpo@transcribeexpress.fr</a></td></tr>
               </tbody>
@@ -589,12 +590,20 @@ export default function Privacy() {
           </p>
           <div className="bg-muted/30 border border-border rounded-lg p-5 mt-3">
             <p className="font-semibold text-foreground mb-3">Z9E — Responsable de traitement / DPO</p>
-            <div className="space-y-2 text-sm">
-              <p><span className="font-medium text-foreground">Email :</span> <a href="mailto:dpo@transcribeexpress.fr" className="text-primary hover:underline">dpo@transcribeexpress.fr</a></p>
-              <p><span className="font-medium text-foreground">Formulaire en ligne :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.manus.space/contact</Link> (thème « Données personnelles & RGPD »)</p>
+           <div className="space-y-2 text-sm">
+             <p><span className="font-medium text-foreground">Email :</span> <a href="mailto:dpo@transcribeexpress.fr" className="text-primary hover:underline">dpo@transcribeexpress.fr</a></p>
+             <p><span className="font-medium text-foreground">Formulaire en ligne :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.manus.space/contact</Link> (thème « Données personnelles & RGPD »)</p>
+           </div>
+         </div>
+          <div className="bg-muted/30 border border-border rounded-lg p-5 mt-3">
+            <p className="font-semibold text-foreground mb-3">Adresse postale</p>
+            <div className="space-y-1 text-sm">
+              <p>Z9E</p>
+              <p>47 rue Vivienne</p>
+              <p>75002 Paris, France</p>
             </div>
           </div>
-          <p className="mt-4">
+         <p className="mt-4">
             Si vous estimez, après avoir contacté Z9E, que vos droits ne sont pas respectés, vous avez le droit d'introduire une réclamation auprès de la <strong className="text-foreground">CNIL</strong> (Commission Nationale de l'Informatique et des Libertés) conformément à l'article 77 du RGPD.
             <LegalRef>Art. 77 RGPD</LegalRef>
           </p>
