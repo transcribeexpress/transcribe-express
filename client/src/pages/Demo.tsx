@@ -552,8 +552,13 @@ export default function Demo() {
 
           <div className="relative grid md:grid-cols-3 gap-6 md:gap-8">
             {/* Timeline connector line (visible on md+) */}
-            <div className="hidden md:block absolute top-[3.2rem] left-[16.67%] right-[16.67%] h-0.5">
-              <div className="w-full h-full bg-gradient-to-r from-[#BE34D5] via-[#9B34D5] to-[#34D5BE] opacity-40 rounded-full" />
+            <div className="hidden md:flex absolute top-[3.2rem] left-[16.67%] right-[16.67%] items-center justify-between">
+              {/* Dots at each step + dashed line between */}
+              <div className="w-3 h-3 rounded-full bg-[#BE34D5] z-10" />
+              <div className="flex-1 h-px border-t-2 border-dashed border-[#9B34D5]/40 mx-1" />
+              <div className="w-3 h-3 rounded-full bg-[#9B34D5] z-10" />
+              <div className="flex-1 h-px border-t-2 border-dashed border-[#34D5BE]/40 mx-1" />
+              <div className="w-3 h-3 rounded-full bg-[#34D5BE] z-10" />
             </div>
             {[
               {
@@ -574,7 +579,7 @@ export default function Demo() {
                 step: 3,
                 icon: Download,
                 title: "Éditez et exportez",
-                desc: "Corrigez le texte dans l'éditeur synchronisé avec lecture audio intégrée, puis exportez en SRT, VTT, TXT ou DOCX.",
+                desc: "Corrigez le texte dans l'éditeur synchronisé avec lecture audio intégrée, puis exportez en SRT, VTT ou TXT.",
                 color: "#34D5BE",
               },
             ].map((item) => (
@@ -626,7 +631,7 @@ export default function Demo() {
             {[
               {
                 icon: Youtube,
-                title: "YouTubeurs Tech",
+                title: "YouTubeurs",
                 desc: "Sous-titres SRT automatiques, chapitrage par timestamps, descriptions SEO générées depuis la transcription.",
                 highlight: true,
               },
@@ -725,20 +730,15 @@ export default function Demo() {
 
       {/* Footer */}
       <footer className="border-t border-border/50 py-8">
-        <div className="container">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <img src={NEON_LOGO} alt="Logo" className="w-6 h-6" />
-              <span className="text-sm text-muted-foreground">
-                © {new Date().getFullYear()} Transcribe Express — Z9E
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
-              <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
-              <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
-              <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
-            </div>
+        <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-muted-foreground">
+            © 2026 Transcribe Express. Tous droits réservés.
+          </p>
+          <div className="flex gap-6 text-sm text-muted-foreground">
+            <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
+            <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
+            <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
           </div>
         </div>
       </footer>
