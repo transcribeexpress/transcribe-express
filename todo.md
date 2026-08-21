@@ -24,6 +24,13 @@
 - [ ] Configurer le webhook endpoint Stripe Live dans le dashboard Stripe (action utilisateur)
 - [ ] Créer JOUR_18_DECISIONS.md (documentation manquante)
 
+## 🔐 Migration Clerk vers l'environnement de production
+
+- [x] Vérifier la propagation des cinq enregistrements DNS CNAME Clerk pour `transcribeexpress.fr` — les 5 CNAME résolvent publiquement
+- [x] Vérifier les URLs autorisées et de redirection de l'instance Clerk Production — les flux personnalisés `/login` et `/sso-callback` restent pilotés par l'application ; les valeurs Account Portal sont conservées comme fallback
+- [x] Connecter `transcribeexpress.fr` et `www.transcribeexpress.fr` à Manus — DNS, HTTPS et redirection www validés
+- [x] Tester l'initialisation de Clerk Production dans l'application et le parcours de connexion — authentification utilisateur réussie sur `https://transcribeexpress.fr/login`
+
 ---
 
 ## ✅ Jour 11 - Authentification Clerk (TERMINÉ)
