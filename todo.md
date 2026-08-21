@@ -31,6 +31,23 @@
 - [x] Connecter `transcribeexpress.fr` et `www.transcribeexpress.fr` à Manus — DNS, HTTPS et redirection www validés
 - [x] Tester l'initialisation de Clerk Production dans l'application et le parcours de connexion — authentification utilisateur réussie sur `https://transcribeexpress.fr/login`
 
+## 🔑 Connexions sociales Clerk Production
+
+- [x] Configurer OAuth GitHub de production dans Clerk — identifiants personnalisés enregistrés et connexion activée
+- [x] Configurer Google OAuth dans Clerk — client Web Google créé, identifiants enregistrés et connexion activée
+- [ ] Tester les fournisseurs sociaux activés sur le domaine de production
+
+## 🐙 OAuth GitHub Production
+
+- [x] Créer l’application OAuth GitHub « Transcribe Express » avec l’URL de rappel Clerk de production
+- [x] Enregistrer les identifiants GitHub OAuth dans Clerk sans les exposer
+
+##  Sign in with Apple
+
+- [ ] Préparer les valeurs Clerk de retour et de relais e-mail privé Apple
+- [ ] Créer l’App ID, le Services ID et la clé Sign in with Apple dans Apple Developer
+- [ ] Enregistrer l’adresse de relais Apple fournie par Clerk et tester la connexion Apple
+
 ---
 
 ## ✅ Jour 11 - Authentification Clerk (TERMINÉ)
