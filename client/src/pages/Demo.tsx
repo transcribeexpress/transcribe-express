@@ -550,16 +550,7 @@ export default function Demo() {
             </p>
           </div>
 
-          <div className="relative grid md:grid-cols-3 gap-6 md:gap-8">
-            {/* Timeline connector line (visible on md+) */}
-            <div className="hidden md:flex absolute top-[3.2rem] left-[16.67%] right-[16.67%] items-center justify-between">
-              {/* Dots at each step + dashed line between */}
-              <div className="w-3 h-3 rounded-full bg-[#BE34D5] z-10" />
-              <div className="flex-1 h-px border-t-2 border-dashed border-[#9B34D5]/40 mx-1" />
-              <div className="w-3 h-3 rounded-full bg-[#9B34D5] z-10" />
-              <div className="flex-1 h-px border-t-2 border-dashed border-[#34D5BE]/40 mx-1" />
-              <div className="w-3 h-3 rounded-full bg-[#34D5BE] z-10" />
-            </div>
+          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
             {[
               {
                 step: 1,
