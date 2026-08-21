@@ -20,6 +20,24 @@
 **État global : MVP en production — 309 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
+
+## 🎬 Page Démo Interactive + AEO
+
+- [x] Préparer le fichier audio de démo (34s, interview tech FR, format MP3 — voix TTS Orus)
+- [x] Créer la page /demo avec design premium (dark mode, Magenta/Cyan, framer-motion)
+- [x] Zone de démo interactive : transcription animée mot par mot sur fichier pré-chargé
+- [x] Intégrer la transcription live via API Groq/Whisper (backend tRPC — procédure demo.transcribeLive)
+- [x] Section "Comment ça marche" en 3 étapes avec timeline visuelle
+- [x] Section "Cas d'usage" ciblée YouTubeurs tech français (YouTube, Podcast, Formateurs, Journalistes)
+- [x] FAQ structurée avec balisage Schema.org FAQPage (6 questions/réponses)
+- [x] Balisage JSON-LD : SoftwareApplication + HowTo + FAQPage (injection dynamique)
+- [x] Contenu AEO "Answer-First" (paragraphe hero extractible par les moteurs IA)
+- [x] robots.txt créé — GPTBot, ClaudeBot, PerplexityBot, ChatGPT-User autorisés
+- [x] Bouton "Voir la démo" sur la page d'accueil → /demo (Link actif)
+- [x] "Démo" ajouté dans le header des pages publiques (Home, Pricing, Contact)
+- [x] CTA de conversion vers /login (inscription gratuite) — double CTA (après démo + section finale)
+- [x] Tests : 334 tests passent, 0 erreur TypeScript
+
 - [ ] Supprimer mix-blend-mode:screen (15 occurrences dans 8 fichiers)
 - [ ] Configurer le webhook endpoint Stripe Live dans le dashboard Stripe (action utilisateur)
 - [ ] Créer JOUR_18_DECISIONS.md (documentation manquante)

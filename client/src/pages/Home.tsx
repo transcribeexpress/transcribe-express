@@ -295,6 +295,9 @@ export default function Home() {
               <Link href="/contact">
                 <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Contact</Button>
               </Link>
+              <Link href="/demo">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Démo</Button>
+              </Link>
               <Link href="/login">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Se connecter</Button>
               </Link>
@@ -326,9 +329,11 @@ export default function Home() {
                 </Button>
               </Link>
               <div>
-                <Button size="lg" variant="outline">
-                  Voir la démo
-                </Button>
+                <Link href="/demo">
+                  <Button size="lg" variant="outline">
+                    Voir la démo
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

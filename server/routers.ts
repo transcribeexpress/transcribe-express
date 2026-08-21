@@ -10,6 +10,7 @@ import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownload
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
 import { sendContactEmail, sendConfirmationEmail } from "./_core/email";
 import { z } from "zod";
+import { transcribeAudio } from "./_core/voiceTranscription";
 
 export const appRouter = router({
   system: systemRouter,
@@ -497,9 +498,33 @@ export const appRouter = router({
       if (ctx.user.role !== "admin") {
         throw new Error("Accès refusé — rôle admin requis");
       }
-      const totalUsers = await getUserCount();
+    const totalUsers = await getUserCount();
       return { totalUsers };
     }),
+  }),
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // DEMO — Transcription live publique (fichier de démo uniquement)
+  // ═════════════════════════════════════════════════════════════════════════
+  demo: router({
+    transcribeLive: publicProcedure
+      .input(z.object({ audioUrl: z.string().url() }))
+      .mutation(async ({ input }) => {
+        // Sécurité : n'autoriser que le fichier de démo pré-chargé
+        const ALLOWED_DEMO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/demo/demo-audio-tech-interview.mp3";
+        if (input.audioUrl !== ALLOWED_DEMO_URL) {
+          throw new Error("Seul le fichier de démonstration est autorisé pour la transcription publique.");
+        }
+        const result = await transcribeAudio({
+          audioUrl: input.audioUrl,
+          language: "fr",
+          prompt: "Transcription d'une interview tech en français sur la création de contenu et l'intelligence artificielle.",
+        });
+        if ("error" in result) {
+          throw new Error(result.error);
+        }
+        return { text: result.text, language: result.language };
+      }),
   }),
 });
 

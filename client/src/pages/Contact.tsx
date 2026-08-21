@@ -179,6 +179,9 @@ export default function Contact() {
             <Link href="/pricing">
               <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Tarifs</Button>
             </Link>
+            <Link href="/demo">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Démo</Button>
+            </Link>
             {isSignedIn ? (
               <Link href="/dashboard">
                 <Button variant="outline" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">Mon Transcribe</Button>

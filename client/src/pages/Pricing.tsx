@@ -337,8 +337,13 @@ export default function Pricing() {
               </Button>
             </Link>
             <Link href="/contact">
+             <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
+               Contact
+             </Button>
+            </Link>
+            <Link href="/demo">
               <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                Contact
+                Démo
               </Button>
             </Link>
             {isSignedIn ? (

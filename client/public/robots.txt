@@ -1,0 +1,28 @@
+# Transcribe Express — robots.txt
+# Autoriser tous les crawlers y compris les bots IA
+# pour maximiser la visibilité AEO (Answer Engine Optimization)
+
+User-agent: *
+Allow: /
+
+# Bots IA explicitement autorisés
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# Sitemap
+Sitemap: https://transcribeexpress.fr/sitemap.xml
