@@ -24,3 +24,26 @@ La page d’accueil expose en production le canonical `https://transcribeexpress
 ## Correction complémentaire
 
 Le contrôle éditorial post-publication a permis d’identifier quelques formulations résiduelles non démontrées dans l’interface, notamment des volumes d’utilisateurs, des délais absolus et des bénéfices SEO automatiques. Elles ont été remplacées par des formulations factuelles et couvertes par les tests AEO avant une seconde publication.
+
+## Seconde publication
+
+La page Accueil publiée affiche désormais un CTA factuel sans volume d’utilisateurs. La page Tarifs remplace le badge de popularité, le volume mensuel non sourcé, la promesse d’inscription chronométrée et le libellé SSL impropre par des informations fonctionnelles vérifiables. Les titres de page et les blocs Answer-First restent présents après cette correction.
+
+La page Démo publiée remplace les délais absolus, les descriptions SEO automatiques et les gains de temps non démontrés par des usages conditionnels et vérifiables. Son titre spécifique, sa réponse directe, son passage autonome et les deux modules de démonstration restent fonctionnels après la seconde publication.
+
+La page Tarifs conserve après la seconde publication ses offres, sa FAQ et son passage Answer-First. Le badge « Pour les publications régulières », la gestion des crédits dans le compte, le traitement Stripe et le texte d’essai gratuit sont visibles sans les anciennes preuves non sourcées.
+
+## Validation finale
+
+| Contrôle | Accueil | Tarifs | Démo |
+|---|---|---|---|
+| Titre spécifique | Conforme | Conforme | Conforme |
+| Canonical | `https://transcribeexpress.fr/` | `https://transcribeexpress.fr/pricing` | `https://transcribeexpress.fr/demo` |
+| `og:url` aligné | Conforme | Conforme | Conforme |
+| Réponse directe | Présente | Présente | Présente |
+| Passage autonome | Présent | Présent | Présent |
+| FAQ structurée | Présente | Présente | Présente |
+| Schéma principal | `SoftwareApplication` | `Product` + `Offer` | `HowTo` + `SoftwareApplication` |
+| Affirmations interdites contrôlées | Absentes | Absentes | Absentes |
+
+Les ressources `/llms.txt`, `/robots.txt` et `/sitemap.xml` répondent toutes en HTTP 200 avec leur type de contenu attendu. Les pages Tarifs et Démo exposent leurs canoniques sans paramètre de cache et leurs graphes JSON-LD attendus. La phase 1 AEO est validée sur le domaine de production.

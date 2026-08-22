@@ -35,7 +35,7 @@
 - [x] Ajouter des tests Vitest de conformité AEO pour les fichiers statiques, les schémas et les contenus prioritaires — 15 tests dédiés
 - [x] Ajouter `validate:jsx:strict` au pipeline de build afin de bloquer tout JSX/TypeScript invalide avant la production — build réussi
 - [x] Vérifier TypeScript, Vitest, le rendu desktop/mobile et les fichiers publics sur le serveur de prévisualisation — 349 tests, build réussi, QA `AEO_PHASE_1_VISUAL_QA.md`
-- [ ] Après publication utilisateur : vérifier `llms.txt`, `robots.txt`, `sitemap.xml`, canonical et JSON-LD sur `https://transcribeexpress.fr`
+- [x] Après publication utilisateur : vérifier `llms.txt`, `robots.txt`, `sitemap.xml`, canonical et JSON-LD sur `https://transcribeexpress.fr` — contrôles HTTP, HTML et éditoriaux réussis
 
 ## 🎬 Page Démo Interactive + AEO
 
