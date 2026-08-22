@@ -86,7 +86,7 @@ export default function Legal() {
             Version {VERSION} — Dernière mise à jour : {LAST_UPDATE}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Conformément à l'article 6-III de la <strong className="text-foreground">Loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)</strong>, les présentes mentions légales sont portées à la connaissance de tout utilisateur du service Transcribe Express, accessible à l'adresse <a href="https://transcribeexpress.manus.space" className="text-primary hover:underline">transcribeexpress.manus.space</a>.
+            Conformément à l'article 6-III de la <strong className="text-foreground">Loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)</strong>, les présentes mentions légales sont portées à la connaissance de tout utilisateur du service Transcribe Express, accessible à l'adresse <a href="https://transcribeexpress.fr" className="text-primary hover:underline">transcribeexpress.fr</a>.
           </p>
         </div>
 
@@ -216,7 +216,7 @@ export default function Legal() {
           </p>
           <InfoBlock title="Z9E — Éditeur de Transcribe Express">
             <p><span className="font-medium text-foreground">Adresse :</span> 47 rue Vivienne — 75002 Paris, France</p>
-            <p><span className="font-medium text-foreground">Contact :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.manus.space/contact</Link></p>
+            <p><span className="font-medium text-foreground">Contact :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.fr/contact</Link></p>
           </InfoBlock>
         </Section>
 

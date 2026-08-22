@@ -121,7 +121,7 @@ export default function CGV() {
             Version {VERSION} — Dernière mise à jour : {LAST_UPDATE}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Les présentes Conditions Générales de Vente (ci-après « CGV ») régissent les relations contractuelles entre <strong className="text-foreground">Z9E</strong> (ci-après « le Vendeur ») et tout utilisateur (ci-après « le Client ») souscrivant à un abonnement ou effectuant un achat sur le service <strong className="text-foreground">Transcribe Express</strong>, accessible à l'adresse <a href="https://transcribeexpress.manus.space" className="text-primary hover:underline">transcribeexpress.manus.space</a>.
+            Les présentes Conditions Générales de Vente (ci-après « CGV ») régissent les relations contractuelles entre <strong className="text-foreground">Z9E</strong> (ci-après « le Vendeur ») et tout utilisateur (ci-après « le Client ») souscrivant à un abonnement ou effectuant un achat sur le service <strong className="text-foreground">Transcribe Express</strong>, accessible à l'adresse <a href="https://transcribeexpress.fr" className="text-primary hover:underline">transcribeexpress.fr</a>.
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Elles sont rédigées en conformité avec le <strong className="text-foreground">Code de la consommation</strong> (notamment les articles L111-1, L221-1 et suivants), le <strong className="text-foreground">Code de commerce</strong> (article L441-1), et le <strong className="text-foreground">Règlement (UE) 2019/1150</strong> relatif à la promotion de l'équité et de la transparence pour les entreprises utilisatrices de services d'intermédiation en ligne.
@@ -459,7 +459,7 @@ export default function CGV() {
             <p className="font-semibold text-foreground mb-2">Z9E — Transcribe Express</p>
             <div className="space-y-1 text-sm">
               <p><span className="font-medium text-foreground">Adresse :</span> 47 rue Vivienne — 75002 Paris, France</p>
-              <p><span className="font-medium text-foreground">Contact :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.manus.space/contact</Link></p>
+              <p><span className="font-medium text-foreground">Contact :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.fr/contact</Link></p>
             </div>
           </div>
         </Section>

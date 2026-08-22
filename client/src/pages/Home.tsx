@@ -7,6 +7,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Link } from "wouter";
+import { SeoHead } from "@/components/SeoHead";
+import { HOME_STRUCTURED_DATA } from "@/lib/seoSchemas";
+import { AnswerFirstSection } from "@/components/AnswerFirstSection";
+import { HOME_ANSWER_FIRST } from "@/lib/aeoContent";
 import {
   Zap,
   Lock,
@@ -22,64 +26,6 @@ import {
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
-
-// ─── Données structurées JSON-LD (FAQPage) pour AEO/SEO ─────────────────────
-// Injectées dynamiquement dans le <head> pour les moteurs de réponse IA
-// (Google SGE, Perplexity, ChatGPT Search, Bing Copilot)
-const FAQ_JSON_LD = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "Combien de temps faut-il pour transcrire un fichier audio avec Transcribe Express ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express transcrit vos fichiers audio et vidéo en quelques secondes grâce à une technologie d'intelligence artificielle de pointe. Un enregistrement d'une heure est généralement traité en moins de 2 minutes, soit jusqu'à 30 fois plus vite qu'une transcription manuelle.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Qu'est-ce que l'éditeur synchronisé de Transcribe Express ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "L'éditeur synchronisé de Transcribe Express est un environnement d'édition professionnel intégré directement dans le navigateur. Il permet de lire l'audio en synchronisation avec le texte transcrit, de cliquer sur n'importe quelle phrase pour positionner la lecture au bon endroit (Click-to-Seek), de détecter automatiquement les passages à faible confiance et de corriger les erreurs en contexte sonore. C'est une fonctionnalité exclusive absente de la plupart des outils de transcription concurrents.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Mes fichiers audio sont-ils en sécurité avec Transcribe Express ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Oui. Transcribe Express applique un chiffrement de bout en bout pour tous vos fichiers et transcriptions. Chaque compte bénéficie d'un espace isolé : vos données ne sont jamais partagées, vendues ou utilisées pour entraîner des modèles tiers. Vous restez le seul propriétaire de vos contenus.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Quels formats d'export sont disponibles pour les transcriptions ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express propose l'export en TXT (texte brut), SRT (sous-titres pour YouTube, Premiere Pro, DaVinci Resolve) et VTT (sous-titres web standard HTML5). Chaque format inclut les horodatages précis générés par l'IA pour une intégration directe dans vos outils de montage ou de publication.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Qu'est-ce que l'horodatage de transcription et à quoi sert-il ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "L'horodatage de transcription associe chaque segment de texte à un timestamp précis (ex : 0:42 → 0:58). Cela permet de naviguer instantanément dans l'audio depuis l'éditeur, de générer des sous-titres synchronisés et de retrouver un passage spécifique sans réécouter l'intégralité de l'enregistrement.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Quels formats audio et vidéo sont acceptés par Transcribe Express ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express accepte les formats MP3, WAV, M4A, MOV, MP4 et WEBM. Ces formats couvrent l'ensemble des usages courants : enregistrements de podcasts, interviews, réunions Zoom, vidéos YouTube et exports de logiciels de montage.",
-      },
-    },
-  ],
-};
 
 // ─── Contenu détaillé des 6 modals ───────────────────────────────────────────
 
@@ -110,8 +56,8 @@ const FEATURE_MODALS: ModalContent[] = [
       {
         question: "Combien de temps faut-il pour transcrire un fichier audio ?",
         answer:
-          "Un enregistrement d'une heure est traité en moins de 2 minutes — soit jusqu'à 30 fois plus vite qu'une transcription manuelle. Notre infrastructure traite votre fichier dès l'upload, sans file d'attente.",
-        highlight: "30× plus rapide qu'une transcription manuelle",
+          "Le traitement est automatisé dès l’envoi du fichier. Sa durée varie selon la longueur, le format, la qualité sonore et la charge du service. Le tableau de bord permet de suivre la progression jusqu’à la disponibilité du résultat.",
+        highlight: "Traitement automatisé avec suivi de progression",
       },
       {
         question: "Quelle est la précision de la transcription automatique ?",
@@ -137,7 +83,7 @@ const FEATURE_MODALS: ModalContent[] = [
         question: "Qu'est-ce qui différencie l'éditeur de Transcribe Express ?",
         answer:
           "La plupart des outils de transcription vous livrent un fichier texte brut. Transcribe Express intègre un éditeur professionnel directement dans le navigateur : lecture audio synchronisée, click-to-seek, détection des passages incertains, recherche/remplacement global et sauvegarde automatique.",
-        highlight: "Exclusif — absent de la concurrence",
+        highlight: "Lecture et correction dans un même éditeur",
       },
       {
         question: "Puis-je corriger ma transcription en écoutant l'audio en même temps ?",
@@ -265,10 +211,11 @@ export default function Home() {
 
   return (
     <>
-      {/* ── Données structurées JSON-LD pour AEO/SEO ── */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }}
+      <SeoHead
+        title="Transcription audio et vidéo par IA | Transcribe Express"
+        description="Transcrivez vos fichiers audio et vidéo avec Whisper, relisez le texte dans un éditeur synchronisé et exportez en TXT, SRT ou VTT. Essai gratuit de 30 minutes."
+        path="/"
+        structuredData={HOME_STRUCTURED_DATA}
       />
 
       <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
@@ -315,9 +262,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Convertissez vos fichiers audio et vidéo en texte en quelques
-              secondes avec une précision exceptionnelle grâce à l'intelligence
-              artificielle.
+              Transformez vos fichiers audio et vidéo en texte horodaté, corrigez
+              le résultat dans un éditeur synchronisé et exportez-le pour vos contenus.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link href="/login">
@@ -338,6 +284,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <AnswerFirstSection {...HOME_ANSWER_FIRST} />
 
         {/* Features Section */}
         <section className="container py-20">
@@ -366,7 +314,7 @@ export default function Home() {
                 {feature.id === "editeur-intelligent" && (
                   <div className="absolute top-4 right-4 flex items-center gap-1 bg-gradient-to-r from-[#BE34D5]/15 to-[#34D5BE]/15 border border-[#34D5BE]/30 rounded-full px-2.5 py-0.5">
                     <span className="text-[10px] font-semibold text-[#34D5BE] uppercase tracking-wide">
-                      Exclusif
+                      Synchronisé
                     </span>
                   </div>
                 )}
@@ -379,11 +327,11 @@ export default function Home() {
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {feature.id === "transcription-rapide" &&
-                    "Obtenez vos transcriptions en quelques secondes grâce à notre technologie IA avancée."}
+                    "Automatisez la transcription avec Whisper et suivez la progression depuis votre tableau de bord."}
                   {feature.id === "editeur-intelligent" &&
                     "Corrigez, naviguez et écoutez en parfaite synchronisation — un éditeur conçu spécifiquement pour la transcription."}
                   {feature.id === "securise" &&
-                    "Vos données, fichiers et transcriptions sont protégés de bout en bout : chiffrement, stockage sécurisé et accès strictement personnel à tous vos outils."}
+                    "Accédez à vos fichiers et transcriptions depuis un espace authentifié, avec des outils de gestion et de suppression des données."}
                   {feature.id === "export-flexible" &&
                     "Exportez vos transcriptions en TXT, SRT ou VTT selon vos besoins."}
                   {feature.id === "horodatage-precis" &&
@@ -410,7 +358,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#BE34D5]/10 to-[#34D5BE]/10 border border-[#34D5BE]/20 rounded-full px-4 py-1.5 mb-2">
               <PenLine className="w-3.5 h-3.5 text-[#34D5BE]" />
               <span className="text-sm font-medium text-[#34D5BE]">
-                Ce que nos concurrents ne font pas
+                Édition intégrée à la transcription
               </span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold">

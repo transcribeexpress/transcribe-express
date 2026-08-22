@@ -28,118 +28,10 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { useClerkSync } from "@/hooks/useClerkSync";
 import { toast } from "sonner";
-
-// ─── Données structurées JSON-LD pour AEO/SEO ─────────────────────────────────
-// Schema.org Product + FAQPage pour les moteurs de réponse IA
-const PRICING_JSON_LD = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Product",
-      name: "Transcribe Express",
-      description:
-        "Service de transcription audio et vidéo par intelligence artificielle pour les créateurs de contenu francophones. Convertissez vos fichiers en texte avec horodatage précis en quelques secondes.",
-      brand: {
-        "@type": "Brand",
-        name: "Transcribe Express",
-      },
-      offers: [
-        {
-          "@type": "Offer",
-          name: "Essai Gratuit",
-          description:
-            "30 minutes de transcription gratuite pendant 30 jours, sans carte bancaire requise. Accès à toutes les fonctionnalités : éditeur synchronisé, horodatage, export TXT/SRT/VTT.",
-          price: "0",
-          priceCurrency: "EUR",
-          availability: "https://schema.org/InStock",
-        },
-        {
-          "@type": "Offer",
-          name: "Starter — À la minute",
-          description:
-            "Transcription à la demande à 0,15€ par minute. Idéal pour les créateurs occasionnels. Prépaiement par recharge, crédits valables 12 mois.",
-          price: "0.15",
-          priceCurrency: "EUR",
-          unitText: "par minute",
-          availability: "https://schema.org/InStock",
-        },
-        {
-          "@type": "Offer",
-          name: "Créateur — Abonnement mensuel",
-          description:
-            "5 heures de transcription par mois pour 14,90€. Parfait pour les YouTubers et podcasters réguliers. Minutes supplémentaires à 0,12€/min. Roll-over 1 mois.",
-          price: "14.90",
-          priceCurrency: "EUR",
-          billingIncrement: "P1M",
-          availability: "https://schema.org/InStock",
-        },
-        {
-          "@type": "Offer",
-          name: "Agence — Volume professionnel",
-          description:
-            "25 heures de transcription par mois pour 49,90€. Conçu pour les agences de création de contenu gérant plusieurs clients. Minutes supplémentaires à 0,08€/min. Roll-over 2 mois.",
-          price: "49.90",
-          priceCurrency: "EUR",
-          billingIncrement: "P1M",
-          availability: "https://schema.org/InStock",
-        },
-      ],
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "Combien coûte la transcription audio par IA avec Transcribe Express ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Transcribe Express propose 3 formules : le plan Starter à 0,15€ par minute (paiement à la consommation), le plan Créateur à 14,90€/mois pour 5 heures incluses, et le plan Agence à 49,90€/mois pour 25 heures incluses. Un essai gratuit de 30 minutes sur 30 jours est offert sans carte bancaire.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "L'essai gratuit de Transcribe Express nécessite-t-il une carte bancaire ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Non. L'essai gratuit de Transcribe Express offre 30 minutes de transcription pendant 30 jours sans aucune carte bancaire requise. Vous accédez à toutes les fonctionnalités : éditeur synchronisé avec horodatage, export en TXT, SRT et VTT, et remplacement de mots avec surbrillance visuelle.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Quelle est la différence entre les plans Starter, Créateur et Agence de Transcribe Express ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Le plan Starter (0,15€/min) est idéal pour les créateurs occasionnels qui transcrivent ponctuellement. Le plan Créateur (14,90€/mois, 5h incluses) convient aux YouTubers publiant plusieurs vidéos par semaine. Le plan Agence (49,90€/mois, 25h incluses) est conçu pour les agences gérant plusieurs clients avec un gros volume de transcription. Plus le plan est élevé, plus le coût par minute est réduit.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Les minutes non utilisées sont-elles perdues à la fin du mois ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Non. Le plan Créateur inclut un roll-over de 1 mois : vos minutes non utilisées sont reportées au mois suivant. Le plan Agence offre un roll-over de 2 mois. Pour le plan Starter, les crédits prépayés sont valables 12 mois.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Transcribe Express est-il sans engagement ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Oui. Tous les plans de Transcribe Express sont sans engagement. Vous pouvez résilier à tout moment, sans frais ni pénalité. Le plan Starter fonctionne par recharge prépayée (pas d'abonnement). Les plans Créateur et Agence sont mensuels et résiliables à tout moment.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Quel est le meilleur outil de transcription pour les YouTubers français ?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Transcribe Express est spécialement conçu pour les créateurs de contenu francophones. Il offre une transcription IA rapide (moins de 2 minutes pour 1 heure d'audio), un éditeur synchronisé avec horodatage précis, l'export direct en SRT/VTT pour les sous-titres YouTube, et une interface 100% en français. Le plan Créateur à 14,90€/mois avec 5 heures incluses couvre les besoins de la plupart des YouTubers.",
-          },
-        },
-      ],
-    },
-  ],
-};
+import { SeoHead } from "@/components/SeoHead";
+import { PRICING_FAQ_ITEMS, PRICING_STRUCTURED_DATA } from "@/lib/seoSchemas";
+import { AnswerFirstSection } from "@/components/AnswerFirstSection";
+import { PRICING_ANSWER_FIRST } from "@/lib/aeoContent";
 
 // ─── Composant FAQ Accordion ────────────────────────────────────────────────────
 
@@ -244,66 +136,7 @@ export default function Pricing() {
     }
   }, [isSignedIn, isSessionReady]);
 
-  // Inject JSON-LD on mount
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.textContent = JSON.stringify(PRICING_JSON_LD);
-    document.head.appendChild(script);
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
-
-  // Update document title for SEO
-  useEffect(() => {
-    document.title =
-      "Tarifs Transcribe Express — Transcription IA à partir de 0,15€/min | Essai Gratuit 30 min";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute(
-        "content",
-        "Découvrez les tarifs de Transcribe Express : essai gratuit 30 min sans CB, plan Starter à 0,15€/min, Créateur à 14,90€/mois (5h), Agence à 49,90€/mois (25h). Sans engagement."
-      );
-    }
-  }, []);
-
-  const faqItems = [
-    {
-      question:
-        "Combien coûte la transcription audio par IA avec Transcribe Express ?",
-      answer:
-        "Transcribe Express propose 3 formules adaptées à chaque besoin : le plan Starter à 0,15€ par minute (paiement à la consommation sans abonnement), le plan Créateur à 14,90€/mois pour 5 heures incluses, et le plan Agence à 49,90€/mois pour 25 heures incluses. Un essai gratuit de 30 minutes sur 30 jours est offert sans carte bancaire.",
-    },
-    {
-      question:
-        "L'essai gratuit nécessite-t-il une carte bancaire ?",
-      answer:
-        "Non, aucune carte bancaire n'est requise. L'essai gratuit vous offre 30 minutes de transcription pendant 30 jours avec accès à toutes les fonctionnalités : éditeur synchronisé avec horodatage, export en TXT, SRT et VTT, et remplacement de mots avec surbrillance visuelle. Vous décidez ensuite librement de passer à un plan payant.",
-    },
-    {
-      question:
-        "Quelle est la différence entre les plans Starter, Créateur et Agence ?",
-      answer:
-        "Le plan Starter (0,15€/min) est idéal pour les créateurs occasionnels qui transcrivent ponctuellement — pas d'abonnement, vous payez uniquement ce que vous consommez. Le plan Créateur (14,90€/mois, 5h incluses) convient aux YouTubers publiant régulièrement. Le plan Agence (49,90€/mois, 25h incluses) est conçu pour les professionnels gérant un gros volume. Plus le plan est élevé, plus le coût par minute diminue.",
-    },
-    {
-      question: "Les minutes non utilisées sont-elles perdues ?",
-      answer:
-        "Non. Le plan Créateur inclut un roll-over de 1 mois : vos minutes non utilisées sont automatiquement reportées au mois suivant. Le plan Agence offre un roll-over de 2 mois. Pour le plan Starter, les crédits prépayés restent valables 12 mois — aucune pression temporelle.",
-    },
-    {
-      question: "Puis-je résilier à tout moment ?",
-      answer:
-        "Oui, tous les plans sont sans engagement. Le plan Starter fonctionne par recharge prépayée (pas d'abonnement du tout). Les plans Créateur et Agence sont mensuels et résiliables instantanément depuis votre espace, sans frais ni pénalité. Vos transcriptions restent accessibles après résiliation.",
-    },
-    {
-      question:
-        "Quel plan choisir pour un YouTuber qui publie 2-3 vidéos par semaine ?",
-      answer:
-        "Le plan Créateur à 14,90€/mois est idéal. Avec 5 heures (300 minutes) incluses, il couvre largement 2-3 vidéos de 15-20 minutes par semaine. Le coût effectif revient à seulement 0,05€/min — soit 67% moins cher que le plan Starter. Et grâce au roll-over, les minutes non utilisées ne sont jamais perdues.",
-    },
-  ];
+  const faqItems = PRICING_FAQ_ITEMS;
 
   const creatorMonthly = 14.9;
   const creatorAnnual = 9.9;
@@ -312,6 +145,12 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+      <SeoHead
+        title="Tarifs de transcription IA | Transcribe Express"
+        description="Comparez l’essai gratuit, les recharges Starter et les abonnements Créateur ou Agence. Transcription audio et vidéo avec exports TXT, SRT et VTT."
+        path="/pricing"
+        structuredData={PRICING_STRUCTURED_DATA}
+      />
       {/* Header */}
       <header className="container py-4 sm:py-6">
         <nav className="flex items-center justify-between gap-2">
@@ -381,9 +220,8 @@ export default function Pricing() {
 
           {/* Réponse directe AEO — proposition de valeur forte */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Transcribe Express transforme vos fichiers audio en texte exploitable
-            en <strong className="text-foreground">moins de 2 minutes</strong> — là où
-            une transcription manuelle prend des heures.
+            Testez gratuitement 30 minutes, puis choisissez des recharges ponctuelles
+            ou un abonnement mensuel selon votre volume de transcription.
           </p>
 
           {/* CTA Essai gratuit zéro friction */}
@@ -402,6 +240,8 @@ export default function Pricing() {
         </div>
       </section>
 
+      <AnswerFirstSection {...PRICING_ANSWER_FIRST} />
+
       {/* ── Section Avantage Concurrentiel — Pourquoi c'est différent ── */}
       <section className="container pb-16">
         <div className="max-w-5xl mx-auto">
@@ -410,7 +250,7 @@ export default function Pricing() {
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#BE34D5]/10 to-[#34D5BE]/10 border border-[#34D5BE]/20 rounded-full px-4 py-1.5 mb-4">
               <Sparkles className="w-3.5 h-3.5 text-[#34D5BE]" />
               <span className="text-sm font-medium text-[#34D5BE]">
-                Ce que les autres outils ne font pas
+                Plus qu’un fichier texte brut
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold mb-3">
@@ -425,13 +265,13 @@ export default function Pricing() {
           {/* Compteur animé — élément de surprise */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8 mb-10 p-6 rounded-2xl bg-gradient-to-r from-[#BE34D5]/5 to-[#34D5BE]/5 border border-dashed border-primary/20">
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">150×</div>
-              <div className="text-xs text-muted-foreground mt-1">plus rapide qu'une transcription manuelle</div>
+              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">3</div>
+              <div className="text-xs text-muted-foreground mt-1">formats d’export : TXT, SRT et VTT</div>
             </div>
             <div className="hidden sm:block w-px h-12 bg-border" />
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">&gt;95%</div>
-              <div className="text-xs text-muted-foreground mt-1">de précision sur le français</div>
+              <div className="text-4xl md:text-5xl font-black bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">300</div>
+              <div className="text-xs text-muted-foreground mt-1">minutes incluses avec Créateur</div>
             </div>
             <div className="hidden sm:block w-px h-12 bg-border" />
             <div className="text-center">
@@ -449,7 +289,7 @@ export default function Pricing() {
               </div>
               <h3 className="font-semibold text-lg">Votre temps est précieux</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Vous passez <strong className="text-foreground">3 à 5 heures</strong> à transcrire manuellement une vidéo d'une heure. Avec Transcribe Express, c'est fait en <strong className="text-foreground">moins de 2 minutes</strong>. Chaque semaine, vous récupérez des heures pour créer du contenu au lieu de le retranscrire.
+                Automatisez la première version du texte, puis concentrez votre temps sur la relecture, le montage et la publication. La durée de traitement varie selon le fichier et reste visible dans le tableau de bord.
               </p>
             </div>
 
@@ -457,20 +297,20 @@ export default function Pricing() {
             <div className="rounded-2xl p-6 space-y-4 relative overflow-hidden"
               style={{ background: "linear-gradient(135deg, rgba(190,52,213,0.10) 0%, rgba(52,213,190,0.08) 100%)", border: "1.5px solid rgba(190,52,213,0.35)", boxShadow: "0 8px 32px -8px rgba(190,52,213,0.20)" }}
             >
-              {/* Badge Exclusif */}
+              {/* Badge éditeur intégré */}
               <div className="absolute top-4 right-4">
-                <span className="text-xs font-bold bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent border border-primary/30 rounded-full px-2 py-0.5">EXCLUSIF</span>
+                <span className="text-xs font-bold bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent border border-primary/30 rounded-full px-2 py-0.5">ÉDITEUR INTÉGRÉ</span>
               </div>
               <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Target className="w-6 h-6 text-primary" />
               </div>
               <h3 className="font-bold text-xl">Précision + Contrôle</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Horodatage au mot près, éditeur synchronisé avec Click-to-Seek, détection des passages incertains, remplacement global avec surbrillance. <strong className="text-foreground">Aucun concurrent</strong> ne propose ce niveau de contrôle sur votre transcription.
+                Horodatage des segments, éditeur synchronisé avec Click-to-Seek, détection des passages incertains et remplacement global avec surbrillance : les outils de correction restent réunis autour de la transcription.
               </p>
               <div className="pt-2 text-xs font-semibold text-primary flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                Unique sur le marché français
+                Lecture, navigation et correction réunies
               </div>
             </div>
 
@@ -489,7 +329,7 @@ export default function Pricing() {
           {/* Citation de rupture */}
           <div className="mt-10 text-center">
             <blockquote className="text-base md:text-lg font-medium text-foreground/80 italic max-w-2xl mx-auto">
-              « Un YouTuber qui publie 3 vidéos par semaine économise plus de 12 heures par mois avec Transcribe Express — soit l'équivalent d'une journée et demie de travail. »
+              « Le bon plan n’est pas celui qui promet le plus : c’est celui qui correspond à votre fréquence réelle de publication et vous laisse garder le contrôle sur chaque transcription. »
             </blockquote>
           </div>
         </div>

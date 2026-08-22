@@ -138,7 +138,7 @@ export default function Privacy() {
             Version {VERSION} — Dernière mise à jour : {LAST_UPDATE}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            La présente politique de confidentialité décrit la manière dont <strong className="text-foreground">Z9E</strong>, en sa qualité de responsable de traitement, collecte, utilise, conserve et protège les données à caractère personnel des utilisateurs du service <strong className="text-foreground">Transcribe Express</strong>, accessible à l'adresse <a href="https://transcribeexpress.manus.space" className="text-primary hover:underline">transcribeexpress.manus.space</a>.
+            La présente politique de confidentialité décrit la manière dont <strong className="text-foreground">Z9E</strong>, en sa qualité de responsable de traitement, collecte, utilise, conserve et protège les données à caractère personnel des utilisateurs du service <strong className="text-foreground">Transcribe Express</strong>, accessible à l'adresse <a href="https://transcribeexpress.fr" className="text-primary hover:underline">transcribeexpress.fr</a>.
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Elle est rédigée en conformité avec le <strong className="text-foreground">Règlement (UE) 2016/679 du Parlement européen et du Conseil du 27 avril 2016</strong> relatif à la protection des personnes physiques à l'égard du traitement des données à caractère personnel (ci-après « RGPD »), ainsi qu'avec la <strong className="text-foreground">Loi n° 78-17 du 6 janvier 1978</strong> relative à l'informatique, aux fichiers et aux libertés, dans sa version modifiée.
@@ -572,7 +572,7 @@ export default function Privacy() {
         {/* ── 12. Modifications ── */}
         <Section id="modifications" title="12. Modifications de la présente politique">
           <p>
-            Z9E se réserve le droit de modifier la présente politique de confidentialité à tout moment, notamment pour se conformer à toute évolution législative, réglementaire, jurisprudentielle ou technique. La version en vigueur est celle accessible en permanence à l'adresse <a href="/privacy" className="text-primary hover:underline">transcribeexpress.manus.space/privacy</a>.
+            Z9E se réserve le droit de modifier la présente politique de confidentialité à tout moment, notamment pour se conformer à toute évolution législative, réglementaire, jurisprudentielle ou technique. La version en vigueur est celle accessible en permanence à l'adresse <a href="/privacy" className="text-primary hover:underline">transcribeexpress.fr/privacy</a>.
           </p>
           <p>
             En cas de modification substantielle affectant les droits des personnes concernées, Z9E s'engage à en informer les utilisateurs par voie électronique (email) ou par une notification visible lors de la connexion au service, avec un préavis raisonnable avant l'entrée en vigueur des modifications.
@@ -592,7 +592,7 @@ export default function Privacy() {
             <p className="font-semibold text-foreground mb-3">Z9E — Responsable de traitement / DPO</p>
            <div className="space-y-2 text-sm">
              <p><span className="font-medium text-foreground">Email :</span> <a href="mailto:dpo@transcribeexpress.fr" className="text-primary hover:underline">dpo@transcribeexpress.fr</a></p>
-             <p><span className="font-medium text-foreground">Formulaire en ligne :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.manus.space/contact</Link> (thème « Données personnelles & RGPD »)</p>
+              <p><span className="font-medium text-foreground">Formulaire en ligne :</span> <Link href="/contact" className="text-primary hover:underline">transcribeexpress.fr/contact</Link> (thème « Données personnelles & RGPD »)</p>
            </div>
          </div>
           <div className="bg-muted/30 border border-border rounded-lg p-5 mt-3">

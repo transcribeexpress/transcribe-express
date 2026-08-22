@@ -21,6 +21,21 @@
 
 **Items restants ouverts :**
 
+## 🤖 Fondations techniques AEO — Phase 1
+
+- [x] Auditer les métadonnées, schémas JSON-LD, règles robots et contenus Answer-First des pages publiques — rapport `AEO_PHASE_1_AUDIT.md`
+- [x] Créer `/llms.txt` avec l’identité, les fonctionnalités, les tarifs, les limites et les URLs de référence de Transcribe Express — servi en HTTP 200
+- [x] Renforcer `robots.txt` pour les principaux crawlers de recherche et d’IA, sans exposer les routes privées — servi en HTTP 200
+- [x] Créer le `/sitemap.xml` canonique actuellement référencé dans `robots.txt` mais absent du déploiement — servi en HTTP 200
+- [x] Remplacer les anciennes URLs `transcribeexpress.manus.space` et le lien `/terms` obsolète par les URLs canoniques `transcribeexpress.fr`
+- [x] Enrichir les schémas `Organization`, `WebSite`, `SoftwareApplication`, `Product`, `Offer`, `FAQPage` et `HowTo` avec des faits vérifiables uniquement — couche centralisée et notes non sourcées supprimées
+- [x] Appliquer une réponse directe de 30 à 60 mots et des passages autonomes de 150 à 300 mots aux pages Home, Tarifs et Démo — composant partagé `AnswerFirstSection`
+- [x] Remplacer les promesses absolues ou non sourcées (`>95 %`, `150×`, « aucun concurrent », délais garantis) par des formulations factuelles vérifiables
+- [x] Ajouter des tests Vitest de conformité AEO pour les fichiers statiques, les schémas et les contenus prioritaires — 15 tests dédiés
+- [x] Ajouter `validate:jsx:strict` au pipeline de build afin de bloquer tout JSX/TypeScript invalide avant la production — build réussi
+- [x] Vérifier TypeScript, Vitest, le rendu desktop/mobile et les fichiers publics sur le serveur de prévisualisation — 349 tests, build réussi, QA `AEO_PHASE_1_VISUAL_QA.md`
+- [ ] Après publication utilisateur : vérifier `llms.txt`, `robots.txt`, `sitemap.xml`, canonical et JSON-LD sur `https://transcribeexpress.fr`
+
 ## 🎬 Page Démo Interactive + AEO
 
 - [x] Préparer le fichier audio de démo (34s, interview tech FR, format MP3 — voix TTS Orus)

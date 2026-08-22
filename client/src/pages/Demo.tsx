@@ -24,6 +24,10 @@ import {
   Presentation,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { SeoHead } from "@/components/SeoHead";
+import { DEMO_FAQ_ITEMS, DEMO_STRUCTURED_DATA } from "@/lib/seoSchemas";
+import { AnswerFirstSection } from "@/components/AnswerFirstSection";
+import { DEMO_ANSWER_FIRST } from "@/lib/aeoContent";
 
 // ─── URLs des assets ─────────────────────────────────────────────────────────
 const NEON_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310419663028820418/oRqyQWHwreNEuW2rCuPNoU/neon_symbol_transparent_9075d38e.png";
@@ -43,116 +47,6 @@ const DEMO_TRANSCRIPT_SEGMENTS = [
   { start: 28.2, end: 30.5, text: "Par exemple, la transcription automatique." },
   { start: 30.5, end: 34.0, text: "Avant, il fallait tout taper à la main ou payer un prestataire." },
 ];
-
-// ─── Données structurées JSON-LD ─────────────────────────────────────────────
-const SCHEMA_SOFTWARE_APP = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Transcribe Express",
-  applicationCategory: "MultimediaApplication",
-  operatingSystem: "Web",
-  description: "SaaS français de transcription audio/vidéo par intelligence artificielle. Basé sur le modèle Whisper, il offre une précision supérieure à 95% en français et traite les fichiers en quelques secondes.",
-  url: "https://transcribeexpress.fr",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "EUR",
-    description: "30 minutes de transcription offertes — sans carte bancaire"
-  },
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    ratingCount: "127",
-    bestRating: "5"
-  },
-  featureList: "Transcription IA Whisper, Éditeur synchronisé, Export SRT/VTT/TXT/DOCX, Horodatage précis, RGPD conforme"
-};
-
-const SCHEMA_HOWTO = {
-  "@context": "https://schema.org",
-  "@type": "HowTo",
-  name: "Comment transcrire un fichier audio avec Transcribe Express",
-  description: "Transcrivez vos fichiers audio et vidéo en texte en 3 étapes simples avec Transcribe Express.",
-  step: [
-    {
-      "@type": "HowToStep",
-      position: 1,
-      name: "Importez votre fichier",
-      text: "Glissez-déposez votre fichier audio ou vidéo (MP3, WAV, MP4, MOV, M4A, OGG, WEBM) dans l'interface. Aucune limite de durée.",
-      url: "https://transcribeexpress.fr/demo#etape-1"
-    },
-    {
-      "@type": "HowToStep",
-      position: 2,
-      name: "L'IA transcrit en quelques secondes",
-      text: "Le modèle Whisper analyse votre audio et génère une transcription horodatée avec une précision supérieure à 95% en français.",
-      url: "https://transcribeexpress.fr/demo#etape-2"
-    },
-    {
-      "@type": "HowToStep",
-      position: 3,
-      name: "Éditez et exportez",
-      text: "Corrigez le texte dans l'éditeur synchronisé, puis exportez en SRT, VTT, TXT ou DOCX selon vos besoins.",
-      url: "https://transcribeexpress.fr/demo#etape-3"
-    }
-  ],
-  totalTime: "PT2M"
-};
-
-const SCHEMA_FAQ = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "Quelle est la précision de Transcribe Express en français ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express utilise le modèle Whisper large-v3 via l'infrastructure Groq, offrant une précision supérieure à 95% en français. Le modèle excelle sur les accents régionaux, le vocabulaire technique et les environnements bruités."
-      }
-    },
-    {
-      "@type": "Question",
-      name: "Quels formats audio et vidéo sont supportés ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express accepte tous les formats courants : MP3, WAV, OGG, M4A, WEBM pour l'audio, et MP4, MOV, WEBM pour la vidéo. Aucune conversion préalable n'est nécessaire."
-      }
-    },
-    {
-      "@type": "Question",
-      name: "Mes données sont-elles sécurisées et conformes au RGPD ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Oui. Transcribe Express est édité par Z9E (Paris, France) et respecte intégralement le RGPD. Vos fichiers sont chiffrés, stockés en Europe, et supprimés automatiquement après traitement. Aucune donnée n'est utilisée pour entraîner des modèles tiers."
-      }
-    },
-    {
-      "@type": "Question",
-      name: "Combien coûte Transcribe Express ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express propose un essai gratuit de 30 minutes sans carte bancaire. Les plans payants commencent à 0,20€/minute (Starter), avec des tarifs dégressifs pour les créateurs (0,12€/min) et les agences (0,08€/min). Des recharges prépayées sont disponibles."
-      }
-    },
-    {
-      "@type": "Question",
-      name: "Transcribe Express est-il adapté aux YouTubeurs et créateurs de contenu ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Absolument. Transcribe Express a été conçu spécifiquement pour les créateurs de contenu français. L'éditeur synchronisé permet de naviguer dans l'audio en cliquant sur le texte, l'export SRT/VTT génère des sous-titres prêts à l'emploi pour YouTube, et le traitement ultra-rapide s'intègre dans n'importe quel workflow de post-production."
-      }
-    },
-    {
-      "@type": "Question",
-      name: "Quelle est la différence entre Transcribe Express et les autres outils de transcription ?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Transcribe Express se distingue par trois avantages : (1) un éditeur synchronisé exclusif qui permet de corriger le texte en écoutant l'audio au même endroit, (2) une vitesse de traitement 30x plus rapide que la transcription manuelle grâce à l'infrastructure Groq, et (3) une conformité RGPD native avec hébergement européen — contrairement aux alternatives américaines."
-      }
-    }
-  ]
-};
 
 // ─── Composant principal ─────────────────────────────────────────────────────
 export default function Demo() {
@@ -241,33 +135,14 @@ export default function Demo() {
     }
   }, [visibleSegments]);
 
-  // Injection des données structurées JSON-LD
-  useEffect(() => {
-    const scripts = [
-      { id: "schema-software", data: SCHEMA_SOFTWARE_APP },
-      { id: "schema-howto", data: SCHEMA_HOWTO },
-      { id: "schema-faq", data: SCHEMA_FAQ },
-    ];
-    scripts.forEach(({ id, data }) => {
-      let el = document.getElementById(id);
-      if (!el) {
-        el = document.createElement("script");
-        el.id = id;
-        el.setAttribute("type", "application/ld+json");
-        document.head.appendChild(el);
-      }
-      el.textContent = JSON.stringify(data);
-    });
-    return () => {
-      scripts.forEach(({ id }) => {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-      });
-    };
-  }, []);
-
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead
+        title="Démo de transcription IA en français | Transcribe Express"
+        description="Testez une démo de transcription française sans inscription : audio fourni, texte horodaté, éditeur synchronisé et aperçu d’un appel réel à Whisper."
+        path="/demo"
+        structuredData={DEMO_STRUCTURED_DATA}
+      />
       {/* Audio element */}
       <audio ref={audioRef} src={DEMO_AUDIO_URL} preload="auto" />
 
@@ -316,19 +191,20 @@ export default function Demo() {
             <span className="text-sm text-[#BE34D5] font-medium">Démo interactive — Aucune inscription requise</span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-            Transcription IA ultra-précise{" "}
+            Transcription IA audio et vidéo{" "}
             <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] bg-clip-text text-transparent">
               en français
             </span>
           </h1>
           {/* Paragraphe AEO "Answer-First" — extractible par les moteurs IA */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Transcribe Express est un SaaS français de transcription audio/vidéo par intelligence artificielle.
-            Basé sur le modèle Whisper, il offre une précision supérieure à 95% en français et traite vos fichiers
-            en quelques secondes. Conforme au RGPD, conçu pour les créateurs de contenu et YouTubeurs.
+            Testez sans inscription un extrait audio français, observez son texte horodaté,
+            puis déclenchez un appel réel au service de transcription Whisper.
           </p>
         </motion.div>
       </section>
+
+      <AnswerFirstSection {...DEMO_ANSWER_FIRST} />
 
       {/* Zone de Démo Interactive */}
       <section className="container pb-16">
@@ -353,7 +229,7 @@ export default function Demo() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Whisper v3</span>
+                  <span className="text-xs text-muted-foreground">Whisper</span>
                 </div>
               </div>
 
@@ -487,7 +363,7 @@ export default function Demo() {
               </span>
             </h2>
             <p className="text-muted-foreground">
-              Voyez la puissance de Whisper v3 sur notre fichier de démonstration — traitement serveur réel
+              Testez Whisper sur notre fichier de démonstration — traitement serveur réel
             </p>
           </div>
           <div className="rounded-xl border border-[#34D5BE]/20 bg-card/50 p-6 md:p-8">
@@ -545,8 +421,8 @@ export default function Demo() {
               Comment ça marche
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Transcribe Express transforme vos fichiers audio et vidéo en texte précis en trois étapes simples.
-              Le processus complet prend moins de 2 minutes pour une heure d'enregistrement.
+              Transcribe Express transforme un fichier audio ou vidéo en segments de texte horodatés,
+              puis permet de relire et d’exporter le résultat.
             </p>
           </div>
 
@@ -556,14 +432,14 @@ export default function Demo() {
                 step: 1,
                 icon: Upload,
                 title: "Importez votre fichier",
-                desc: "Glissez-déposez votre fichier audio ou vidéo. Formats supportés : MP3, WAV, MP4, MOV, M4A, OGG, WEBM. Aucune limite de durée.",
+                desc: "Sélectionnez un fichier audio ou vidéo accepté. Sur smartphone, la taille maximale est de 300 Mo.",
                 color: "#BE34D5",
               },
               {
                 step: 2,
                 icon: Zap,
-                title: "L'IA transcrit en secondes",
-                desc: "Le modèle Whisper v3 analyse votre audio et génère une transcription horodatée avec une précision supérieure à 95% en français.",
+                title: "Whisper génère le texte",
+                desc: "Le service analyse la piste audio et produit une transcription composée de segments horodatés.",
                 color: "#9B34D5",
               },
               {
@@ -679,8 +555,8 @@ export default function Demo() {
           </div>
 
           <div className="space-y-4">
-            {SCHEMA_FAQ.mainEntity.map((item, i) => (
-              <FAQItem key={i} question={item.name} answer={item.acceptedAnswer.text} />
+            {DEMO_FAQ_ITEMS.map((item, i) => (
+              <FAQItem key={i} question={item.question} answer={item.answer} />
             ))}
           </div>
         </motion.div>

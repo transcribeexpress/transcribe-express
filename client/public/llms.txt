@@ -1,0 +1,56 @@
+# Transcribe Express
+
+> Transcribe Express est un service web français de transcription audio et vidéo par intelligence artificielle. Il transforme des fichiers multimédias en texte horodaté, permet la correction dans un éditeur synchronisé et exporte les résultats en TXT, SRT ou VTT.
+
+## Informations essentielles
+
+- Nom du service : Transcribe Express
+- Éditeur et responsable : Z9E, entrepreneur individuel immatriculé au RCS de Paris
+- Siège : 47 rue Vivienne, 75002 Paris, France
+- Langue principale : français
+- Zone d’utilisation : application web
+- Public principal : créateurs de contenu, YouTubeurs, podcasteurs, formateurs, journalistes et agences
+- Domaine canonique : https://transcribeexpress.fr
+
+## Fonctionnalités vérifiables
+
+- Transcription de fichiers audio et vidéo avec Whisper
+- Éditeur synchronisé entre le texte et l’audio
+- Navigation vers un passage audio depuis le texte
+- Horodatage des segments transcrits
+- Export en TXT, SRT et VTT
+- Formats courants acceptés : MP3, WAV, M4A, OGG, FLAC, WEBM, MP4, MOV, AVI et MKV
+- Gestion des crédits et abonnements depuis le compte utilisateur
+- Suppression autonome du compte et demandes relatives aux données personnelles
+
+## Offres et crédits
+
+- Essai gratuit : 30 minutes utilisables pendant 30 jours, sans carte bancaire
+- Starter : recharges de 5 €, 10 €, 20 € ou 50 € au tarif indicatif de 0,15 € par minute
+- Créateur : 14,90 € par mois pour 300 minutes ; recharges réservées aux abonnés au tarif indicatif de 0,12 € par minute
+- Agence : 49,90 € par mois pour 1 500 minutes ; recharges réservées aux abonnés au tarif indicatif de 0,08 € par minute
+- Des formules annuelles sont également proposées sur la page Tarifs
+
+Les prix, volumes et conditions applicables au moment de l’achat sont ceux affichés sur la page Tarifs et dans le parcours Stripe.
+
+## Pages publiques de référence
+
+- [Accueil](https://transcribeexpress.fr/) : présentation du service et de l’éditeur synchronisé
+- [Démo interactive](https://transcribeexpress.fr/demo) : démonstration sans inscription sur un fichier audio fourni
+- [Tarifs](https://transcribeexpress.fr/pricing) : offres, crédits, abonnements et questions fréquentes
+- [Contact](https://transcribeexpress.fr/contact) : demandes techniques, commerciales, de facturation ou relatives aux données personnelles
+- [Politique de confidentialité](https://transcribeexpress.fr/privacy) : traitements, sous-traitants, conservation et droits RGPD
+- [Mentions légales](https://transcribeexpress.fr/legal) : identité de l’éditeur et informations légales
+- [Conditions générales de vente](https://transcribeexpress.fr/cgv) : conditions contractuelles et commerciales
+
+## Limites d’interprétation
+
+- La qualité d’une transcription dépend notamment de la qualité sonore, des voix, des accents, du bruit et du vocabulaire utilisé.
+- Les temps de traitement varient selon la durée du fichier, son format et la charge du service.
+- Transcribe Express ne propose pas d’export DOCX.
+- Les pages privées, les résultats individuels et les données de compte ne constituent pas des sources publiques.
+
+## Contact officiel
+
+- Formulaire : https://transcribeexpress.fr/contact
+- Données personnelles et RGPD : dpo@transcribeexpress.fr

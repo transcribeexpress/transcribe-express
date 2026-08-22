@@ -176,7 +176,7 @@ export default function Login() {
           {/* Mentions légales */}
           <p className="text-center text-xs text-muted-foreground/60 mt-4">
             En continuant, vous acceptez nos{" "}
-            <a href="/terms" className="underline hover:text-muted-foreground">
+            <a href="/cgv" className="underline hover:text-muted-foreground">
               Conditions d'utilisation
             </a>{" "}
             et notre{" "}
