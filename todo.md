@@ -31,6 +31,7 @@
 - [x] Enrichir les schémas `Organization`, `WebSite`, `SoftwareApplication`, `Product`, `Offer`, `FAQPage` et `HowTo` avec des faits vérifiables uniquement — couche centralisée et notes non sourcées supprimées
 - [x] Appliquer une réponse directe de 30 à 60 mots et des passages autonomes de 150 à 300 mots aux pages Home, Tarifs et Démo — composant partagé `AnswerFirstSection`
 - [x] Remplacer les promesses absolues ou non sourcées (`>95 %`, `150×`, « aucun concurrent », délais garantis) par des formulations factuelles vérifiables
+- [x] Corriger les dernières affirmations non démontrées visibles en production : volumes d’utilisateurs/transcriptions, délais « en secondes » et bénéfices SEO automatiques
 - [x] Ajouter des tests Vitest de conformité AEO pour les fichiers statiques, les schémas et les contenus prioritaires — 15 tests dédiés
 - [x] Ajouter `validate:jsx:strict` au pipeline de build afin de bloquer tout JSX/TypeScript invalide avant la production — build réussi
 - [x] Vérifier TypeScript, Vitest, le rendu desktop/mobile et les fichiers publics sur le serveur de prévisualisation — 349 tests, build réussi, QA `AEO_PHASE_1_VISUAL_QA.md`

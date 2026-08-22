@@ -123,6 +123,9 @@ describe("Fondations AEO — Answer-First", () => {
       const source = readProjectFile(`client/src/pages/${page}`);
       expect(source).toContain("<SeoHead");
       expect(source).toContain("<AnswerFirstSection");
+      expect(source).not.toMatch(
+        /milliers d’utilisateurs|milliers d'utilisateurs|\+500 transcriptions|résultats en quelques secondes|interviews transcrites en quelques secondes|chiffrement SSL 256 bits|descriptions SEO générées/iu
+      );
     });
   });
 });

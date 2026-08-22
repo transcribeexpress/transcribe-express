@@ -489,8 +489,8 @@ export default function Demo() {
               </span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Transcribe Express s'intègre dans le workflow de post-production des YouTubeurs, podcasteurs et formateurs.
-              Gagnez des heures sur chaque vidéo.
+              Transcribe Express s’intègre au workflow de post-production des YouTubeurs,
+              podcasteurs, formateurs et journalistes qui souhaitent réutiliser un contenu parlé à l’écrit.
             </p>
           </div>
 
@@ -499,13 +499,13 @@ export default function Demo() {
               {
                 icon: Youtube,
                 title: "YouTubeurs",
-                desc: "Sous-titres SRT automatiques, chapitrage par timestamps, descriptions SEO générées depuis la transcription.",
+                desc: "Préparez des sous-titres SRT ou VTT et réutilisez la transcription pour structurer une description ou un chapitrage.",
                 highlight: true,
               },
               {
                 icon: Podcast,
                 title: "Podcasteurs",
-                desc: "Transcription complète pour les show notes, citations extraites, et accessibilité de vos épisodes.",
+                desc: "Relisez l’épisode à l’écrit et utilisez la transcription pour préparer des show notes, des citations ou une version accessible.",
                 highlight: false,
               },
               {
@@ -517,7 +517,7 @@ export default function Demo() {
               {
                 icon: Headphones,
                 title: "Journalistes",
-                desc: "Interviews transcrites en quelques secondes. Navigation par timestamps pour retrouver chaque citation.",
+                desc: "Transcrivez une interview et utilisez les segments horodatés pour retrouver plus facilement un passage ou une citation.",
                 highlight: false,
               },
             ].map((item, i) => (
@@ -577,7 +577,7 @@ export default function Demo() {
             </h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Commencez gratuitement avec 30 minutes de transcription offertes.
-              Aucune carte bancaire requise. Résultats en quelques secondes.
+              Aucune carte bancaire requise. Le temps de traitement varie selon le fichier.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/login">

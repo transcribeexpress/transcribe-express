@@ -50,7 +50,7 @@ const FEATURE_MODALS: ModalContent[] = [
     icon: <Zap className="w-6 h-6 text-[#BE34D5]" />,
     iconBg: "bg-[#BE34D5]/10",
     title: "Transcription Rapide",
-    subtitle: "De l'audio au texte en quelques secondes",
+    subtitle: "De l’audio au texte avec suivi de progression",
     accentColor: "text-[#BE34D5]",
     sections: [
       {
@@ -502,8 +502,8 @@ export default function Home() {
               Prêt à commencer ?
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Rejoignez des milliers d'utilisateurs qui font confiance à
-              Transcribe Express pour leurs transcriptions.
+              Créez votre espace gratuit, testez le service sur vos propres fichiers
+              et gardez le contrôle sur chaque transcription.
             </p>
             <Link href="/login">
               <Button

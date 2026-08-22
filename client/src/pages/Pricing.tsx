@@ -321,7 +321,7 @@ export default function Pricing() {
               </div>
               <h3 className="font-semibold text-lg">Sous-titres en 1 clic</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Export direct en <strong className="text-foreground">SRT et VTT</strong> avec horodatage précis. Importez dans YouTube, Premiere Pro ou DaVinci Resolve sans retouche. Vos vidéos sont accessibles et référencées immédiatement.
+                Exportez en <strong className="text-foreground">SRT et VTT</strong> avec horodatage, puis importez le fichier dans YouTube, Premiere Pro ou DaVinci Resolve après votre relecture.
               </p>
             </div>
           </div>
@@ -470,7 +470,7 @@ export default function Pricing() {
             {/* Badge populaire */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
               <span className="bg-gradient-to-r from-[#BE34D5] to-[#34D5BE] text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg tracking-wide whitespace-nowrap">
-                ⭐ Le plus populaire
+                Pour les publications régulières
               </span>
             </div>
 
@@ -679,7 +679,7 @@ export default function Pricing() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
-              <span><strong className="text-foreground">+500 transcriptions</strong> réalisées ce mois</span>
+              <span><strong className="text-foreground">Crédits et abonnements</strong> gérés depuis votre compte</span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-border" />
             <div className="flex items-center gap-2">
@@ -693,7 +693,7 @@ export default function Pricing() {
             <Lock className="w-4 h-4 text-[#635BFF]" />
             <span className="text-sm text-muted-foreground">Paiements sécurisés par</span>
             <span className="text-lg font-bold text-[#635BFF] tracking-tight">stripe</span>
-            <span className="text-xs text-muted-foreground">— Chiffrement SSL 256 bits</span>
+            <span className="text-xs text-muted-foreground">— Paiement traité par Stripe</span>
           </div>
 
           {/* CTA secondaire pour les indécis */}
@@ -867,7 +867,7 @@ export default function Pricing() {
             </Link>
           </div>
           <p className="text-xs text-muted-foreground mt-4">
-            Inscription en 30 secondes. Sans carte bancaire. Sans engagement.
+            Sans carte bancaire. Sans engagement pendant l’essai gratuit.
           </p>
         </div>
       </section>
