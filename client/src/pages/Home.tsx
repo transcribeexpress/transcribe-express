@@ -522,7 +522,8 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               © 2026 Transcribe Express. Tous droits réservés.
             </p>
-           <div className="flex gap-6 text-sm text-muted-foreground">
+           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              <Link href="/guide-transcription" className="hover:text-foreground transition-colors">Guide transcription</Link>
               <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
               <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
               <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>

@@ -373,11 +373,8 @@ export default function Contact() {
               <CheckCircle2 className="w-8 h-8 text-primary" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Message envoyé !</h1>
-            <p className="text-muted-foreground mb-2">
-              Nous avons bien reçu votre demande et vous répondrons dans les plus brefs délais.
-            </p>
-            <p className="text-sm text-muted-foreground mb-8">
-              Délai habituel : moins de 24h en jours ouvrés
+            <p className="text-muted-foreground mb-8">
+              Nous avons bien reçu votre demande. Une confirmation contenant sa référence vous a été envoyée par Transcribe Express.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
@@ -397,6 +394,18 @@ export default function Contact() {
         )}
 
       </main>
+
+      <footer className="container mt-10 border-t py-8">
+        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <p className="text-sm text-muted-foreground">© 2026 Transcribe Express. Tous droits réservés.</p>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/guide-transcription" className="hover:text-foreground transition-colors">Guide transcription</Link>
+            <Link href="/legal" className="hover:text-foreground transition-colors">Mentions légales</Link>
+            <Link href="/cgv" className="hover:text-foreground transition-colors">CGV</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

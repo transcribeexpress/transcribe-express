@@ -17,9 +17,20 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 309 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 358 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
+
+## 🧠 Optimisation éditoriale AEO — Phase 2
+
+- [x] Relire la feuille de route AEO et auditer les intentions, FAQ, citations et maillage des pages publiques prioritaires — rapport `AEO_PHASE_2_AUDIT.md`
+- [x] Constituer un registre de sources primaires et de statistiques vérifiables sur la transcription, l’accessibilité et la vidéo — `AEO_PHASE_2_EVIDENCE.md`
+- [x] Créer des blocs de preuves citables avec contexte, date, source et limites méthodologiques — page `/guide-transcription`
+- [x] Structurer vingt FAQ par intention de recherche et enrichir leurs réponses sans dupliquer le contenu
+- [x] Renforcer le ton d’autorité, la fluidité éditoriale et le maillage entre Accueil, Tarifs, Démo, Contact et pages juridiques
+- [x] Étendre les données structurées aux sources citées et aux nouvelles questions factuelles sans avis ni notes artificiels
+- [x] Ajouter des tests Vitest de conformité éditoriale AEO et vérifier le rendu desktop/mobile — 24 tests AEO, QA desktop 1440 px et mobile 390 px
+- [x] Vérifier le build strict, toute la suite de tests et les métadonnées rendues avant checkpoint — build réussi, 358 tests, canonical et 20 FAQ JSON-LD vérifiés dans Chromium
 
 ## 🤖 Fondations techniques AEO — Phase 1
 
@@ -69,7 +80,7 @@
 
 - [x] Configurer OAuth GitHub de production dans Clerk — identifiants personnalisés enregistrés et connexion activée
 - [x] Configurer Google OAuth dans Clerk — client Web Google créé, identifiants enregistrés et connexion activée
-- [ ] Tester les fournisseurs sociaux activés sur le domaine de production
+- [x] Tester les fournisseurs sociaux activés sur le domaine de production — connexions Google et GitHub validées sur `transcribeexpress.fr`
 
 ## 🐙 OAuth GitHub Production
 

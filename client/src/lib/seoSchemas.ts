@@ -1,3 +1,5 @@
+import { AEO_EDITORIAL_FAQS, EDITORIAL_SOURCES } from "./aeoEditorial";
+
 export const SITE_URL = "https://transcribeexpress.fr";
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
@@ -309,5 +311,57 @@ export const DEMO_STRUCTURED_DATA = {
     SOFTWARE_SCHEMA,
     DEMO_HOWTO_SCHEMA,
     buildFaqSchema(DEMO_FAQ_ITEMS, `${SITE_URL}/demo#faq`),
+  ],
+};
+
+export const GUIDE_STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    ORGANIZATION_SCHEMA,
+    WEBSITE_SCHEMA,
+    {
+      "@type": "TechArticle",
+      "@id": `${SITE_URL}/guide-transcription#article`,
+      headline: "Guide de la transcription audio et vidéo",
+      description:
+        "Guide vérifié en 20 réponses sur la transcription audio, Whisper, la qualité, les sous-titres YouTube, SRT, WebVTT, la confidentialité et l’accessibilité.",
+      url: `${SITE_URL}/guide-transcription`,
+      inLanguage: "fr-FR",
+      datePublished: "2026-08-22",
+      dateModified: "2026-08-22",
+      author: { "@id": ORGANIZATION_ID },
+      publisher: { "@id": ORGANIZATION_ID },
+      about: [
+        "Transcription audio en texte",
+        "Reconnaissance vocale",
+        "Sous-titres YouTube",
+        "SRT",
+        "WebVTT",
+        "Accessibilité numérique",
+      ],
+      citation: EDITORIAL_SOURCES.filter((source) => !source.id.startsWith("product-")).map(
+        (source) => source.url
+      ),
+      mainEntityOfPage: `${SITE_URL}/guide-transcription`,
+    },
+    buildFaqSchema(AEO_EDITORIAL_FAQS, `${SITE_URL}/guide-transcription#faq`),
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${SITE_URL}/guide-transcription#breadcrumb`,
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Accueil",
+          item: `${SITE_URL}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Guide de la transcription",
+          item: `${SITE_URL}/guide-transcription`,
+        },
+      ],
+    },
   ],
 };

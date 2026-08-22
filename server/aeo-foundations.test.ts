@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEMO_STRUCTURED_DATA,
+  GUIDE_STRUCTURED_DATA,
   HOME_STRUCTURED_DATA,
   PRICING_STRUCTURED_DATA,
 } from "../client/src/lib/seoSchemas";
@@ -11,6 +12,11 @@ import {
   HOME_ANSWER_FIRST,
   PRICING_ANSWER_FIRST,
 } from "../client/src/lib/aeoContent";
+import {
+  AEO_EDITORIAL_FAQS,
+  EDITORIAL_GROUPS,
+  EDITORIAL_SOURCES,
+} from "../client/src/lib/aeoEditorial";
 
 const root = resolve(process.cwd());
 
@@ -30,6 +36,7 @@ describe("Fondations AEO — fichiers de découverte", () => {
     expect(llms).toContain("## Pages publiques de référence");
     expect(llms).toContain("## Limites d’interprétation");
     expect(llms).toContain("https://transcribeexpress.fr/demo");
+    expect(llms).toContain("https://transcribeexpress.fr/guide-transcription");
     expect(llms).not.toContain("transcribeexpress.manus.space");
     expect(llms).not.toMatch(/précision supérieure à 95|aggregateRating|DOCX disponible/iu);
   });
@@ -54,6 +61,7 @@ describe("Fondations AEO — fichiers de découverte", () => {
       "https://transcribeexpress.fr/",
       "https://transcribeexpress.fr/demo",
       "https://transcribeexpress.fr/pricing",
+      "https://transcribeexpress.fr/guide-transcription",
       "https://transcribeexpress.fr/contact",
       "https://transcribeexpress.fr/privacy",
       "https://transcribeexpress.fr/legal",
@@ -64,9 +72,14 @@ describe("Fondations AEO — fichiers de découverte", () => {
 });
 
 describe("Fondations AEO — données structurées", () => {
-  const schemas = [HOME_STRUCTURED_DATA, PRICING_STRUCTURED_DATA, DEMO_STRUCTURED_DATA];
+  const schemas = [
+    HOME_STRUCTURED_DATA,
+    PRICING_STRUCTURED_DATA,
+    DEMO_STRUCTURED_DATA,
+    GUIDE_STRUCTURED_DATA,
+  ];
 
-  it("relie les entités Organization, WebSite, SoftwareApplication, Product, Offer, FAQPage et HowTo", () => {
+  it("relie les types structurés nécessaires aux pages publiques", () => {
     const serialized = JSON.stringify(schemas);
 
     [
@@ -77,6 +90,8 @@ describe("Fondations AEO — données structurées", () => {
       '"Offer"',
       '"FAQPage"',
       '"HowTo"',
+      '"TechArticle"',
+      '"BreadcrumbList"',
     ].forEach((type) => expect(serialized).toContain(type));
   });
 
@@ -118,6 +133,11 @@ describe("Fondations AEO — Answer-First", () => {
     expect(count).toBeLessThanOrEqual(300);
   });
 
+  it.each(contents)("relie le passage $id à une réponse détaillée du guide", (content) => {
+    expect(content.link?.href).toMatch(/^\/guide-transcription#/u);
+    expect(content.link?.label.length).toBeGreaterThan(10);
+  });
+
   it("intègre la couche SEO et le passage AEO dans les trois pages prioritaires", () => {
     ["Home.tsx", "Pricing.tsx", "Demo.tsx"].forEach((page) => {
       const source = readProjectFile(`client/src/pages/${page}`);
@@ -127,6 +147,65 @@ describe("Fondations AEO — Answer-First", () => {
         /milliers d’utilisateurs|milliers d'utilisateurs|\+500 transcriptions|résultats en quelques secondes|interviews transcrites en quelques secondes|chiffrement SSL 256 bits|descriptions SEO générées/iu
       );
     });
+  });
+});
+
+describe("Optimisation éditoriale AEO — guide et preuves", () => {
+  it("publie exactement vingt questions uniques réparties entre cinq intentions", () => {
+    expect(AEO_EDITORIAL_FAQS).toHaveLength(20);
+    expect(new Set(AEO_EDITORIAL_FAQS.map((item) => item.id)).size).toBe(20);
+    expect(new Set(AEO_EDITORIAL_FAQS.map((item) => item.question)).size).toBe(20);
+    expect(new Set(AEO_EDITORIAL_FAQS.map((item) => item.group))).toEqual(
+      new Set(EDITORIAL_GROUPS)
+    );
+  });
+
+  it("conserve des réponses autonomes, concises et rattachées à des sources existantes", () => {
+    const sourceIds = new Set(EDITORIAL_SOURCES.map((source) => source.id));
+
+    for (const item of AEO_EDITORIAL_FAQS) {
+      expect(wordCount(item.answer)).toBeGreaterThanOrEqual(25);
+      expect(wordCount(item.answer)).toBeLessThanOrEqual(100);
+      expect(item.sourceIds.length).toBeGreaterThan(0);
+      for (const sourceId of item.sourceIds) expect(sourceIds.has(sourceId)).toBe(true);
+    }
+  });
+
+  it("utilise des liens HTTPS et des sources identifiées", () => {
+    expect(EDITORIAL_SOURCES.length).toBeGreaterThanOrEqual(8);
+    for (const source of EDITORIAL_SOURCES) {
+      expect(source.url.startsWith("https://")).toBe(true);
+      expect(source.publisher.length).toBeGreaterThan(1);
+      expect(source.title.length).toBeGreaterThan(5);
+    }
+  });
+
+  it("publie le guide avec son contenu visible, sa méthodologie et ses sources", () => {
+    const guide = readProjectFile("client/src/pages/GuideTranscription.tsx");
+
+    expect(guide).toContain("AEO_EDITORIAL_FAQS");
+    expect(guide).toContain("data-aeo-passage");
+    expect(guide).toContain("Méthode éditoriale");
+    expect(guide).toContain("Sources consultées");
+    expect(guide).not.toMatch(/aggregateRating|ratingValue|avis clients|précision garantie/iu);
+  });
+
+  it("relie le guide aux pages publiques prioritaires et juridiques", () => {
+    ["Home.tsx", "Pricing.tsx", "Demo.tsx", "Contact.tsx", "Privacy.tsx", "Legal.tsx", "CGV.tsx"].forEach(
+      (page) => {
+        const source = readProjectFile(`client/src/pages/${page}`);
+        expect(source).toContain('href="/guide-transcription"');
+      }
+    );
+  });
+
+  it("conserve le registre éditorial vérifiable dans le dépôt", () => {
+    const evidence = readProjectFile("AEO_PHASE_2_EVIDENCE.md");
+
+    expect(evidence).toContain("## 6. Matrice de preuve");
+    expect(evidence).toContain("## Références");
+    expect(evidence).toContain("680 000 heures");
+    expect(evidence).toContain("Formulations interdites");
   });
 });
 

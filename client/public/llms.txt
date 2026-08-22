@@ -37,6 +37,7 @@ Les prix, volumes et conditions applicables au moment de l’achat sont ceux aff
 
 - [Accueil](https://transcribeexpress.fr/) : présentation du service et de l’éditeur synchronisé
 - [Démo interactive](https://transcribeexpress.fr/demo) : démonstration sans inscription sur un fichier audio fourni
+- [Guide de la transcription](https://transcribeexpress.fr/guide-transcription) : 20 réponses sourcées sur Whisper, la précision, YouTube, SRT, WebVTT, la confidentialité et l’accessibilité
 - [Tarifs](https://transcribeexpress.fr/pricing) : offres, crédits, abonnements et questions fréquentes
 - [Contact](https://transcribeexpress.fr/contact) : demandes techniques, commerciales, de facturation ou relatives aux données personnelles
 - [Politique de confidentialité](https://transcribeexpress.fr/privacy) : traitements, sous-traitants, conservation et droits RGPD

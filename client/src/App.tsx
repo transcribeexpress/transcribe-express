@@ -24,6 +24,7 @@ import Privacy from "./pages/Privacy";
 import Legal from "./pages/Legal";
 import CGV from "./pages/CGV";
 import Demo from "./pages/Demo";
+import GuideTranscription from "./pages/GuideTranscription";
 
 function Router() {
   return (
@@ -51,6 +52,7 @@ function Router() {
       <Route path={"/legal"} component={Legal} />
       <Route path={"/cgv"} component={CGV} />
       <Route path={"/demo"} component={Demo} />
+      <Route path={"/guide-transcription"} component={GuideTranscription} />
       <Route path={"/profile"} component={Profile} />
       <Route path={"/settings"} component={Settings} />
       

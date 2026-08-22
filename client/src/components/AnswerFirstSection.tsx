@@ -1,9 +1,16 @@
+import { ArrowRight } from "lucide-react";
+import { Link } from "wouter";
+
 interface AnswerFirstSectionProps {
   id: string;
   question: string;
   answer: string;
   title: string;
   paragraphs: string[];
+  link?: {
+    href: string;
+    label: string;
+  };
 }
 
 /**
@@ -16,6 +23,7 @@ export function AnswerFirstSection({
   answer,
   title,
   paragraphs,
+  link,
 }: AnswerFirstSectionProps) {
   return (
     <section className="container pb-16 md:pb-20" aria-labelledby={`${id}-question`}>
@@ -45,6 +53,15 @@ export function AnswerFirstSection({
                 <p key={paragraph}>{paragraph}</p>
               ))}
             </div>
+            {link && (
+              <Link
+                href={link.href}
+                className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#34D5BE] transition-colors hover:text-[#34D5BE]/80"
+              >
+                {link.label}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )}
           </article>
         </div>
       </div>
