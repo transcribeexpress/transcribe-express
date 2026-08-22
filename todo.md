@@ -21,6 +21,12 @@
 
 **Items restants ouverts :**
 
+## 🔄 Vérification checkpoint et GitHub
+
+- [x] Vérifier que le checkpoint `6dbfdfc6` contient les dernières modifications — footer Tarifs, test de non-régression et validations inclus
+- [x] Vérifier l’état Git local, le dernier commit et la synchronisation avec `origin/main` — GitHub était resté sur `edd3fa73`, donc en retard sur le checkpoint local
+- [ ] Pousser toute modification manquante et confirmer le commit distant final
+
 ## 🎨 Harmonisation du footer Tarifs
 
 - [x] Retirer le lien « Accueil » du footer de la page Tarifs
