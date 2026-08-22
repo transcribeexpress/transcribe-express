@@ -199,6 +199,16 @@ describe("Optimisation éditoriale AEO — guide et preuves", () => {
     );
   });
 
+  it("harmonise le footer Tarifs sans lien Accueil redondant", () => {
+    const pricing = readProjectFile("client/src/pages/Pricing.tsx");
+    const footer = pricing.match(/<footer[\s\S]*?<\/footer>/u)?.[0] ?? "";
+
+    expect(footer).not.toContain('href="/"');
+    expect(footer).not.toContain("Accueil");
+    expect(footer).toContain('href="/guide-transcription"');
+    expect(footer).toContain('href="/contact"');
+  });
+
   it("conserve le registre éditorial vérifiable dans le dépôt", () => {
     const evidence = readProjectFile("AEO_PHASE_2_EVIDENCE.md");
 

@@ -21,6 +21,11 @@
 
 **Items restants ouverts :**
 
+## 🎨 Harmonisation du footer Tarifs
+
+- [x] Retirer le lien « Accueil » du footer de la page Tarifs
+- [x] Vérifier l’alignement du footer avec les autres pages publiques, le build strict et le rendu responsive — desktop 1440 px, mobile 390 px, build réussi et 25 tests AEO passés
+
 ## 🧠 Optimisation éditoriale AEO — Phase 2
 
 - [x] Relire la feuille de route AEO et auditer les intentions, FAQ, citations et maillage des pages publiques prioritaires — rapport `AEO_PHASE_2_AUDIT.md`
