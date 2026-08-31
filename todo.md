@@ -50,8 +50,8 @@
 
 ## 🔄 Vérification checkpoint et GitHub
 
-- [x] Créer le checkpoint du jalon audit de persistance et reprise durable — sauvegarde finale effectuée avant livraison
-- [ ] Créer puis pousser sur `origin/main` le commit GitHub contenant toutes les modifications du jalon
+- [x] Créer le checkpoint du jalon audit de persistance et reprise durable — version `5255f759`
+- [x] Créer puis pousser sur GitHub `transcribeexpress/transcribe-express` le commit contenant toutes les modifications du jalon — `main` synchronisée sur `5255f759`
 - [x] Vérifier que le checkpoint `6dbfdfc6` contient les dernières modifications — footer Tarifs, test de non-régression et validations inclus
 - [x] Vérifier l’état Git local, le dernier commit et la synchronisation avec `origin/main` — GitHub était resté sur `edd3fa73`, donc en retard sur le checkpoint local
 - [x] Pousser toute modification manquante et confirmer le commit distant final — `main` local et GitHub alignés sur `cc5cd8b9`
