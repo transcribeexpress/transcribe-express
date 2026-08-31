@@ -66,4 +66,6 @@ export interface GetUserInfoWithJwtResponse {
   email?: string | null;
   platform?: string | null;
   loginMethod?: string | null;
+  /** Présent uniquement pour une identité de déclenchement périodique */
+  taskUid?: string | null;
 }

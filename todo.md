@@ -17,12 +17,41 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 358 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 365 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
 
+## 💾 Persistance des données après publication
+
+- [x] Cartographier les données durables (BDD/S3) et les fichiers temporaires utilisés pendant la transcription — rapport `AUDIT_PERSISTENCE_DONNEES.md`
+- [x] Vérifier que les scripts `build`, `start` et de publication ne réinitialisent ni la BDD ni le bucket S3 — migrations séparées du pipeline
+- [x] Vérifier que les transcriptions, statuts, textes finaux et clés S3 sont persistés en BDD — code et relevé agrégé validés
+- [x] Ajouter un test isolé qui écrit puis relit `editedText` et `segmentsData` sans toucher aux données utilisateurs — désactivé sans `TEST_DATABASE_URL` distincte
+- [x] Ajouter un test de non-régression couvrant `status`, `transcriptText`, `editedText`, `segmentsData` et `fileKey` — suite d’intégration protégée par garde explicite
+- [x] Contrôler que le schéma Drizzle correspond aux tables réellement déployées sans opération destructive automatique — migrations `0009`/`0010` idempotentes, 23 colonnes alignées, 7 lignes inchangées
+- [x] Comparer toutes les tables Drizzle avec `information_schema` et documenter chaque écart de colonnes — 7/7 tables alignées
+- [x] Ajouter un script d’audit en lecture seule qui valide automatiquement la parité schéma TypeScript / base déployée — `pnpm audit:schema`
+- [x] Auditer toutes les suppressions BDD/S3 et confirmer qu’elles exigent une action explicite autorisée — publication sans chemin destructif
+- [x] Corriger les tests d’intégration qui suppriment actuellement des lignes de la base partagée et imposer une garde de base de test dédiée — `TEST_DATABASE_URL` distincte + `ALLOW_DATABASE_TESTS=true`
+- [x] Ajouter des tests de non-régression sur la séparation stockage durable / stockage temporaire / publication — 26 tests ciblés passent
+- [x] Ajouter un verrou atomique persistant empêchant deux instances de traiter la même transcription
+- [x] Ajouter une échéance de lease et un compteur de tentatives pour détecter les traitements abandonnés — maximum 3 tentatives
+- [x] Relancer au démarrage les transcriptions `pending` ou `processing` dont la lease est absente ou expirée — complété par dashboard et endpoint périodique authentifié
+- [x] Rendre la finalisation et la déduction de crédits idempotentes afin d’éviter toute double facturation après reprise — transaction + `SELECT FOR UPDATE` + `creditsDeductedAt`
+- [x] Ajouter des tests Vitest sans base réelle couvrant acquisition, refus concurrent, expiration, récupération et finalisation unique — 26 tests ciblés passent
+- [x] Extraire et tester sans BDD la décision d’acquisition d’une lease expirée ou active — politique pure `transcriptionLeasePolicy.ts`
+- [x] Tester sans BDD la finalisation idempotente complète : débit unique, lease libérée et statut final
+- [x] Documenter l’option A, son fonctionnement, ses limites et les consignes de publication dans le rapport de persistance
+- [x] Documenter les garanties, limites, procédures de migration et stratégie de sauvegarde indépendante — rapport enrichi avec sources officielles TiDB/AWS
+- [ ] Après publication, créer le déclenchement périodique vers `/api/scheduled/transcription-recovery` et vérifier son journal d’exécution
+- [ ] Vérifier le niveau TiDB Cloud, la rétention effective et réaliser un test de restauration vers une instance distincte
+- [ ] Vérifier puis activer le versioning S3 et une politique Lifecycle compatible avec la procédure RGPD de suppression définitive
+- [x] Exécuter le build strict et toute la suite Vitest avant le checkpoint — build réussi, 365 tests réussis, 22 tests BDD volontairement ignorés
+
 ## 🔄 Vérification checkpoint et GitHub
 
+- [x] Créer le checkpoint du jalon audit de persistance et reprise durable — sauvegarde finale effectuée avant livraison
+- [ ] Créer puis pousser sur `origin/main` le commit GitHub contenant toutes les modifications du jalon
 - [x] Vérifier que le checkpoint `6dbfdfc6` contient les dernières modifications — footer Tarifs, test de non-régression et validations inclus
 - [x] Vérifier l’état Git local, le dernier commit et la synchronisation avec `origin/main` — GitHub était resté sur `edd3fa73`, donc en retard sur le checkpoint local
 - [x] Pousser toute modification manquante et confirmer le commit distant final — `main` local et GitHub alignés sur `cc5cd8b9`

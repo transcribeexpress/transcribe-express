@@ -11,6 +11,7 @@
     "validate:jsx:strict": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "audit:schema": "NODE_ENV=development tsx scripts/audit-schema-parity.mts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {

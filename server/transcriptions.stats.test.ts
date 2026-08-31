@@ -3,10 +3,12 @@ import { appRouter } from "./routers";
 import { getDb } from "./db";
 import { transcriptions, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { hasDedicatedTestDatabase } from "./testDatabaseSafety";
 
 const testUserId = "test-user-stats-123";
+const describeWithDatabase = hasDedicatedTestDatabase() ? describe : describe.skip;
 
-describe("transcriptions.stats", () => {
+describeWithDatabase("transcriptions.stats", () => {
   beforeEach(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");

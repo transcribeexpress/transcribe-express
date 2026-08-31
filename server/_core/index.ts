@@ -11,6 +11,8 @@ import { serveStatic, setupVite } from "./vite";
 import { uploadRouter } from "../uploadRoute";
 import { handleStripeWebhook } from "../stripe/webhook";
 import { sdk } from "./sdk";
+import { resumeInterruptedTranscriptions } from "../workers/transcriptionRecovery";
+import { handleTranscriptionRecovery } from "../scheduled/transcriptionRecoveryRoute";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -67,6 +69,7 @@ async function startServer() {
     next();
   });
   app.use("/api", uploadRouter);
+  app.post("/api/scheduled/transcription-recovery", handleTranscriptionRecovery);
 
   // tRPC API
   app.use(
@@ -92,6 +95,12 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    void resumeInterruptedTranscriptions({
+      source: "startup",
+      force: true,
+    }).catch((error) => {
+      console.error("[Recovery] Startup scan failed:", error);
+    });
   });
 }
 

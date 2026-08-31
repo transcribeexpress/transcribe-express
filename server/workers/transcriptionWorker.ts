@@ -21,7 +21,14 @@
  * Supporte l'annulation : vérifie le statut en BDD avant chaque étape.
  */
 
-import { getTranscriptionById, updateTranscriptionStatus, updateTranscriptionProgress, updateTranscriptionSegments, deductCredits } from '../db';
+import {
+  claimTranscriptionLease,
+  completeTranscriptionAndDeductCredits,
+  failClaimedTranscription,
+  getTranscriptionById,
+  updateTranscriptionProgress,
+  updateTranscriptionSegments,
+} from '../db';
 import { transcribeAudioBuffer } from './transcribeBuffer';
 import { processMediaFile, isAudioFormat, MAX_AUDIO_CHUNK_SIZE_BYTES } from '../audioProcessor';
 import { needsChunking, splitAudioIntoChunks, splitAudioIntoChunksFromFile, transcribeChunksParallel, reassembleTranscriptions, reassembleSegments } from '../audioChunker';
@@ -30,23 +37,31 @@ import { downloadFileFromS3, downloadFileFromS3ToFile } from '../s3Direct';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 
 // Timeout global pour le worker (10 minutes)
 const WORKER_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_ACTIVE_WORKERS_PER_INSTANCE = 3;
 
 // Map des workers actifs pour permettre l'annulation
-const activeWorkers = new Map<number, { cancelled: boolean }>();
+const activeWorkers = new Map<number, { cancelled: boolean; leaseOwner: string }>();
 
 /**
  * Vérifier si une transcription a été annulée
  */
-async function isCancelled(transcriptionId: number): Promise<boolean> {
+async function isCancelled(transcriptionId: number, leaseOwner: string): Promise<boolean> {
   const worker = activeWorkers.get(transcriptionId);
   if (worker?.cancelled) return true;
 
   const transcription = await getTranscriptionById(transcriptionId);
   if (transcription?.status === 'cancelled') {
+    if (worker) worker.cancelled = true;
+    return true;
+  }
+  if (
+    transcription?.status !== 'processing' ||
+    transcription.workerLeaseOwner !== leaseOwner
+  ) {
     if (worker) worker.cancelled = true;
     return true;
   }
@@ -68,25 +83,34 @@ export function cancelTranscriptionWorker(transcriptionId: number): boolean {
 /**
  * Déclencher le worker de transcription de manière asynchrone
  */
-export async function triggerTranscriptionWorker(transcriptionId: number) {
-  activeWorkers.set(transcriptionId, { cancelled: false });
+export async function triggerTranscriptionWorker(transcriptionId: number): Promise<boolean> {
+  if (activeWorkers.has(transcriptionId)) return false;
+  if (activeWorkers.size >= MAX_ACTIVE_WORKERS_PER_INSTANCE) return false;
 
-  processTranscription(transcriptionId).catch((error) => {
+  const leaseOwner = `${process.pid}-${randomUUID()}`;
+  const claimed = await claimTranscriptionLease(transcriptionId, leaseOwner);
+  if (!claimed) return false;
+
+  activeWorkers.set(transcriptionId, { cancelled: false, leaseOwner });
+
+  void processTranscription(transcriptionId, leaseOwner).catch((error) => {
     console.error(`[Worker] FATAL error for transcription ${transcriptionId}:`, error);
-    updateTranscriptionStatus(transcriptionId, 'error', {
-      errorMessage: `Worker crash: ${error?.message || 'Unknown error'}`,
-      processingStep: 'error',
-      processingProgress: 0,
-    }).catch(() => {});
+    failClaimedTranscription(
+      transcriptionId,
+      leaseOwner,
+      `Worker crash: ${error?.message || 'Unknown error'}`
+    ).catch(() => {});
   }).finally(() => {
     activeWorkers.delete(transcriptionId);
   });
+
+  return true;
 }
 
 /**
  * Traiter une transcription avec timeout global
  */
-async function processTranscription(transcriptionId: number) {
+async function processTranscription(transcriptionId: number, leaseOwner: string) {
   const startTime = Date.now();
   
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -96,7 +120,7 @@ async function processTranscription(transcriptionId: number) {
   });
 
   await Promise.race([
-    doProcessTranscription(transcriptionId, startTime),
+    doProcessTranscription(transcriptionId, startTime, leaseOwner),
     timeoutPromise,
   ]);
 }
@@ -140,7 +164,8 @@ async function processAudioDirect(
   transcriptionId: number,
   fileKey: string,
   fileName: string,
-  startTime: number
+  startTime: number,
+  leaseOwner: string
 ): Promise<void> {
   const log = (msg: string) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -148,10 +173,10 @@ async function processAudioDirect(
   };
 
   // === TÉLÉCHARGEMENT (0-15%) ===
-  await updateTranscriptionProgress(transcriptionId, 'downloading', 5);
+  await updateTranscriptionProgress(transcriptionId, 'downloading', 5, leaseOwner);
   log(`Downloading audio: ${fileKey}`);
 
-  if (await isCancelled(transcriptionId)) { log('Cancelled before download'); return; }
+  if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before download'); return; }
 
   // Streaming vers disque pour éviter OOM sur gros fichiers
   const tmpDir = os.tmpdir();
@@ -163,9 +188,9 @@ async function processAudioDirect(
   const sizeMB = fileSizeBytes / (1024 * 1024);
   log(`Downloaded to disk: ${sizeMB.toFixed(1)} MB`);
 
-  await updateTranscriptionProgress(transcriptionId, 'downloading', 15);
+  await updateTranscriptionProgress(transcriptionId, 'downloading', 15, leaseOwner);
 
-  if (await isCancelled(transcriptionId)) { 
+  if (await isCancelled(transcriptionId, leaseOwner)) {
     log('Cancelled after download');
     try { fs.unlinkSync(inputPath); } catch {}
     return; 
@@ -182,7 +207,7 @@ async function processAudioDirect(
       // Fichier audio > 20 Mo → chunking nécessaire
       // Découper directement depuis le fichier sur disque (PAS de re-téléchargement)
       log(`Audio needs chunking: ${sizeMB.toFixed(1)} MB > 20 MB`);
-      await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 20);
+      await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 20, leaseOwner);
 
       const { chunks, totalDuration: chunkTotalDuration, tempFiles } = await splitAudioIntoChunksFromFile(
         inputPath,
@@ -193,7 +218,7 @@ async function processAudioDirect(
       const totalChunks = chunks.length;
       log(`Split into ${totalChunks} chunks (total duration: ${chunkTotalDuration.toFixed(1)}s)`);
 
-      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30, leaseOwner);
 
       try {
         let completedChunks = 0;
@@ -201,7 +226,7 @@ async function processAudioDirect(
         const chunkResults = await transcribeChunksParallel(
           chunks,
           async (buffer, chunkMimeType) => {
-            if (await isCancelled(transcriptionId)) {
+            if (await isCancelled(transcriptionId, leaseOwner)) {
               throw new Error('Transcription cancelled by user');
             }
 
@@ -226,7 +251,8 @@ async function processAudioDirect(
             await updateTranscriptionProgress(
               transcriptionId,
               `transcribing_${completedChunks}/${totalChunks}`,
-              chunkProgress
+              chunkProgress,
+              leaseOwner
             );
             log(`Chunk ${completedChunks}/${totalChunks} completed (${chunkProgress}%)`);
 
@@ -242,7 +268,7 @@ async function processAudioDirect(
         const mergedSegments = reassembleSegments(chunkResults);
         if (mergedSegments.length > 0) {
           try {
-            await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
+            await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments), leaseOwner);
             log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
           } catch (e) {
             log(`Warning: could not store merged segments: ${e}`);
@@ -259,9 +285,9 @@ async function processAudioDirect(
     } else {
       // Fichier audio < 20 Mo → transcription directe (PAS de FFmpeg !)
       log(`Direct transcription: ${sizeMB.toFixed(1)} MB (no FFmpeg needed)`);
-      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 30, leaseOwner);
 
-      if (await isCancelled(transcriptionId)) { log('Cancelled before transcription'); return; }
+      if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before transcription'); return; }
 
       // Lire le fichier depuis le disque (petit fichier < 20 Mo, OK en RAM)
       const audioBuffer = fs.readFileSync(inputPath);
@@ -289,39 +315,34 @@ async function processAudioDirect(
       // Stocker les segments Whisper pour la synchronisation audio
       if (retryResult.result.segments && retryResult.result.segments.length > 0) {
         try {
-          await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
+          await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments), leaseOwner);
           log(`Stored ${retryResult.result.segments.length} Whisper segments`);
         } catch (e) {
           log(`Warning: could not store segments: ${e}`);
         }
       }
 
-      await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
+      await updateTranscriptionProgress(transcriptionId, 'transcribing', 90, leaseOwner);
     }
 
-    if (await isCancelled(transcriptionId)) { log('Cancelled before saving'); return; }
+    if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before saving'); return; }
 
     // === SAUVEGARDE (90-100%) ===
-    await updateTranscriptionProgress(transcriptionId, 'saving', 95);
+    await updateTranscriptionProgress(transcriptionId, 'saving', 95, leaseOwner);
 
-    await updateTranscriptionStatus(transcriptionId, 'completed', {
+    const completion = await completeTranscriptionAndDeductCredits({
+      id: transcriptionId,
+      leaseOwner,
       transcriptText,
-      duration: Math.floor(totalDuration),
-      processingStep: 'completed',
-      processingProgress: 100,
+      durationSeconds: totalDuration,
     });
 
-    // === DÉDUCTION DES CRÉDITS ===
-    // Récupérer le userId (openId) depuis la transcription pour déduire les minutes
-    const completedTranscription = await getTranscriptionById(transcriptionId);
-    if (completedTranscription?.userId) {
-      const minutesUsed = totalDuration / 60; // Convertir secondes en minutes
-      try {
-        const newBalance = await deductCredits(completedTranscription.userId, minutesUsed);
-        log(`CREDITS: Deducted ${Math.ceil(minutesUsed)} min. New balance: ${newBalance} min`);
-      } catch (e) {
-        log(`WARNING: Failed to deduct credits: ${e}`);
-      }
+    if (!completion.completed) {
+      log('Completion skipped because this worker no longer owns the lease');
+      return;
+    }
+    if (completion.creditsDeducted) {
+      log(`CREDITS: Deducted ${Math.ceil(totalDuration / 60)} min. New balance: ${completion.newBalance} min`);
     }
 
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -344,7 +365,8 @@ async function processVideoFull(
   fileKey: string,
   fileName: string,
   fileUrl: string,
-  startTime: number
+  startTime: number,
+  leaseOwner: string
 ): Promise<void> {
   const log = (msg: string) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -354,12 +376,12 @@ async function processVideoFull(
   const mimeType = getMimeTypeFromFileName(fileName);
 
   // === TÉLÉCHARGEMENT + EXTRACTION AUDIO (0-40%) ===
-  await updateTranscriptionProgress(transcriptionId, 'downloading', 10);
+  await updateTranscriptionProgress(transcriptionId, 'downloading', 10, leaseOwner);
   log(`Starting video pipeline: ${fileName} (${mimeType})`);
 
-  if (await isCancelled(transcriptionId)) { log('Cancelled before download'); return; }
+  if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before download'); return; }
 
-  await updateTranscriptionProgress(transcriptionId, 'downloading', 15);
+  await updateTranscriptionProgress(transcriptionId, 'downloading', 15, leaseOwner);
 
   const audioResult = await processMediaFile(
     fileUrl,
@@ -372,15 +394,15 @@ async function processVideoFull(
     throw new Error(`Audio processing failed: ${audioResult.error}`);
   }
 
-  await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 30);
+  await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 30, leaseOwner);
   log(`Audio extracted: ${(audioResult.processedSizeBytes / 1024 / 1024).toFixed(1)}MB FLAC, duration: ${audioResult.durationSeconds.toFixed(1)}s`);
 
-  if (await isCancelled(transcriptionId)) { log('Cancelled after audio extraction'); return; }
+  if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled after audio extraction'); return; }
 
-  await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 40);
+  await updateTranscriptionProgress(transcriptionId, 'extracting_audio', 40, leaseOwner);
 
   // === TRANSCRIPTION (40-90%) ===
-  await updateTranscriptionProgress(transcriptionId, 'transcribing', 45);
+  await updateTranscriptionProgress(transcriptionId, 'transcribing', 45, leaseOwner);
 
   let transcriptText: string;
   let detectedLanguage: string = 'fr';
@@ -403,7 +425,7 @@ async function processVideoFull(
       const chunkResults = await transcribeChunksParallel(
         chunks,
         async (buffer, chunkMimeType) => {
-          if (await isCancelled(transcriptionId)) {
+          if (await isCancelled(transcriptionId, leaseOwner)) {
             throw new Error('Transcription cancelled by user');
           }
 
@@ -428,7 +450,8 @@ async function processVideoFull(
           await updateTranscriptionProgress(
             transcriptionId,
             `transcribing_${completedChunks}/${totalChunks}`,
-            chunkProgress
+            chunkProgress,
+            leaseOwner
           );
           log(`Chunk ${completedChunks}/${totalChunks} completed (${chunkProgress}%)`);
 
@@ -444,7 +467,7 @@ async function processVideoFull(
       const mergedSegments = reassembleSegments(chunkResults);
       if (mergedSegments.length > 0) {
         try {
-          await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments));
+          await updateTranscriptionSegments(transcriptionId, JSON.stringify(mergedSegments), leaseOwner);
           log(`Stored ${mergedSegments.length} merged Whisper segments from ${chunkResults.length} chunks`);
         } catch (e) {
           log(`Warning: could not store merged segments: ${e}`);
@@ -463,9 +486,9 @@ async function processVideoFull(
 
   } else {
     log(`Direct transcription: ${(audioResult.audioBuffer.length / 1024 / 1024).toFixed(1)}MB`);
-    await updateTranscriptionProgress(transcriptionId, 'transcribing', 55);
+    await updateTranscriptionProgress(transcriptionId, 'transcribing', 55, leaseOwner);
 
-    if (await isCancelled(transcriptionId)) { log('Cancelled before transcription'); return; }
+    if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before transcription'); return; }
 
     const retryResult = await retryWithBackoff(
       async () => transcribeAudioBuffer(audioResult.audioBuffer, 'audio/flac', 'fr'),
@@ -489,38 +512,34 @@ async function processVideoFull(
     // Stocker les segments Whisper pour la mise en évidence de confiance
     if (retryResult.result.segments && retryResult.result.segments.length > 0) {
       try {
-        await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments));
+        await updateTranscriptionSegments(transcriptionId, JSON.stringify(retryResult.result.segments), leaseOwner);
         log(`Stored ${retryResult.result.segments.length} Whisper segments`);
       } catch (e) {
         log(`Warning: could not store segments: ${e}`);
       }
     }
 
-    await updateTranscriptionProgress(transcriptionId, 'transcribing', 90);
+    await updateTranscriptionProgress(transcriptionId, 'transcribing', 90, leaseOwner);
   }
 
-  if (await isCancelled(transcriptionId)) { log('Cancelled before saving'); return; }
+  if (await isCancelled(transcriptionId, leaseOwner)) { log('Cancelled before saving'); return; }
 
   // === SAUVEGARDE (90-100%) ===
-  await updateTranscriptionProgress(transcriptionId, 'saving', 95);
+  await updateTranscriptionProgress(transcriptionId, 'saving', 95, leaseOwner);
 
-  await updateTranscriptionStatus(transcriptionId, 'completed', {
+  const completion = await completeTranscriptionAndDeductCredits({
+    id: transcriptionId,
+    leaseOwner,
     transcriptText,
-    duration: Math.floor(totalDuration),
-    processingStep: 'completed',
-    processingProgress: 100,
+    durationSeconds: totalDuration,
   });
 
-  // === DÉDUCTION DES CRÉDITS (MODE B) ===
-  const completedVideoTranscription = await getTranscriptionById(transcriptionId);
-  if (completedVideoTranscription?.userId) {
-    const minutesUsed = totalDuration / 60;
-    try {
-      const newBalance = await deductCredits(completedVideoTranscription.userId, minutesUsed);
-      log(`CREDITS: Deducted ${Math.ceil(minutesUsed)} min. New balance: ${newBalance} min`);
-    } catch (e) {
-      log(`WARNING: Failed to deduct credits: ${e}`);
-    }
+  if (!completion.completed) {
+    log('Completion skipped because this worker no longer owns the lease');
+    return;
+  }
+  if (completion.creditsDeducted) {
+    log(`CREDITS: Deducted ${Math.ceil(totalDuration / 60)} min. New balance: ${completion.newBalance} min`);
   }
 
   const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -530,7 +549,11 @@ async function processVideoFull(
 /**
  * Logique principale : routage vers le bon pipeline
  */
-async function doProcessTranscription(transcriptionId: number, startTime: number) {
+async function doProcessTranscription(
+  transcriptionId: number,
+  startTime: number,
+  leaseOwner: string
+) {
   const log = (msg: string) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`[Worker][${transcriptionId}][${elapsed}s] ${msg}`);
@@ -544,10 +567,7 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
       throw new Error(`Transcription ${transcriptionId} not found`);
     }
 
-    await updateTranscriptionStatus(transcriptionId, 'processing', {
-      processingStep: 'downloading',
-      processingProgress: 5,
-    });
+    await updateTranscriptionProgress(transcriptionId, 'downloading', 5, leaseOwner);
     log(`File: ${transcription.fileName} | Key: ${transcription.fileKey}`);
 
     // === ROUTAGE : Audio direct vs Vidéo complète ===
@@ -560,29 +580,25 @@ async function doProcessTranscription(transcriptionId: number, startTime: number
       // MODE A : Le fichier uploadé est un audio pur
       // (soit extraction WASM côté client, soit upload audio direct)
       log(`MODE A: Audio direct pipeline (${transcription.fileName})`);
-      await processAudioDirect(transcriptionId, fileKey, transcription.fileName, startTime);
+      await processAudioDirect(transcriptionId, fileKey, transcription.fileName, startTime, leaseOwner);
     } else {
       // MODE B : Le fichier uploadé est une vidéo (fallback)
       log(`MODE B: Video full pipeline (${transcription.fileName})`);
-      await processVideoFull(transcriptionId, fileKey, transcription.fileName, transcription.fileUrl, startTime);
+      await processVideoFull(transcriptionId, fileKey, transcription.fileName, transcription.fileUrl, startTime, leaseOwner);
     }
 
   } catch (error: any) {
     const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error(`[Worker][${transcriptionId}][${totalElapsed}s] FAILED:`, error);
 
-    if (await isCancelled(transcriptionId)) {
+    if (await isCancelled(transcriptionId, leaseOwner)) {
       log('Worker stopped due to cancellation');
       return;
     }
 
     const errorMessage = error.message || 'Erreur inconnue lors de la transcription';
     
-    await updateTranscriptionStatus(transcriptionId, 'error', {
-      errorMessage,
-      processingStep: 'error',
-      processingProgress: 0,
-    });
+    await failClaimedTranscription(transcriptionId, leaseOwner, errorMessage);
 
     log(`Marked as error: ${errorMessage}`);
   }

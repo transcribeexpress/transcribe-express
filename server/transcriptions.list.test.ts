@@ -10,9 +10,14 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { createTranscription, getUserTranscriptions } from "./db";
 import { getDb } from "./db";
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { transcriptions as transcriptionTable } from "../drizzle/schema";
+import { hasDedicatedTestDatabase } from "./testDatabaseSafety";
 
-describe("transcriptions.list procedure", () => {
+const testUserId = "test-list-persistence-guard";
+const describeWithDatabase = hasDedicatedTestDatabase() ? describe : describe.skip;
+
+describeWithDatabase("transcriptions.list procedure", () => {
   beforeAll(async () => {
     // Vérifier que la base de données est disponible
     const db = await getDb();
@@ -22,10 +27,10 @@ describe("transcriptions.list procedure", () => {
   });
 
   beforeEach(async () => {
-    // Nettoyer la table transcriptions avant chaque test
+    // Nettoyer uniquement les fixtures de ce fichier dans la base de test dédiée.
     const db = await getDb();
     if (db) {
-      await db.execute(sql`DELETE FROM transcriptions`);
+      await db.delete(transcriptionTable).where(eq(transcriptionTable.userId, testUserId));
     }
   });
 
@@ -39,7 +44,7 @@ describe("transcriptions.list procedure", () => {
 
   it("should create a transcription successfully", async () => {
     const testTranscription = {
-      userId: "user-1",
+      userId: testUserId,
       fileName: "test-audio.mp3",
       fileUrl: "https://example.com/test-audio.mp3",
       fileKey: "uploads/test-audio.mp3",
@@ -54,7 +59,7 @@ describe("transcriptions.list procedure", () => {
   it("should return transcriptions sorted by creation date (descending)", async () => {
     // Créer deux transcriptions avec des dates différentes
     await createTranscription({
-      userId: "user-1",
+      userId: testUserId,
       fileName: "first.mp3",
       fileUrl: "https://example.com/first.mp3",
       status: "completed" as const,
@@ -64,13 +69,13 @@ describe("transcriptions.list procedure", () => {
     await new Promise(resolve => setTimeout(resolve, 1100));
 
     await createTranscription({
-      userId: "user-1",
+      userId: testUserId,
       fileName: "second.mp3",
       fileUrl: "https://example.com/second.mp3",
       status: "processing" as const,
     });
 
-    const transcriptions = await getUserTranscriptions("user-1");
+    const transcriptions = await getUserTranscriptions(testUserId);
     
     expect(transcriptions.length).toBeGreaterThanOrEqual(2);
     
@@ -91,20 +96,20 @@ describe("transcriptions.list procedure", () => {
     // Créer des transcriptions pour l'utilisateur 1 uniquement
     // (pas d'utilisateur 2 car il n'existe pas en BDD)
     await createTranscription({
-      userId: "user-1",
+      userId: testUserId,
       fileName: "user1-file1.mp3",
       fileUrl: "https://example.com/user1-file1.mp3",
       status: "completed" as const,
     });
 
     await createTranscription({
-      userId: "user-1",
+      userId: testUserId,
       fileName: "user1-file2.mp3",
       fileUrl: "https://example.com/user1-file2.mp3",
       status: "completed" as const,
     });
 
-    const user1Transcriptions = await getUserTranscriptions("user-1");
+    const user1Transcriptions = await getUserTranscriptions(testUserId);
     const user2Transcriptions = await getUserTranscriptions("user-2");
     const user999Transcriptions = await getUserTranscriptions("user-999999");
 

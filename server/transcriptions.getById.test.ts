@@ -11,8 +11,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { appRouter } from "./routers";
 import { getDb } from "./db";
 import { transcriptions } from "../drizzle/schema";
+import { hasDedicatedTestDatabase } from "./testDatabaseSafety";
 
-describe("transcriptions.getById", () => {
+const describeWithDatabase = hasDedicatedTestDatabase() ? describe : describe.skip;
+
+describeWithDatabase("transcriptions.getById", () => {
   let testTranscriptionId: number;
   const testUserId = "test-user-123";
   const otherUserId = "other-user-456";

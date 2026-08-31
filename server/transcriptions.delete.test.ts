@@ -12,8 +12,11 @@ import { appRouter } from "./routers";
 import { getDb } from "./db";
 import { transcriptions } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { hasDedicatedTestDatabase } from "./testDatabaseSafety";
 
-describe("transcriptions.delete", () => {
+const describeWithDatabase = hasDedicatedTestDatabase() ? describe : describe.skip;
+
+describeWithDatabase("transcriptions.delete", () => {
   let testTranscriptionId: number;
   const testUserId = "test-user-delete-123";
   const otherUserId = "other-user-delete-456";

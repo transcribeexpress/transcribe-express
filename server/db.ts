@@ -1,15 +1,30 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, transcriptions, InsertTranscription, creditRechargeHistory, InsertCreditRechargeHistory, userPreferences, InsertUserPreferences, supportTickets, InsertSupportTicket, gdprRequests, InsertGdprRequest, subscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { getRuntimeDatabaseUrl } from "./testDatabaseSafety";
+import {
+  MAX_TRANSCRIPTION_ATTEMPTS,
+  planTranscriptionCompletion,
+  TRANSCRIPTION_LEASE_MS,
+} from "./workers/transcriptionLeasePolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+export { MAX_TRANSCRIPTION_ATTEMPTS, TRANSCRIPTION_LEASE_MS };
+
+function getAffectedRows(result: unknown): number {
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number((header as { affectedRows?: number } | undefined)?.affectedRows ?? 0);
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const databaseUrl = getRuntimeDatabaseUrl();
+
+  if (!_db && databaseUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(databaseUrl);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -145,6 +160,130 @@ export async function getTranscriptionById(id: number) {
 }
 
 /**
+ * Acquérir atomiquement une lease de traitement.
+ * Une seule instance peut gagner l'UPDATE conditionnel, y compris en mode autoscale.
+ */
+export async function claimTranscriptionLease(
+  id: number,
+  leaseOwner: string,
+  now = new Date()
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const leaseExpiresAt = new Date(now.getTime() + TRANSCRIPTION_LEASE_MS);
+  const result = await db
+    .update(transcriptions)
+    .set({
+      status: "processing",
+      processingStep: "recovering",
+      processingProgress: 1,
+      errorMessage: null,
+      workerLeaseOwner: leaseOwner,
+      workerLeaseExpiresAt: leaseExpiresAt,
+      workerAttemptCount: sql`${transcriptions.workerAttemptCount} + 1`,
+    })
+    .where(and(
+      eq(transcriptions.id, id),
+      lt(transcriptions.workerAttemptCount, MAX_TRANSCRIPTION_ATTEMPTS),
+      or(
+        eq(transcriptions.status, "pending"),
+        and(
+          eq(transcriptions.status, "processing"),
+          or(
+            isNull(transcriptions.workerLeaseOwner),
+            isNull(transcriptions.workerLeaseExpiresAt),
+            lte(transcriptions.workerLeaseExpiresAt, now)
+          )
+        )
+      )
+    ));
+
+  return getAffectedRows(result) === 1;
+}
+
+/**
+ * Identifier les jobs qui peuvent être repris sans toucher aux travaux encore loués.
+ */
+export async function getRecoverableTranscriptionIds(options?: {
+  userId?: string;
+  limit?: number;
+  now?: Date;
+}): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const now = options?.now ?? new Date();
+  const conditions = [
+    lt(transcriptions.workerAttemptCount, MAX_TRANSCRIPTION_ATTEMPTS),
+    or(
+      eq(transcriptions.status, "pending"),
+      and(
+        eq(transcriptions.status, "processing"),
+        or(
+          isNull(transcriptions.workerLeaseOwner),
+          isNull(transcriptions.workerLeaseExpiresAt),
+          lte(transcriptions.workerLeaseExpiresAt, now)
+        )
+      )
+    ),
+  ];
+
+  if (options?.userId) {
+    conditions.push(eq(transcriptions.userId, options.userId));
+  }
+
+  const rows = await db
+    .select({ id: transcriptions.id })
+    .from(transcriptions)
+    .where(and(...conditions))
+    .orderBy(transcriptions.createdAt)
+    .limit(Math.min(Math.max(options?.limit ?? 20, 1), 100));
+
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Éviter qu'un job ayant épuisé ses reprises reste indéfiniment en attente.
+ */
+export async function markExhaustedTranscriptions(options?: {
+  userId?: string;
+  now?: Date;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const now = options?.now ?? new Date();
+  const conditions = [
+    inArray(transcriptions.status, ["pending", "processing"]),
+    sql`${transcriptions.workerAttemptCount} >= ${MAX_TRANSCRIPTION_ATTEMPTS}`,
+    or(
+      eq(transcriptions.status, "pending"),
+      isNull(transcriptions.workerLeaseExpiresAt),
+      lte(transcriptions.workerLeaseExpiresAt, now)
+    ),
+  ];
+
+  if (options?.userId) {
+    conditions.push(eq(transcriptions.userId, options.userId));
+  }
+
+  const result = await db
+    .update(transcriptions)
+    .set({
+      status: "error",
+      processingStep: "error",
+      processingProgress: 0,
+      errorMessage: `Traitement interrompu après ${MAX_TRANSCRIPTION_ATTEMPTS} tentatives. Le fichier source reste conservé.`,
+      workerLeaseOwner: null,
+      workerLeaseExpiresAt: null,
+    })
+    .where(and(...conditions));
+
+  return getAffectedRows(result);
+}
+
+/**
  * Mettre à jour le statut d'une transcription
  */
 export async function updateTranscriptionStatus(
@@ -169,6 +308,10 @@ export async function updateTranscriptionStatus(
   if (updates?.duration !== undefined) updateData.duration = updates.duration;
   if (updates?.processingStep !== undefined) updateData.processingStep = updates.processingStep;
   if (updates?.processingProgress !== undefined) updateData.processingProgress = updates.processingProgress;
+  if (status === "completed" || status === "error" || status === "cancelled") {
+    updateData.workerLeaseOwner = null;
+    updateData.workerLeaseExpiresAt = null;
+  }
 
   await db
     .update(transcriptions)
@@ -183,17 +326,32 @@ export async function updateTranscriptionStatus(
 export async function updateTranscriptionProgress(
   id: number,
   processingStep: string,
-  processingProgress: number
+  processingProgress: number,
+  leaseOwner?: string
 ) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
 
+  const where = leaseOwner
+    ? and(
+        eq(transcriptions.id, id),
+        eq(transcriptions.status, "processing"),
+        eq(transcriptions.workerLeaseOwner, leaseOwner)
+      )
+    : eq(transcriptions.id, id);
+
   await db
     .update(transcriptions)
-    .set({ processingStep, processingProgress })
-    .where(eq(transcriptions.id, id));
+    .set({
+      processingStep,
+      processingProgress,
+      ...(leaseOwner
+        ? { workerLeaseExpiresAt: new Date(Date.now() + TRANSCRIPTION_LEASE_MS) }
+        : {}),
+    })
+    .where(where);
 }
 
 /**
@@ -222,19 +380,156 @@ export async function updateTranscriptionEdited(
  */
 export async function updateTranscriptionSegments(
   id: number,
-  segmentsData: string
+  segmentsData: string,
+  leaseOwner?: string
 ) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
 
+  const where = leaseOwner
+    ? and(
+        eq(transcriptions.id, id),
+        eq(transcriptions.status, "processing"),
+        eq(transcriptions.workerLeaseOwner, leaseOwner)
+      )
+    : eq(transcriptions.id, id);
+
   await db
     .update(transcriptions)
-    .set({ segmentsData })
-    .where(eq(transcriptions.id, id));
+    .set({
+      segmentsData,
+      ...(leaseOwner
+        ? { workerLeaseExpiresAt: new Date(Date.now() + TRANSCRIPTION_LEASE_MS) }
+        : {}),
+    })
+    .where(where);
 
   return { success: true };
+}
+
+/**
+ * Finaliser le résultat et déduire les crédits dans une transaction unique.
+ * Le verrou de ligne et `creditsDeductedAt` rendent l'opération idempotente.
+ */
+export async function completeTranscriptionAndDeductCredits(input: {
+  id: number;
+  leaseOwner: string;
+  transcriptText: string;
+  durationSeconds: number;
+}): Promise<{
+  completed: boolean;
+  creditsDeducted: boolean;
+  newBalance: number | null;
+}> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.transaction(async (tx) => {
+    const [transcription] = await tx
+      .select()
+      .from(transcriptions)
+      .where(eq(transcriptions.id, input.id))
+      .for("update")
+      .limit(1);
+
+    if (!transcription) {
+      throw new Error(`Transcription ${input.id} not found`);
+    }
+
+    const completionPlan = planTranscriptionCompletion(
+      transcription,
+      input.leaseOwner,
+      input.durationSeconds
+    );
+
+    if (completionPlan.action === "already_completed") {
+      return { completed: true, creditsDeducted: false, newBalance: null };
+    }
+
+    if (completionPlan.action === "rejected") {
+      return { completed: false, creditsDeducted: false, newBalance: null };
+    }
+
+    const durationSeconds = Math.max(0, Math.floor(input.durationSeconds));
+    const minutesToDeduct = completionPlan.minutesToDeduct;
+    let newBalance: number | null = null;
+    let creditsDeducted = false;
+
+    if (!transcription.creditsDeductedAt) {
+      const [account] = await tx
+        .select({ creditsMinutes: users.creditsMinutes })
+        .from(users)
+        .where(eq(users.openId, transcription.userId))
+        .for("update")
+        .limit(1);
+
+      if (!account) {
+        throw new Error(`Cannot deduct credits for transcription ${input.id}: user not found`);
+      }
+
+      newBalance = Math.max(account.creditsMinutes - minutesToDeduct, 0);
+      if (minutesToDeduct > 0) {
+        await tx
+          .update(users)
+          .set({
+            creditsMinutes: sql`GREATEST(${users.creditsMinutes} - ${minutesToDeduct}, 0)`,
+          })
+          .where(eq(users.openId, transcription.userId));
+        creditsDeducted = true;
+      }
+
+    }
+
+    await tx
+      .update(transcriptions)
+      .set({
+        transcriptText: input.transcriptText,
+        duration: durationSeconds,
+        processingStep: "completed",
+        processingProgress: 100,
+        errorMessage: null,
+        creditsDeductedAt: completionPlan.creditsDeductedAt,
+        ...completionPlan.finalState,
+      })
+      .where(and(
+        eq(transcriptions.id, input.id),
+        eq(transcriptions.workerLeaseOwner, input.leaseOwner)
+      ));
+
+    return { completed: true, creditsDeducted, newBalance };
+  });
+}
+
+/**
+ * Marquer l'échec uniquement si cette instance détient encore la lease.
+ */
+export async function failClaimedTranscription(
+  id: number,
+  leaseOwner: string,
+  errorMessage: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .update(transcriptions)
+    .set({
+      status: "error",
+      errorMessage,
+      processingStep: "error",
+      processingProgress: 0,
+      workerLeaseOwner: null,
+      workerLeaseExpiresAt: null,
+    })
+    .where(and(
+      eq(transcriptions.id, id),
+      eq(transcriptions.status, "processing"),
+      eq(transcriptions.workerLeaseOwner, leaseOwner)
+    ));
+
+  return getAffectedRows(result) === 1;
 }
 
 /**

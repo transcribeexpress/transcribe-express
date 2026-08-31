@@ -1,4 +1,4 @@
-import { int, longtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, longtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -63,10 +63,25 @@ export const transcriptions = mysqlTable("transcriptions", {
   editedText: text("editedText"),
   /** Segments Whisper sérialisés en JSON — contient les scores de confiance par segment */
   segmentsData: longtext("segmentsData"),
+  /** Colonnes historiques d'exports — conservées dans le schéma pour éviter toute suppression accidentelle lors d'une future migration */
+  resultUrl: text("resultUrl"),
+  resultSrt: text("resultSrt"),
+  resultVtt: text("resultVtt"),
+  resultTxt: text("resultTxt"),
   errorMessage: text("errorMessage"),
+  /** Identifiant unique de l'instance qui détient actuellement le traitement */
+  workerLeaseOwner: varchar("workerLeaseOwner", { length: 255 }),
+  /** Date UTC après laquelle une autre instance peut reprendre le traitement */
+  workerLeaseExpiresAt: timestamp("workerLeaseExpiresAt"),
+  /** Nombre total de prises en charge, première tentative comprise */
+  workerAttemptCount: int("workerAttemptCount").default(0).notNull(),
+  /** Marqueur d'idempotence : une transcription ne débite les crédits qu'une seule fois */
+  creditsDeductedAt: timestamp("creditsDeductedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("transcriptions_recovery_idx").on(table.status, table.workerLeaseExpiresAt),
+]);
 
 export type Transcription = typeof transcriptions.$inferSelect;
 export type InsertTranscription = typeof transcriptions.$inferInsert;

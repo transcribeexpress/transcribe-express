@@ -5,6 +5,7 @@ import { stripeRouter } from "./stripe/stripeRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory, createSupportTicket, getSupportTicketsByUser, createGdprRequest, getGdprRequestsByUser, hasPendingGdprRequest, deleteUserAccount, getAllUsers, getUserCount } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
+import { resumeInterruptedTranscriptions } from "./workers/transcriptionRecovery";
 import { storageDelete } from "./storage";
 import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
@@ -163,6 +164,14 @@ export const appRouter = router({
 
   transcriptions: router({
     list: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        await resumeInterruptedTranscriptions({
+          userId: ctx.user.openId,
+          source: "dashboard",
+        });
+      } catch (error) {
+        console.error("[Recovery] Dashboard scan failed:", error);
+      }
       return await getUserTranscriptions(ctx.user.openId);
     }),
 
