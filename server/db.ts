@@ -838,7 +838,7 @@ export async function hasPendingGdprRequest(userId: number, requestType: "export
 // SUPPRESSION DE COMPTE — Procédure complète avec cascade
 // ============================================================
 
-import { storageDelete } from "./storage";
+import { getManagedAccountArtifactKey, permanentlyDeleteS3ObjectVersions } from "./s3Direct";
 import { stripe } from "./stripe/stripe";
 import { createClerkClient } from "@clerk/express";
 
@@ -895,21 +895,47 @@ export async function deleteUserAccount(userId: number, initiator: "self" | "adm
 
   // 2. Supprimer les fichiers S3 des transcriptions
   const userTranscriptions = await db
-    .select({ id: transcriptions.id, fileKey: transcriptions.fileKey })
+    .select({
+      id: transcriptions.id,
+      fileKey: transcriptions.fileKey,
+      resultUrl: transcriptions.resultUrl,
+      resultSrt: transcriptions.resultSrt,
+      resultVtt: transcriptions.resultVtt,
+      resultTxt: transcriptions.resultTxt,
+    })
     .from(transcriptions)
     .where(eq(transcriptions.userId, user.openId));
 
-  for (const t of userTranscriptions) {
-    if (t.fileKey) {
-      try {
-        await storageDelete(t.fileKey);
-        result.deletedS3Files++;
-      } catch (error) {
-        result.errors.push(`S3 delete failed for fileKey ${t.fileKey}: ${(error as Error).message}`);
-      }
+  const artifactReferences = userTranscriptions.flatMap((transcription) => [
+    transcription.fileKey,
+    transcription.resultUrl,
+    transcription.resultSrt,
+    transcription.resultVtt,
+    transcription.resultTxt,
+  ]).filter((reference): reference is string => Boolean(reference));
+
+  const artifactKeys = new Set<string>();
+  for (const reference of artifactReferences) {
+    try {
+      artifactKeys.add(getManagedAccountArtifactKey(reference, user.openId));
+    } catch (error) {
+      result.errors.push(`Unsupported S3 artifact reference: ${(error as Error).message}`);
+    }
+  }
+
+  if (result.errors.length > 0) return result;
+
+  for (const artifactKey of Array.from(artifactKeys)) {
+    try {
+      await permanentlyDeleteS3ObjectVersions(artifactKey, user.openId);
+      result.deletedS3Files++;
+    } catch (error) {
+      result.errors.push(`S3 delete failed for managed artifact: ${(error as Error).message}`);
     }
   }
   result.deletedTranscriptions = userTranscriptions.length;
+
+  if (result.errors.length > 0) return result;
 
   // 3. Annuler les abonnements Stripe actifs
   const userSubscriptions = await db

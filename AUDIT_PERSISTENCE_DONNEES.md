@@ -116,9 +116,9 @@ Une politique pure, sans connexion BDD, couvre l’acquisition d’une lease abs
 
 | Contrôle | Résultat | Observation |
 |---|---|---|
-| Build de production | **Réussi** | TypeScript/JSX, Vite et bundle serveur |
-| Vitest complet | **365 tests réussis** | 22 tests BDD volontairement ignorés |
-| Tests ciblés de persistance/reprise | **28 tests réussis** | Aucun accès à la BDD applicative ; audit S3 contrôlé |
+| Build de production | **Réussi** | TypeScript/JSX, Vite et bundle serveur après l’alignement S3 |
+| Vitest complet | **374 tests réussis** | 22 tests BDD volontairement ignorés |
+| Tests ciblés de persistance/reprise | **29 tests réussis** | Aucun accès à la BDD applicative ; audit S3 et séparation des suppressions contrôlés |
 | Intégrations Brevo et Clerk | **7 tests réussis** | Délai réseau porté à vingt secondes |
 | Audit de schéma | **Réussi** | Sept tables alignées ; `transcriptions` 23/23 |
 | Redémarrage serveur | **Réussi** | Scan de reprise chargé sans erreur |
@@ -146,17 +146,23 @@ La persistance primaire protège contre une publication de code. Elle ne protèg
 
 TiDB Cloud Starter et Essential réalisent des sauvegardes automatiques quotidiennes. La rétention documentée est d’un jour pour Starter gratuit et configurable de un à trente jours pour Starter avec plafond de dépense ou Essential. Une restauration crée une nouvelle instance.[5] Le niveau exact de l’instance Transcribe Express doit être vérifié dans **Data > Backup**, puis une restauration non destructive vers une instance distincte doit être testée.
 
-S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieurs versions et place un marqueur de suppression, ce qui facilite la récupération après écrasement ou suppression accidentelle.[6] AWS documente la restauration d’une version antérieure par copie afin de préserver l’historique.[7]
+S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieurs versions et place un marqueur de suppression, ce qui facilite la récupération après écrasement ou suppression accidentelle.[6] AWS documente la restauration d’une version antérieure par copie afin de préserver l’historique.[7] La console AWS a confirmé que le versioning est **activé** sur `transcribe-express-files` et que le chiffrement par défaut est activé avec des clés S3 gérées par AWS (SSE-S3).
 
-Un audit S3 **strictement en lecture seule** est désormais disponible via `pnpm audit:s3`. Deux tests Vitest vérifient que le script n’emploie que des commandes `Get*` de configuration et qu’il n’énumère, ne télécharge ni n’expose aucun objet utilisateur. Son exécution a confirmé que l’identité applicative n’est pas autorisée à lire la configuration du bucket (`s3:GetBucketVersioning`, `s3:GetLifecycleConfiguration` et `s3:GetBucketObjectLockConfiguration`). Cette restriction est cohérente avec le principe du moindre privilège ; elle signifie cependant que l’état réel du versioning, des règles Lifecycle et d’Object Lock reste **non vérifié** depuis l’application. Aucune modification S3 n’a été tentée et l’absence de droit de lecture ne permet pas de conclure que le versioning est désactivé.
+Un audit S3 **strictement en lecture seule** est désormais disponible via `pnpm audit:s3`. Deux tests Vitest vérifient que le script n’emploie que des commandes `Get*` de configuration et qu’il n’énumère, ne télécharge ni n’expose aucun objet utilisateur. L’identité applicative n’est pas autorisée à lire la configuration du bucket (`s3:GetBucketVersioning`, `s3:GetLifecycleConfiguration` et `s3:GetBucketObjectLockConfiguration`) ; la vérification a donc été réalisée dans la console AWS. Aucune modification S3 n’a été tentée par l’audit.
+
+Les règles Lifecycle sont cohérentes avec les clés produites par le SaaS : `DeleteUploadsAfter24h` cible exclusivement `uploads/` et expire la version courante après un jour ; `DeleteResultsAfter30d` cible exclusivement `results/` et expire la version courante après trente jours. Les uploads durables actuels sont générés sous `transcriptions/<openId>/…`, préfixe qui n’est couvert par aucune de ces deux règles. La transcription visible dans le dashboard et le média nécessaire à sa reprise ne sont donc pas supprimés par ces règles observées.
+
+L’audit a aussi révélé qu’un ancien chemin multipart utilisait le proxy de stockage de la plateforme alors que le worker lit les médias depuis le bucket S3 direct. Ce chemin est désormais aligné : l’upload multipart transfère le fichier temporaire en flux vers `transcriptions/<openId>/…`, puis la copie locale est nettoyée. Les URLs pré-signées utilisées par l’interface et l’ancien endpoint multipart écrivent donc désormais dans le même stockage durable.
+
+La suppression individuelle authentifiée applique maintenant une suppression courante S3 sur une clé appartenant au propriétaire, ce qui crée un delete marker et rend le média immédiatement indisponible sans détruire les versions restaurables. La suppression complète de compte suit une voie distincte et irréversible : elle inventorie les médias et les quatre références d’exports historiques (`resultUrl`, `resultSrt`, `resultVtt`, `resultTxt`), n’accepte que les clés `transcriptions/<openId>/…` ou `results/<openId>/…`, puis énumère et purge leurs versions et delete markers avant d’effacer les lignes BDD. Une référence externe ou hors propriétaire bloque l’effacement BDD afin d’éviter une suppression silencieusement incomplète. Ce comportement respecte la distinction AWS entre suppression courante versionnée et suppression définitive avec `versionId`.[10] [11] Le contrôle agrégé réalisé sur les sept lignes existantes n’a trouvé aucune référence d’export historique non vide. Dix-neuf tests ciblés empêchent une régression vers le proxy de stockage, un préfixe non géré ou une purge non ciblée. **Aucune suppression utilisateur réelle n’a été exécutée pendant l’audit.**
 
 | Action externe | Objectif | État |
 |---|---|---|
 | Vérifier la rétention TiDB | Connaître le point de restauration réel | À réaliser |
 | Tester une restauration TiDB vers une nouvelle instance | Vérifier la procédure et le temps de reprise | À réaliser |
-| Activer le versioning S3 | Restaurer un média supprimé ou écrasé | À réaliser après validation |
-| Définir une règle Lifecycle | Maîtriser le coût et la durée de conservation | À définir |
-| Adapter la suppression RGPD | Purger aussi les versions historiques requises | À documenter avant activation |
+| Contrôler le versioning S3 | Restaurer un média supprimé ou écrasé | **Confirmé activé** |
+| Contrôler les règles Lifecycle | Préserver `transcriptions/` et purger les répertoires temporaires | **Confirmé :** `uploads/` 1 jour et `results/` 30 jours |
+| Adapter la suppression RGPD | Purger aussi les versions historiques requises | Correction codée, validation de déploiement restante |
 
 Le contrôle complet doit être réalisé depuis le compte AWS administrateur ou avec une identité distincte, limitée à la lecture de ces trois configurations. Les permissions d’écriture ou de suppression ne sont pas nécessaires pour l’audit.
 
@@ -189,3 +195,7 @@ Enfin, la planification périodique ne peut être activée et vérifiée qu’ap
 [8] [AWS — Locking objects with S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html)
 
 [9] [AWS — Configuring MFA delete](https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html)
+
+[10] [AWS — Working with delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html)
+
+[11] [AWS — Deleting object versions from a versioning-enabled bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html)

@@ -14,7 +14,15 @@
  * - Pas de surcharge mémoire côté serveur
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectVersionsCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomBytes } from 'crypto';
 import * as fs from 'fs';
@@ -31,6 +39,58 @@ const s3Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || '';
+
+/**
+ * Refuse les clés externes au préfixe durable géré par Transcribe Express.
+ * Une purge de compte exige en plus que la clé appartienne au propriétaire attendu.
+ */
+export function getManagedTranscriptionKey(fileKey: string, ownerOpenId?: string): string {
+  const key = fileKey.replace(/^\/+/, '');
+  if (!key.startsWith('transcriptions/') || key.includes('..')) {
+    throw new Error('Unmanaged S3 key: expected a transcription object');
+  }
+
+  if (ownerOpenId && !key.startsWith(`transcriptions/${ownerOpenId}/`)) {
+    throw new Error('S3 key does not belong to the expected transcription owner');
+  }
+
+  return key;
+}
+
+/**
+ * Normalise une référence S3 historique (clé ou URL) et limite la purge de
+ * compte aux répertoires possédés par l’utilisateur dans le bucket courant.
+ */
+export function getManagedAccountArtifactKey(reference: string, ownerOpenId: string): string {
+  let key = reference.trim();
+  try {
+    const url = new URL(key);
+    key = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+  } catch {
+    key = key.replace(/^\/+/, '');
+  }
+
+  if (key.includes('..')) {
+    throw new Error('Unsafe S3 key');
+  }
+
+  for (const prefix of ['transcriptions', 'results']) {
+    if (key.startsWith(`${prefix}/${ownerOpenId}/`)) {
+      return key;
+    }
+  }
+
+  throw new Error('S3 artifact does not belong to the expected account');
+}
+
+export function isOwnedTranscriptionKey(fileKey: string, ownerOpenId: string): boolean {
+  try {
+    getManagedTranscriptionKey(fileKey, ownerOpenId);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Générer une URL pré-signée pour upload direct depuis le frontend
@@ -63,6 +123,30 @@ export async function generatePresignedUploadUrl(
   const fileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-west-3'}.amazonaws.com/${fileKey}`;
 
   return { uploadUrl, fileKey, fileUrl };
+}
+
+/**
+ * Charge un fichier local temporaire dans le même bucket et préfixe durable que
+ * les URLs pré-signées. Le flux évite de recopier le média en mémoire.
+ */
+export async function uploadFileToS3(
+  fileKey: string,
+  ownerOpenId: string,
+  localPath: string,
+  contentType: string
+): Promise<{ fileKey: string; fileUrl: string }> {
+  const key = getManagedTranscriptionKey(fileKey, ownerOpenId);
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: fs.createReadStream(localPath),
+    ContentType: contentType,
+  }));
+
+  return {
+    fileKey: key,
+    fileUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-west-3'}.amazonaws.com/${key}`,
+  };
 }
 
 /**
@@ -184,4 +268,60 @@ export async function generatePresignedDownloadUrl(
     Key: fileKey,
   });
   return getSignedUrl(s3Client, command, { expiresIn });
+}
+
+/**
+ * Masque l’objet courant dans un bucket versionné en créant un delete marker.
+ * Les versions restent récupérables jusqu’à leur échéance Lifecycle.
+ */
+export async function markS3ObjectDeleted(fileKey: string, ownerOpenId?: string): Promise<void> {
+  const key = getManagedTranscriptionKey(fileKey, ownerOpenId);
+  await s3Client.send(new DeleteObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  }));
+}
+
+/**
+ * Purge irréversiblement toutes les versions et delete markers d’un unique média.
+ * À réserver à la procédure explicite et authentifiée de suppression de compte.
+ */
+export async function permanentlyDeleteS3ObjectVersions(
+  fileKey: string,
+  ownerOpenId: string
+): Promise<number> {
+  const key = getManagedAccountArtifactKey(fileKey, ownerOpenId);
+  let keyMarker: string | undefined;
+  let versionIdMarker: string | undefined;
+  let deletedCount = 0;
+
+  do {
+    const page = await s3Client.send(new ListObjectVersionsCommand({
+      Bucket: BUCKET_NAME,
+      Prefix: key,
+      KeyMarker: keyMarker,
+      VersionIdMarker: versionIdMarker,
+    }));
+
+    const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])]
+      .filter((entry) => entry.Key === key && entry.VersionId)
+      .map((entry) => ({ Key: key, VersionId: entry.VersionId! }));
+
+    if (versions.length > 0) {
+      const response = await s3Client.send(new DeleteObjectsCommand({
+        Bucket: BUCKET_NAME,
+        Delete: { Objects: versions, Quiet: true },
+      }));
+
+      if (response.Errors?.length) {
+        throw new Error(`Unable to permanently delete ${response.Errors.length} S3 object version(s)`);
+      }
+      deletedCount += versions.length;
+    }
+
+    keyMarker = page.NextKeyMarker;
+    versionIdMarker = page.NextVersionIdMarker;
+  } while (keyMarker || versionIdMarker);
+
+  return deletedCount;
 }

@@ -6,8 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getUserTranscriptions, createTranscription, getTranscriptionById, deleteTranscription, updateTranscriptionStatus, updateTranscriptionEdited, checkQuota, getUserPreferences, upsertUserPreferences, getRechargeHistory, createSupportTicket, getSupportTicketsByUser, createGdprRequest, getGdprRequestsByUser, hasPendingGdprRequest, deleteUserAccount, getAllUsers, getUserCount } from "./db";
 import { triggerTranscriptionWorker, cancelTranscriptionWorker } from "./workers/transcriptionWorker";
 import { resumeInterruptedTranscriptions } from "./workers/transcriptionRecovery";
-import { storageDelete } from "./storage";
-import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl } from "./s3Direct";
+import { generatePresignedUploadUrl, verifyFileExists, generatePresignedDownloadUrl, isOwnedTranscriptionKey, markS3ObjectDeleted } from "./s3Direct";
 import { SUPPORTED_EXTENSIONS } from "./audioProcessor";
 import { sendContactEmail, sendConfirmationEmail } from "./_core/email";
 import { z } from "zod";
@@ -216,6 +215,10 @@ export const appRouter = router({
         fileUrl: z.string().min(1),
       }))
       .mutation(async ({ ctx, input }) => {
+        if (!isOwnedTranscriptionKey(input.fileKey, ctx.user.openId)) {
+          throw new Error("La clé du fichier ne correspond pas à votre espace de transcription.");
+        }
+
         // === VÉRIFICATION DU QUOTA AVANT TRANSCRIPTION ===
         const quota = await checkQuota(ctx.user.openId);
         if (!quota.canTranscribe) {
@@ -283,13 +286,9 @@ export const appRouter = router({
           throw new Error("Access denied");
         }
         
-        // Supprimer le fichier de S3
+        // Masquer l’objet courant dans S3 versionné avant de supprimer sa ligne BDD.
         if (transcription.fileKey) {
-          try {
-            await storageDelete(transcription.fileKey);
-          } catch (error) {
-            console.error("Failed to delete file from S3:", error);
-          }
+          await markS3ObjectDeleted(transcription.fileKey, ctx.user.openId);
         }
         
         await deleteTranscription(input.id);

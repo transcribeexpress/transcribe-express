@@ -45,9 +45,17 @@
 - [x] Documenter les garanties, limites, procédures de migration et stratégie de sauvegarde indépendante — rapport enrichi avec sources officielles TiDB/AWS
 - [x] Après publication, créer le déclenchement périodique vers `/api/scheduled/transcription-recovery` et vérifier son journal d’exécution — tâche `GT4rsJt8WPFSoakLicq3n6`, toutes les 5 min UTC, premier passage HTTP 200 réussi
 - [ ] Vérifier le niveau TiDB Cloud, la rétention effective et réaliser un test de restauration vers une instance distincte
-- [ ] Vérifier puis activer le versioning S3 et une politique Lifecycle compatible avec la procédure RGPD de suppression définitive — audit applicatif bloqué par IAM, état non inféré
-- [ ] Obtenir une vérification AWS administrateur ou une identité lecture seule pour `GetBucketVersioning`, `GetLifecycleConfiguration` et `GetObjectLockConfiguration`
+- [x] Vérifier puis activer le versioning S3 et une politique Lifecycle compatible avec la procédure RGPD de suppression définitive — Versioning confirmé actif ; règles `uploads/` 1 jour et `results/` 30 jours vérifiées en console AWS
+- [x] Obtenir une vérification AWS administrateur ou une identité lecture seule pour `GetBucketVersioning`, `GetLifecycleConfiguration` et `GetObjectLockConfiguration` — vérification manuelle par console AWS administrateur
 - [x] Ajouter un audit S3 réutilisable exclusivement en lecture seule — `pnpm audit:s3`, deux tests de non-destructivité validés
+- [x] Croiser les préfixes Lifecycle observés (`uploads/`, `results/`) avec les clés S3 durables générées par le code — `transcriptions/<openId>/…` hors règles temporaires
+- [x] Remplacer la suppression via proxy de stockage par une suppression AWS S3 directe pour les clés `transcriptions/`
+- [x] Remplacer l’upload multipart historique via proxy par un upload streamé vers le bucket S3 direct pour les clés `transcriptions/`
+- [x] Définir une suppression de compte compatible avec le versioning : purge explicite de toutes les versions et delete markers d’un utilisateur
+- [x] Ajouter des tests de non-régression de séparation entre suppression courante et purge RGPD définitive — TypeScript OK, 17 tests ciblés réussis
+- [x] Inventorier les exportations historiques référencées par `resultUrl`, `resultSrt`, `resultVtt` et `resultTxt` afin de déterminer leur clé S3 durable — 7 lignes contrôlées, aucune référence non vide
+- [x] Étendre la purge de compte à tous les artefacts utilisateur versionnés, y compris les exports éventuels sous `results/`
+- [x] Ajouter des tests de non-régression couvrant la purge des médias et exportations associés à un compte — TypeScript OK, 19 tests ciblés réussis
 - [x] Exécuter le build strict et toute la suite Vitest avant le checkpoint — build réussi, 365 tests réussis, 22 tests BDD volontairement ignorés
 
 ## 🔄 Vérification checkpoint et GitHub

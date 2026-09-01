@@ -123,7 +123,36 @@ describe("publication and persistence safety", () => {
     );
 
     expect(deleteProcedure).toContain("transcription.userId !== ctx.user.openId");
-    expect(deleteProcedure).toContain("storageDelete(transcription.fileKey)");
+    expect(deleteProcedure).toContain("markS3ObjectDeleted(transcription.fileKey, ctx.user.openId)");
     expect(deleteProcedure).toContain("deleteTranscription(input.id)");
+  });
+
+  it("sépare la suppression courante versionnée de la purge irréversible d’un compte", () => {
+    const s3Direct = read("server/s3Direct.ts");
+    const database = read("server/db.ts");
+
+    expect(s3Direct).toContain("new DeleteObjectCommand");
+    expect(s3Direct).toContain("new ListObjectVersionsCommand");
+    expect(s3Direct).toContain("new DeleteObjectsCommand");
+    expect(database).toContain("permanentlyDeleteS3ObjectVersions(artifactKey, user.openId)");
+    expect(database).not.toContain('import { storageDelete } from "./storage"');
+  });
+
+  it("purge aussi les références d’export historiques avant la suppression BDD du compte", () => {
+    const database = read("server/db.ts");
+
+    for (const field of ["resultUrl", "resultSrt", "resultVtt", "resultTxt"]) {
+      expect(database).toContain(`transcription.${field}`);
+    }
+    expect(database).toContain("getManagedAccountArtifactKey(reference, user.openId)");
+  });
+
+  it("envoie aussi les uploads multipart historiques vers le bucket S3 durable", () => {
+    const uploadRoute = read("server/uploadRoute.ts");
+
+    expect(uploadRoute).toContain('import { uploadFileToS3 } from \'./s3Direct\'');
+    expect(uploadRoute).toContain("await uploadFileToS3(fileKey, user.openId, file.path, mimeType)");
+    expect(uploadRoute).not.toContain("storagePut(fileKey");
+    expect(uploadRoute).not.toContain("fs.readFileSync(file.path)");
   });
 });

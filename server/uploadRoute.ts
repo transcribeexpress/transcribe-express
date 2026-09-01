@@ -19,7 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomBytes } from 'crypto';
-import { storagePut } from './storage';
+import { uploadFileToS3 } from './s3Direct';
 import { createTranscription, checkQuota } from './db';
 import { triggerTranscriptionWorker } from './workers/transcriptionWorker';
 import { SUPPORTED_EXTENSIONS } from './audioProcessor';
@@ -84,8 +84,7 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
       return;
     }
 
-    // 3. Lire le fichier temporaire
-    const fileBuffer = fs.readFileSync(file.path);
+    // 3. Conserver le fichier temporaire sur disque jusqu’à son upload streamé vers S3.
     const fileName = req.body.fileName || file.originalname;
     const mimeType = file.mimetype || 'application/octet-stream';
 
@@ -106,13 +105,13 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
     const extension = fileName.split('.').pop()?.toLowerCase() || 'bin';
     const fileKey = `transcriptions/${user.openId}/${timestamp}-${randomId}.${extension}`;
 
-    const { url } = await storagePut(fileKey, fileBuffer, mimeType);
+    const { fileUrl } = await uploadFileToS3(fileKey, user.openId, file.path, mimeType);
 
     // 5. Créer l'entrée en BDD
     const result = await createTranscription({
       userId: user.openId,
       fileName,
-      fileUrl: url,
+      fileUrl,
       fileKey,
       status: 'pending',
     });
@@ -131,7 +130,7 @@ uploadRouter.post('/upload', upload.single('file'), async (req: Request, res: Re
     res.json({
       id: transcriptionId,
       fileName,
-      fileUrl: url,
+      fileUrl,
       status: 'pending',
     });
 
