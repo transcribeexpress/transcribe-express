@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "audit:schema": "NODE_ENV=development tsx scripts/audit-schema-parity.mts",
+    "audit:s3": "node scripts/audit-s3-protection.mjs",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {

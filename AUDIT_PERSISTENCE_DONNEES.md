@@ -118,7 +118,7 @@ Une politique pure, sans connexion BDD, couvre l’acquisition d’une lease abs
 |---|---|---|
 | Build de production | **Réussi** | TypeScript/JSX, Vite et bundle serveur |
 | Vitest complet | **365 tests réussis** | 22 tests BDD volontairement ignorés |
-| Tests ciblés de persistance/reprise | **26 tests réussis** | Aucun accès à la BDD applicative |
+| Tests ciblés de persistance/reprise | **28 tests réussis** | Aucun accès à la BDD applicative ; audit S3 contrôlé |
 | Intégrations Brevo et Clerk | **7 tests réussis** | Délai réseau porté à vingt secondes |
 | Audit de schéma | **Réussi** | Sept tables alignées ; `transcriptions` 23/23 |
 | Redémarrage serveur | **Réussi** | Scan de reprise chargé sans erreur |
@@ -148,6 +148,8 @@ TiDB Cloud Starter et Essential réalisent des sauvegardes automatiques quotidie
 
 S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieurs versions et place un marqueur de suppression, ce qui facilite la récupération après écrasement ou suppression accidentelle.[6] AWS documente la restauration d’une version antérieure par copie afin de préserver l’historique.[7]
 
+Un audit S3 **strictement en lecture seule** est désormais disponible via `pnpm audit:s3`. Deux tests Vitest vérifient que le script n’emploie que des commandes `Get*` de configuration et qu’il n’énumère, ne télécharge ni n’expose aucun objet utilisateur. Son exécution a confirmé que l’identité applicative n’est pas autorisée à lire la configuration du bucket (`s3:GetBucketVersioning`, `s3:GetLifecycleConfiguration` et `s3:GetBucketObjectLockConfiguration`). Cette restriction est cohérente avec le principe du moindre privilège ; elle signifie cependant que l’état réel du versioning, des règles Lifecycle et d’Object Lock reste **non vérifié** depuis l’application. Aucune modification S3 n’a été tentée et l’absence de droit de lecture ne permet pas de conclure que le versioning est désactivé.
+
 | Action externe | Objectif | État |
 |---|---|---|
 | Vérifier la rétention TiDB | Connaître le point de restauration réel | À réaliser |
@@ -155,6 +157,8 @@ S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieu
 | Activer le versioning S3 | Restaurer un média supprimé ou écrasé | À réaliser après validation |
 | Définir une règle Lifecycle | Maîtriser le coût et la durée de conservation | À définir |
 | Adapter la suppression RGPD | Purger aussi les versions historiques requises | À documenter avant activation |
+
+Le contrôle complet doit être réalisé depuis le compte AWS administrateur ou avec une identité distincte, limitée à la lecture de ces trois configurations. Les permissions d’écriture ou de suppression ne sont pas nécessaires pour l’audit.
 
 S3 Object Lock peut empêcher la suppression ou l’écrasement d’une version pendant une durée donnée, mais il doit être évalué avec prudence au regard des obligations de suppression des données personnelles.[8] MFA Delete renforce les suppressions permanentes ; AWS précise toutefois qu’il exige le compte propriétaire et qu’il n’est pas compatible avec les configurations Lifecycle.[9]
 
