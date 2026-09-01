@@ -76,9 +76,9 @@ La récupération ne dépend pas d’un timer en mémoire. Elle peut être décl
 |---|---|---|
 | Démarrage du serveur | Tous les jobs récupérables | Implémenté et validé |
 | Polling du dashboard | Jobs du compte connecté | Implémenté, limité à un scan par utilisateur toutes les trente secondes |
-| Endpoint périodique signé | Tous les jobs récupérables | Implémenté ; planification à créer après publication |
+| Endpoint périodique signé | Tous les jobs récupérables | Activé toutes les cinq minutes UTC ; premier passage HTTP 200 réussi |
 
-L’endpoint `/api/scheduled/transcription-recovery` refuse les utilisateurs ordinaires et n’accepte que les identités périodiques signées. Il complète le démarrage et le dashboard lorsque le SaaS ne reçoit pas de visite.
+L’endpoint `/api/scheduled/transcription-recovery` refuse les utilisateurs ordinaires et n’accepte que les identités périodiques signées. Il complète le démarrage et le dashboard lorsque le SaaS ne reçoit pas de visite. La tâche de projet `GT4rsJt8WPFSoakLicq3n6` est active toutes les cinq minutes UTC ; son premier passage a renvoyé HTTP 200 et a trouvé zéro transcription à récupérer, ce qui est cohérent avec le contrôle agrégé de la base.
 
 ## Schéma et migrations
 
@@ -122,6 +122,7 @@ Une politique pure, sans connexion BDD, couvre l’acquisition d’une lease abs
 | Intégrations Brevo et Clerk | **7 tests réussis** | Délai réseau porté à vingt secondes |
 | Audit de schéma | **Réussi** | Sept tables alignées ; `transcriptions` 23/23 |
 | Redémarrage serveur | **Réussi** | Scan de reprise chargé sans erreur |
+| Déclenchement périodique public | **Réussi** | Tâche active, première exécution HTTP 200, aucun job abandonné détecté |
 | Propreté du diff | **Réussie** | Aucun défaut signalé par `git diff --check` |
 
 Le premier lancement complet, limité à cinq secondes par test, a rencontré trois expirations réseau sur Brevo et Clerk. Les sept tests externes ont ensuite réussi avec un délai de vingt secondes, puis la suite complète a réussi avec ce délai. Aucun échec de persistance, de lease ou d’idempotence n’a été observé.

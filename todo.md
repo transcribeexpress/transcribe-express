@@ -43,7 +43,7 @@
 - [x] Tester sans BDD la finalisation idempotente complète : débit unique, lease libérée et statut final
 - [x] Documenter l’option A, son fonctionnement, ses limites et les consignes de publication dans le rapport de persistance
 - [x] Documenter les garanties, limites, procédures de migration et stratégie de sauvegarde indépendante — rapport enrichi avec sources officielles TiDB/AWS
-- [ ] Après publication, créer le déclenchement périodique vers `/api/scheduled/transcription-recovery` et vérifier son journal d’exécution
+- [x] Après publication, créer le déclenchement périodique vers `/api/scheduled/transcription-recovery` et vérifier son journal d’exécution — tâche `GT4rsJt8WPFSoakLicq3n6`, toutes les 5 min UTC, premier passage HTTP 200 réussi
 - [ ] Vérifier le niveau TiDB Cloud, la rétention effective et réaliser un test de restauration vers une instance distincte
 - [ ] Vérifier puis activer le versioning S3 et une politique Lifecycle compatible avec la procédure RGPD de suppression définitive
 - [x] Exécuter le build strict et toute la suite Vitest avant le checkpoint — build réussi, 365 tests réussis, 22 tests BDD volontairement ignorés
