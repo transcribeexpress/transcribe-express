@@ -147,7 +147,9 @@ La persistance primaire protège contre une publication de code. Elle ne protèg
 
 La base de Transcribe Express est administrée dans l’espace Manus, comme le confirme le panneau **Base de données** du projet. Le compte utilisateur ne dispose pas d’une console TiDB Cloud distincte permettant de consulter directement le niveau de service, la rétention ou les points de restauration ; aucune rétention TiDB précise ne doit donc être présumée dans cet audit.
 
-Pour une sauvegarde complète de cette application gérée, le mécanisme applicable est la sauvegarde de données de tâche Manus : elle comprend le code, la base de données, les fichiers, la configuration, les secrets et les paramètres d’intégration.[12] Cette sauvegarde est un instantané non synchronisé : elle n’inclut pas les inscriptions, uploads et modifications postérieurs à son exécution.[13] L’utilisateur doit vérifier sa notification et son email Manus, qui déterminent si le compte est concerné, puis utiliser la procédure officielle de sauvegarde si nécessaire.[14]
+Pour une sauvegarde complète de cette application gérée, le mécanisme applicable est la sauvegarde de données de tâche Manus. La documentation WebDev officielle indique qu’elle couvre la base de données du projet, les fichiers de stockage et S3 pris en charge, les tâches planifiées, ainsi que la configuration et les intégrations.[15] Cette sauvegarde est un instantané non synchronisé : elle n’inclut pas les inscriptions, uploads et modifications postérieurs à son exécution.[13] Les guides officiels recommandent précisément de stocker les archives de tâche dans Google Drive ou OneDrive pour fiabiliser le transfert des volumes importants, et rappellent qu’une restauration ne peut être réalisée qu’une fois.[12] [14]
+
+L’utilisateur a confirmé avoir reçu la notification officielle, avoir restauré ses données Manus et conserver une copie des sauvegardes dans Drive. Le contenu, la complétude et la date des archives Drive n’ont pas été lus ni modifiés pendant l’audit ; leur existence constitue une copie externe, tandis que leur fraîcheur reste celle de leur instantané de création.
 
 S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieurs versions et place un marqueur de suppression, ce qui facilite la récupération après écrasement ou suppression accidentelle.[6] AWS documente la restauration d’une version antérieure par copie afin de préserver l’historique.[7] La console AWS a confirmé que le versioning est **activé** sur `transcribe-express-files` et que le chiffrement par défaut est activé avec des clés S3 gérées par AWS (SSE-S3).
 
@@ -161,9 +163,9 @@ La suppression individuelle authentifiée applique maintenant une suppression co
 
 | Action externe | Objectif | État |
 |---|---|---|
-| Vérifier la rétention TiDB | Connaître le point de restauration réel | Non accessible directement : base administrée dans Manus |
-| Vérifier l’éligibilité à la sauvegarde Manus | Déterminer l’action nécessaire selon la notification officielle | À réaliser par le titulaire du compte |
-| Créer un instantané de tâche si le compte est concerné | Préserver code, base, fichiers et configuration | À réaliser selon la notification officielle |
+| Vérifier la rétention TiDB | Connaître le point de restauration réel | Sans objet côté utilisateur : base administrée dans Manus |
+| Vérifier l’éligibilité à la sauvegarde Manus | Déterminer l’action nécessaire selon la notification officielle | **Confirmé :** notification reçue et restauration réalisée |
+| Conserver une copie externe de sauvegarde | Disposer d’une archive hors de l’environnement courant | **Confirmé :** archives conservées dans Drive, sans inspection de leur contenu |
 | Contrôler le versioning S3 | Restaurer un média supprimé ou écrasé | **Confirmé activé** |
 | Contrôler les règles Lifecycle | Préserver `transcriptions/` et purger les répertoires temporaires | **Confirmé :** `uploads/` 1 jour et `results/` 30 jours |
 | Adapter la suppression RGPD | Purger aussi les versions historiques requises | Correction codée, validation de déploiement restante |
@@ -209,3 +211,5 @@ Enfin, la planification périodique est active après publication et complète l
 [13] [Manus — Instantané de site Web et données postérieures](https://help.manus.im/en/articles/16147892-service-change-overview-how-to-back-up-your-data)
 
 [14] [Manus — Vérifier si un compte est concerné](https://help.manus.im/en/articles/16147831-service-change-overview-what-s-happening-and-am-i-affected)
+
+[15] [Manus — Effet du changement de service sur les projets WebDev et sites](https://help.manus.im/en/articles/16354507-service-change-overview-how-service-change-affects-your-webdev-projects-and-website)
