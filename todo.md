@@ -64,7 +64,7 @@
 
 - [x] Créer le checkpoint du jalon audit de persistance et reprise durable — version `283d5482`
 - [x] Créer puis pousser sur GitHub `transcribeexpress/transcribe-express` le commit contenant toutes les modifications du jalon — `main` synchronisée sur `283d5482`
-- [ ] Sauvegarder et pousser la clarification finale sur la base gérée par Manus et la procédure de sauvegarde officielle
+- [x] Sauvegarder et pousser la clarification finale sur la base gérée par Manus et la procédure de sauvegarde officielle — checkpoint `d9be1d65`, GitHub `main` synchronisée sur `d9be1d65`
 - [x] Vérifier que le checkpoint `6dbfdfc6` contient les dernières modifications — footer Tarifs, test de non-régression et validations inclus
 - [x] Vérifier l’état Git local, le dernier commit et la synchronisation avec `origin/main` — GitHub était resté sur `edd3fa73`, donc en retard sur le checkpoint local
 - [x] Pousser toute modification manquante et confirmer le commit distant final — `main` local et GitHub alignés sur `cc5cd8b9`
