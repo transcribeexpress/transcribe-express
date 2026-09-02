@@ -123,6 +123,7 @@ Une politique pure, sans connexion BDD, couvre l’acquisition d’une lease abs
 | Audit de schéma | **Réussi** | Sept tables alignées ; `transcriptions` 23/23 |
 | Redémarrage serveur | **Réussi** | Scan de reprise chargé sans erreur |
 | Déclenchement périodique public | **Réussi** | Tâche active, première exécution HTTP 200, aucun job abandonné détecté |
+| Endpoint de reprise exposé | **Protégé** | Appel HTTP non authentifié refusé en production avec HTTP 403 |
 | Propreté du diff | **Réussie** | Aucun défaut signalé par `git diff --check` |
 
 Le premier lancement complet, limité à cinq secondes par test, a rencontré trois expirations réseau sur Brevo et Clerk. Les sept tests externes ont ensuite réussi avec un délai de vingt secondes, puis la suite complète a réussi avec ce délai. Aucun échec de persistance, de lease ou d’idempotence n’a été observé.
@@ -144,7 +145,9 @@ Le premier lancement complet, limité à cinq secondes par test, a rencontré tr
 
 La persistance primaire protège contre une publication de code. Elle ne protège pas, à elle seule, contre une suppression accidentelle, une corruption ou un incident fournisseur.
 
-TiDB Cloud Starter et Essential réalisent des sauvegardes automatiques quotidiennes. La rétention documentée est d’un jour pour Starter gratuit et configurable de un à trente jours pour Starter avec plafond de dépense ou Essential. Une restauration crée une nouvelle instance.[5] Le niveau exact de l’instance Transcribe Express doit être vérifié dans **Data > Backup**, puis une restauration non destructive vers une instance distincte doit être testée.
+La base de Transcribe Express est administrée dans l’espace Manus, comme le confirme le panneau **Base de données** du projet. Le compte utilisateur ne dispose pas d’une console TiDB Cloud distincte permettant de consulter directement le niveau de service, la rétention ou les points de restauration ; aucune rétention TiDB précise ne doit donc être présumée dans cet audit.
+
+Pour une sauvegarde complète de cette application gérée, le mécanisme applicable est la sauvegarde de données de tâche Manus : elle comprend le code, la base de données, les fichiers, la configuration, les secrets et les paramètres d’intégration.[12] Cette sauvegarde est un instantané non synchronisé : elle n’inclut pas les inscriptions, uploads et modifications postérieurs à son exécution.[13] L’utilisateur doit vérifier sa notification et son email Manus, qui déterminent si le compte est concerné, puis utiliser la procédure officielle de sauvegarde si nécessaire.[14]
 
 S3 Versioning est désactivé par défaut. Une fois activé, il conserve plusieurs versions et place un marqueur de suppression, ce qui facilite la récupération après écrasement ou suppression accidentelle.[6] AWS documente la restauration d’une version antérieure par copie afin de préserver l’historique.[7] La console AWS a confirmé que le versioning est **activé** sur `transcribe-express-files` et que le chiffrement par défaut est activé avec des clés S3 gérées par AWS (SSE-S3).
 
@@ -158,8 +161,9 @@ La suppression individuelle authentifiée applique maintenant une suppression co
 
 | Action externe | Objectif | État |
 |---|---|---|
-| Vérifier la rétention TiDB | Connaître le point de restauration réel | À réaliser |
-| Tester une restauration TiDB vers une nouvelle instance | Vérifier la procédure et le temps de reprise | À réaliser |
+| Vérifier la rétention TiDB | Connaître le point de restauration réel | Non accessible directement : base administrée dans Manus |
+| Vérifier l’éligibilité à la sauvegarde Manus | Déterminer l’action nécessaire selon la notification officielle | À réaliser par le titulaire du compte |
+| Créer un instantané de tâche si le compte est concerné | Préserver code, base, fichiers et configuration | À réaliser selon la notification officielle |
 | Contrôler le versioning S3 | Restaurer un média supprimé ou écrasé | **Confirmé activé** |
 | Contrôler les règles Lifecycle | Préserver `transcriptions/` et purger les répertoires temporaires | **Confirmé :** `uploads/` 1 jour et `results/` 30 jours |
 | Adapter la suppression RGPD | Purger aussi les versions historiques requises | Correction codée, validation de déploiement restante |
@@ -174,7 +178,7 @@ En hébergement autoscale, un traitement asynchrone reste dépendant de la duré
 
 La transaction réelle d’acquisition et de finalisation n’a pas été exécutée sur les données applicatives, conformément à l’exigence de non-interférence. Le scénario est présent dans une suite isolée et devra être exécuté sur une base de test dédiée avant toute refonte future de la logique de worker.
 
-Enfin, la planification périodique ne peut être activée et vérifiée qu’après publication de l’endpoint. Jusqu’à cette étape, la reprise repose sur le démarrage du serveur et le polling du dashboard.
+Enfin, la planification périodique est active après publication et complète le démarrage du serveur ainsi que le polling du dashboard. Le test public confirme qu’un appel HTTP ordinaire vers cet endpoint est refusé avec HTTP 403.
 
 ## Références
 
@@ -199,3 +203,9 @@ Enfin, la planification périodique ne peut être activée et vérifiée qu’ap
 [10] [AWS — Working with delete markers](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html)
 
 [11] [AWS — Deleting object versions from a versioning-enabled bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html)
+
+[12] [Manus — Sauvegardes de données de sites Web](https://help.manus.im/en/articles/16147892-service-change-overview-how-to-back-up-your-data)
+
+[13] [Manus — Instantané de site Web et données postérieures](https://help.manus.im/en/articles/16147892-service-change-overview-how-to-back-up-your-data)
+
+[14] [Manus — Vérifier si un compte est concerné](https://help.manus.im/en/articles/16147831-service-change-overview-what-s-happening-and-am-i-affected)

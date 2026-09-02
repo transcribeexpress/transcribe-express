@@ -17,7 +17,7 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 365 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 374 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
 
@@ -44,7 +44,8 @@
 - [x] Documenter l’option A, son fonctionnement, ses limites et les consignes de publication dans le rapport de persistance
 - [x] Documenter les garanties, limites, procédures de migration et stratégie de sauvegarde indépendante — rapport enrichi avec sources officielles TiDB/AWS
 - [x] Après publication, créer le déclenchement périodique vers `/api/scheduled/transcription-recovery` et vérifier son journal d’exécution — tâche `GT4rsJt8WPFSoakLicq3n6`, toutes les 5 min UTC, premier passage HTTP 200 réussi
-- [ ] Vérifier le niveau TiDB Cloud, la rétention effective et réaliser un test de restauration vers une instance distincte
+- [ ] Vérifier le niveau TiDB Cloud, la rétention effective et réaliser un test de restauration vers une instance distincte — non accessible directement : la BDD est gérée dans Manus
+- [ ] Vérifier l’avis Manus reçu dans l’application et par email, puis créer une sauvegarde de données de tâche si le compte est indiqué comme concerné
 - [x] Vérifier puis activer le versioning S3 et une politique Lifecycle compatible avec la procédure RGPD de suppression définitive — Versioning confirmé actif ; règles `uploads/` 1 jour et `results/` 30 jours vérifiées en console AWS
 - [x] Obtenir une vérification AWS administrateur ou une identité lecture seule pour `GetBucketVersioning`, `GetLifecycleConfiguration` et `GetObjectLockConfiguration` — vérification manuelle par console AWS administrateur
 - [x] Ajouter un audit S3 réutilisable exclusivement en lecture seule — `pnpm audit:s3`, deux tests de non-destructivité validés
@@ -56,12 +57,14 @@
 - [x] Inventorier les exportations historiques référencées par `resultUrl`, `resultSrt`, `resultVtt` et `resultTxt` afin de déterminer leur clé S3 durable — 7 lignes contrôlées, aucune référence non vide
 - [x] Étendre la purge de compte à tous les artefacts utilisateur versionnés, y compris les exports éventuels sous `results/`
 - [x] Ajouter des tests de non-régression couvrant la purge des médias et exportations associés à un compte — TypeScript OK, 19 tests ciblés réussis
-- [x] Exécuter le build strict et toute la suite Vitest avant le checkpoint — build réussi, 365 tests réussis, 22 tests BDD volontairement ignorés
+- [x] Vérifier après publication que l’endpoint de reprise est bien actif et refuse les appels HTTP ordinaires — HTTP 403 observé en production
+- [x] Exécuter le build strict et toute la suite Vitest avant le checkpoint — build réussi, 374 tests réussis, 22 tests BDD volontairement ignorés
 
 ## 🔄 Vérification checkpoint et GitHub
 
-- [x] Créer le checkpoint du jalon audit de persistance et reprise durable — version `5255f759`
-- [x] Créer puis pousser sur GitHub `transcribeexpress/transcribe-express` le commit contenant toutes les modifications du jalon — `main` synchronisée sur `5255f759`
+- [x] Créer le checkpoint du jalon audit de persistance et reprise durable — version `283d5482`
+- [x] Créer puis pousser sur GitHub `transcribeexpress/transcribe-express` le commit contenant toutes les modifications du jalon — `main` synchronisée sur `283d5482`
+- [ ] Sauvegarder et pousser la clarification finale sur la base gérée par Manus et la procédure de sauvegarde officielle
 - [x] Vérifier que le checkpoint `6dbfdfc6` contient les dernières modifications — footer Tarifs, test de non-régression et validations inclus
 - [x] Vérifier l’état Git local, le dernier commit et la synchronisation avec `origin/main` — GitHub était resté sur `edd3fa73`, donc en retard sur le checkpoint local
 - [x] Pousser toute modification manquante et confirmer le commit distant final — `main` local et GitHub alignés sur `cc5cd8b9`
