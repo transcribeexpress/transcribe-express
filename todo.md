@@ -38,7 +38,8 @@
 - [x] Exiger un jeton de session Clerk vérifié sur `/api/clerk/sync` et refuser tout identifiant utilisateur fourni sans preuve cryptographique
 - [x] Couvrir les signatures invalides, les événements rejetés et les transitions de statut par tests Vitest — 388 tests globaux réussis, 22 BDD dédiés ignorés
 - [ ] Configurer le webhook Production dans Clerk après publication et vérifier son premier événement signé
-- [ ] Sauvegarder le jalon Clerk dans un checkpoint et synchroniser GitHub avant publication
+- [x] Sauvegarder le jalon Clerk dans un checkpoint avant publication — version `6ede6b8c`
+- [ ] Synchroniser le checkpoint Clerk avec GitHub avant publication
 
 ## 💾 Persistance des données après publication
 
