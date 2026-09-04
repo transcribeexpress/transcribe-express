@@ -71,9 +71,9 @@ L’endpoint à déclarer dans Clerk Production est :
 
 `https://transcribeexpress.fr/api/webhooks/clerk`
 
-Seuls les événements `user.created`, `user.updated` et `user.deleted` doivent être cochés. Après création, le secret de signature `whsec_…` doit être enregistré exclusivement dans la variable serveur `CLERK_WEBHOOK_SIGNING_SECRET`. Tant que ce secret n’est pas configuré, l’endpoint échoue de manière sûre avec HTTP 503 et n’écrit rien.
+Seuls les événements `user.created`, `user.updated` et `user.deleted` doivent être cochés. L’endpoint Production a été créé et son secret de signature `whsec_…` est enregistré exclusivement dans la variable serveur `CLERK_WEBHOOK_SIGNING_SECRET`. Après republication, un événement signé inoffensif de type `session.created` a été accepté par l’endpoint public avec HTTP 200 et explicitement ignoré, sans écrire de donnée. Cette preuve confirme l’URL publiée, l’injection du secret et la vérification Svix.
 
-Le premier test fonctionnel doit utiliser un compte de test contrôlé et un événement `user.updated`. Il ne faut pas envoyer un exemple `user.created` généré aléatoirement, car il créerait intentionnellement une nouvelle ligne de profil dans la base.
+Le test fonctionnel réel a ensuite été réalisé sur un compte de test contrôlé : deux événements `user.updated` successifs, correspondant à une modification temporaire puis à son rétablissement, apparaissent dans le journal Clerk avec l’état **Succeeded** pour l’URL publique Transcribe Express. Le contrôle agrégé postérieur confirme que la base conserve neuf lignes, avec deux identités Clerk actives, cinq identités Clerk désactivées et deux lignes historiques non classées ; aucune suppression métier n’a été produite.
 
 ## Référence
 
