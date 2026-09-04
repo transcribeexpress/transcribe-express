@@ -39,7 +39,7 @@
 - [x] Couvrir les signatures invalides, les événements rejetés et les transitions de statut par tests Vitest — 388 tests globaux réussis, 22 BDD dédiés ignorés
 - [ ] Configurer le webhook Production dans Clerk après publication et vérifier son premier événement signé
 - [x] Sauvegarder le jalon Clerk dans un checkpoint avant publication — version `6ede6b8c`
-- [ ] Synchroniser le checkpoint Clerk avec GitHub avant publication
+- [x] Synchroniser le checkpoint Clerk avec GitHub avant publication — `main` alignée sur `608920ce19d628c99e0bf7c76216e859b0b5c1b9`
 
 ## 💾 Persistance des données après publication
 
