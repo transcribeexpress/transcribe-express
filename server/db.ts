@@ -50,7 +50,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "email", "loginMethod", "identityProvider"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -66,6 +66,18 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
+    }
+    if (user.identityStatus !== undefined) {
+      values.identityStatus = user.identityStatus;
+      updateSet.identityStatus = user.identityStatus;
+    }
+    if (user.identityLastSyncedAt !== undefined) {
+      values.identityLastSyncedAt = user.identityLastSyncedAt;
+      updateSet.identityLastSyncedAt = user.identityLastSyncedAt;
+    }
+    if (user.identityDisabledAt !== undefined) {
+      values.identityDisabledAt = user.identityDisabledAt;
+      updateSet.identityDisabledAt = user.identityDisabledAt;
     }
     if (user.role !== undefined) {
       values.role = user.role;
@@ -96,6 +108,78 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
+}
+
+export type ClerkIdentityProfile = {
+  clerkUserId: string;
+  name: string | null;
+  email: string | null;
+  loginMethod: string;
+};
+
+/**
+ * Crée ou met à jour uniquement les données d’identité provenant d’un événement Clerk vérifié.
+ * Les crédits, plans, rôles, abonnements et données métier ne sont jamais écrasés.
+ */
+export async function syncClerkIdentity(profile: ClerkIdentityProfile, syncedAt = new Date()): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const openId = `clerk_${profile.clerkUserId}`;
+  await db.insert(users).values({
+    openId,
+    name: profile.name,
+    email: profile.email,
+    loginMethod: profile.loginMethod,
+    identityProvider: "clerk",
+    identityStatus: "active",
+    identityLastSyncedAt: syncedAt,
+    identityDisabledAt: null,
+  }).onDuplicateKeyUpdate({
+    set: { openId: sql`${users.openId}` },
+  });
+
+  await db.update(users).set({
+    name: profile.name,
+    email: profile.email,
+    loginMethod: profile.loginMethod,
+    identityProvider: "clerk",
+    identityStatus: "active",
+    identityLastSyncedAt: syncedAt,
+    identityDisabledAt: null,
+  }).where(and(
+    eq(users.openId, openId),
+    or(
+      isNull(users.identityLastSyncedAt),
+      lte(users.identityLastSyncedAt, syncedAt)
+    )
+  ));
+}
+
+/**
+ * Désactive localement une identité supprimée dans Clerk sans effacer les données du SaaS.
+ */
+export async function disableClerkIdentity(clerkUserId: string, disabledAt = new Date()): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .update(users)
+    .set({
+      identityProvider: "clerk",
+      identityStatus: "disabled",
+      identityLastSyncedAt: disabledAt,
+      identityDisabledAt: disabledAt,
+    })
+    .where(and(
+      eq(users.openId, `clerk_${clerkUserId}`),
+      or(
+        isNull(users.identityLastSyncedAt),
+        lte(users.identityLastSyncedAt, disabledAt)
+      )
+    ));
+
+  return getAffectedRows(result) === 1;
 }
 
 export async function getUserByOpenId(openId: string) {

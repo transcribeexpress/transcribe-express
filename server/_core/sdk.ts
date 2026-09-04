@@ -39,6 +39,10 @@ function buildCronUser(userInfo: GetUserInfoWithJwtResponse): AuthenticatedUser 
     name: userInfo.name || "Transcribe Express Scheduled Task",
     email: null,
     loginMethod: null,
+    identityProvider: null,
+    identityStatus: "active",
+    identityLastSyncedAt: null,
+    identityDisabledAt: null,
     role: "user",
     plan: "free",
     stripeCustomerId: null,
@@ -326,6 +330,10 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    if (user.identityStatus === "disabled") {
+      throw ForbiddenError("Identity disabled");
     }
 
     await db.upsertUser({

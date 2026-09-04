@@ -16,6 +16,14 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
+  /** Fournisseur d'identité externe responsable du cycle de vie du compte */
+  identityProvider: varchar("identityProvider", { length: 64 }),
+  /** État local de l'identité ; une désactivation ne supprime aucune donnée métier */
+  identityStatus: mysqlEnum("identityStatus", ["active", "disabled"]).default("active").notNull(),
+  /** Dernière synchronisation vérifiée avec le fournisseur d'identité */
+  identityLastSyncedAt: timestamp("identityLastSyncedAt"),
+  /** Date de désactivation signalée par le fournisseur d'identité */
+  identityDisabledAt: timestamp("identityDisabledAt"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   /** Plan actif de l'utilisateur */
   plan: mysqlEnum("plan", ["free", "starter", "creator", "agency"]).default("free").notNull(),

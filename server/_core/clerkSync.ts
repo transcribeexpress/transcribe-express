@@ -16,6 +16,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import { createClerkClient } from "@clerk/express";
+import { verifyToken } from "@clerk/backend";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
@@ -41,7 +42,41 @@ export function registerClerkSyncRoutes(app: Express) {
         return;
       }
 
-      // Vérifier l'utilisateur via l'API Clerk
+      const authorization = req.header("authorization");
+      const clerkSessionToken = authorization?.startsWith("Bearer ")
+        ? authorization.slice("Bearer ".length).trim()
+        : null;
+      const secretKey = process.env.CLERK_SECRET_KEY;
+
+      if (!clerkSessionToken || !secretKey) {
+        res.status(401).json({ error: "Valid Clerk session token required" });
+        return;
+      }
+
+      const forwardedProto = req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+      const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
+      const requestHost = forwardedHost || req.header("host");
+      const requestOrigin = requestHost ? `${forwardedProto || req.protocol}://${requestHost}` : null;
+      const authorizedParties = [
+        "https://transcribeexpress.fr",
+        "https://www.transcribeexpress.fr",
+        ...(requestOrigin ? [requestOrigin] : []),
+      ];
+
+      let verification;
+      try {
+        verification = await verifyToken(clerkSessionToken, { secretKey, authorizedParties });
+      } catch {
+        res.status(401).json({ error: "Invalid Clerk session token" });
+        return;
+      }
+      const verifiedPayload = verification.data as { sub?: string } | undefined;
+      if (!verifiedPayload || verifiedPayload.sub !== clerkUserId) {
+        res.status(401).json({ error: "Clerk session does not match requested user" });
+        return;
+      }
+
+      // Vérifier l'utilisateur via l'API Clerk après validation cryptographique de la session.
       let clerkUser;
       try {
         clerkUser = await clerkClient.users.getUser(clerkUserId);
@@ -74,6 +109,10 @@ export function registerClerkSyncRoutes(app: Express) {
         name,
         email,
         loginMethod,
+        identityProvider: "clerk",
+        identityStatus: "active",
+        identityLastSyncedAt: new Date(),
+        identityDisabledAt: null,
         lastSignedIn: new Date(),
       });
 
@@ -90,7 +129,7 @@ export function registerClerkSyncRoutes(app: Express) {
         maxAge: ONE_YEAR_MS,
       });
 
-      console.log(`[ClerkSync] Session created for user ${openId} (${email})`);
+      console.info("[ClerkSync] Verified session synchronized");
 
       res.json({
         success: true,

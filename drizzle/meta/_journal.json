@@ -78,6 +78,13 @@
       "when": 1788164654206,
       "tag": "0010_sparkling_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1788497928165,
+      "tag": "0011_bored_scarecrow",
+      "breakpoints": true
     }
   ]
 }

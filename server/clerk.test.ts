@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { createClerkClient } from "@clerk/express";
 
 /**
  * Test de validation des clés API Clerk
@@ -23,26 +24,11 @@ describe("Clerk API Keys Validation", () => {
   });
 
   it("should be able to call Clerk API with secret key", async () => {
-    // Appel à l'API Clerk pour vérifier que la clé secrète est valide
-    // Endpoint: GET /v1/users - Liste les utilisateurs (endpoint standard)
-    const response = await fetch("https://api.clerk.com/v1/users?limit=1", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${CLERK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const clerk = createClerkClient({ secretKey: CLERK_SECRET_KEY });
+    const response = await clerk.users.getUserList({ limit: 1 });
 
-    // Si la clé est valide, on devrait recevoir un 200 OK
-    // Si la clé est invalide, on recevra un 401 Unauthorized ou 403 Forbidden
-    // Note: 410 Gone signifie que l'endpoint a été déprécié
-    
-    // Vérifier que ce n'est pas une erreur d'authentification
-    expect(response.status).not.toBe(401);
-    expect(response.status).not.toBe(403);
-    
-    // Accepter 200 (succès) ou 410 (endpoint déprécié mais clé valide)
-    expect([200, 410]).toContain(response.status);
+    expect(Array.isArray(response.data)).toBe(true);
+    expect(response.totalCount).toBeGreaterThanOrEqual(response.data.length);
   });
 
   it("should validate Clerk instance via JWKS endpoint", async () => {

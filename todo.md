@@ -17,9 +17,28 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 374 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 388 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
+
+## 🔎 Audit de cohérence Clerk Production ↔ table `users` Manus
+
+- [x] Vérifier le cycle applicatif de création, mise à jour et suppression des comptes Clerk dans la table `users`
+- [x] Mesurer uniquement par catégories d’identifiants les lignes `users` liées à Clerk Production, aux environnements historiques et aux fixtures de test
+- [x] Confirmer qu’aucun compte Clerk Production visible ne manque dans la table `users` — 2/2 comptes présents
+- [x] Vérifier en lecture seule et par compteurs si les identifiants Clerk présents en base existent encore dans Clerk Production — 2 actives, 5 absentes
+- [x] Déterminer si une synchronisation automatique est requise lors des suppressions effectuées directement dans Clerk — webhook signé nécessaire
+- [x] Ajouter des garde-fous et tests de non-régression si le cycle de synchronisation le nécessite — 14 tests Clerk ciblés réussis
+- [x] Documenter le diagnostic sans recopier les noms, emails ou identifiants complets des utilisateurs — `AUDIT_COHERENCE_CLERK_USERS.md`
+- [x] Ajouter les champs de désactivation locale et de provenance Clerk sans supprimer les données métier existantes — migration `0011_bored_scarecrow.sql`
+- [x] Ajouter un endpoint webhook Clerk public qui vérifie la signature Svix sur le corps brut
+- [x] Synchroniser `user.created` et `user.updated` de manière idempotente, sans écraser les données métier locales
+- [x] Désactiver localement le compte lors de `user.deleted` sans supprimer transcriptions, fichiers, abonnements ni historique
+- [x] Protéger les procédures applicatives pour refuser une identité localement désactivée
+- [x] Exiger un jeton de session Clerk vérifié sur `/api/clerk/sync` et refuser tout identifiant utilisateur fourni sans preuve cryptographique
+- [x] Couvrir les signatures invalides, les événements rejetés et les transitions de statut par tests Vitest — 388 tests globaux réussis, 22 BDD dédiés ignorés
+- [ ] Configurer le webhook Production dans Clerk après publication et vérifier son premier événement signé
+- [ ] Sauvegarder le jalon Clerk dans un checkpoint et synchroniser GitHub avant publication
 
 ## 💾 Persistance des données après publication
 

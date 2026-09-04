@@ -8,13 +8,14 @@
  * requêtes tRPC protectedProcedure fonctionnent correctement.
  */
 
-import { useUser } from "@clerk/clerk-react";
+import { useAuth as useClerkAuth, useUser } from "@clerk/clerk-react";
 import { useState, useEffect, useRef } from "react";
 
 type SyncState = "idle" | "syncing" | "synced" | "error";
 
 export function useClerkSync() {
   const { user, isSignedIn, isLoaded } = useUser();
+  const { getToken } = useClerkAuth();
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [error, setError] = useState<string | null>(null);
   const syncAttemptedRef = useRef(false);
@@ -50,10 +51,16 @@ export function useClerkSync() {
 
     const syncSession = async () => {
       try {
+        const sessionToken = await getToken();
+        if (!sessionToken) {
+          throw new Error("Clerk session token unavailable");
+        }
+
         const response = await fetch("/api/clerk/sync", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionToken}`,
           },
           body: JSON.stringify({
             clerkUserId: user.id,
@@ -85,7 +92,7 @@ export function useClerkSync() {
     };
 
     syncSession();
-  }, [isLoaded, isSignedIn, user]);
+  }, [getToken, isLoaded, isSignedIn, user]);
 
   return {
     /** L'état actuel de la synchronisation */

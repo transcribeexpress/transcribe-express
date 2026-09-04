@@ -13,6 +13,7 @@ import { handleStripeWebhook } from "../stripe/webhook";
 import { sdk } from "./sdk";
 import { resumeInterruptedTranscriptions } from "../workers/transcriptionRecovery";
 import { handleTranscriptionRecovery } from "../scheduled/transcriptionRecoveryRoute";
+import { handleClerkWebhook } from "../clerk/webhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,13 @@ async function startServer() {
     "/api/stripe/webhook",
     express.raw({ type: "application/json" }),
     handleStripeWebhook
+  );
+
+  // Clerk webhook — enregistré avant express.json() afin de vérifier le corps signé exact.
+  app.post(
+    "/api/webhooks/clerk",
+    express.raw({ type: "application/json" }),
+    handleClerkWebhook
   );
 
   // Configure body parser for JSON (tRPC) — pas besoin de 700mb maintenant
