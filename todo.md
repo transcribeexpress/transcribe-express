@@ -40,6 +40,14 @@
 - [x] Configurer le webhook Production dans Clerk après publication et valider la signature — endpoint créé, secret configuré et événement signé inoffensif accepté publiquement
 - [x] Republier après l’enregistrement du secret `CLERK_WEBHOOK_SIGNING_SECRET`, puis valider un événement signé inoffensif en production — HTTP 200 confirmé
 - [x] Déclencher un `user.updated` réel sur un compte de test contrôlé et vérifier la livraison dans le journal Clerk sans modifier de données métier — deux livraisons `Succeeded` observées dans Clerk Production
+
+## 🛡️ Incident d’accès à l’administration
+
+- [x] Reproduire l’accès à `/admin` sur le domaine Manus et le domaine principal sans effectuer de nettoyage — domaine Manus blanc, domaine principal affiche le parcours de contrôle attendu
+- [x] Vérifier les routes de connexion, redirections Clerk, session vérifiée et contrôle de rôle administrateur
+- [x] Contrôler anonymement que l’identité administrateur locale est active et possède le rôle requis — 1 compte admin actif confirmé
+- [x] Corriger le parcours d’accès avec la modification minimale et ajouter les tests de non-régression — redirection 308 des domaines Manus historiques vers le domaine Clerk canonique
+- [ ] Publier puis valider la redirection `/admin` du domaine Manus vers le domaine principal avant toute opération de nettoyage
 - [x] Sauvegarder le jalon Clerk dans un checkpoint avant publication — version `6ede6b8c`
 - [x] Synchroniser le checkpoint Clerk avec GitHub avant publication — `main` alignée sur `608920ce19d628c99e0bf7c76216e859b0b5c1b9`
 

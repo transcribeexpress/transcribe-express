@@ -14,6 +14,7 @@ import { sdk } from "./sdk";
 import { resumeInterruptedTranscriptions } from "../workers/transcriptionRecovery";
 import { handleTranscriptionRecovery } from "../scheduled/transcriptionRecoveryRoute";
 import { handleClerkWebhook } from "../clerk/webhook";
+import { getCanonicalPublicRedirect } from "./canonicalDomain";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,23 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Les domaines Manus historiques ne sont pas configurés dans Clerk Production.
+  // Rediriger seulement les lectures vers le domaine canonique avant tout rendu
+  // évite une initialisation Clerk sur un hôte qui ne porte pas la session active.
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === "production" && (req.method === "GET" || req.method === "HEAD")) {
+      const redirectUrl = getCanonicalPublicRedirect(
+        req.header("x-forwarded-host") ?? req.header("host"),
+        req.originalUrl,
+      );
+      if (redirectUrl) {
+        res.redirect(308, redirectUrl);
+        return;
+      }
+    }
+    next();
+  });
 
   // Stripe webhook — DOIT être enregistré AVANT express.json()
   // pour que le body reste en raw Buffer (nécessaire pour la vérification de signature)
