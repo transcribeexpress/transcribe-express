@@ -16,8 +16,8 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import { createClerkClient } from "@clerk/express";
-import { verifyToken } from "@clerk/backend";
 import * as db from "../db";
+import { verifyClerkSession } from "./clerkSessionVerification";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -63,16 +63,18 @@ export function registerClerkSyncRoutes(app: Express) {
         ...(requestOrigin ? [requestOrigin] : []),
       ];
 
-      let verification;
-      try {
-        verification = await verifyToken(clerkSessionToken, { secretKey, authorizedParties });
-      } catch {
-        res.status(401).json({ error: "Invalid Clerk session token" });
-        return;
-      }
-      const verifiedPayload = verification.data as { sub?: string } | undefined;
-      if (!verifiedPayload || verifiedPayload.sub !== clerkUserId) {
-        res.status(401).json({ error: "Clerk session does not match requested user" });
+      const verification = await verifyClerkSession({
+        token: clerkSessionToken,
+        secretKey,
+        expectedUserId: clerkUserId,
+        authorizedParties,
+      });
+      if (!verification.ok) {
+        console.warn(`[ClerkSync] Session verification rejected: ${verification.code}`);
+        res.status(401).json({
+          error: "Clerk session could not be verified",
+          code: verification.code,
+        });
         return;
       }
 

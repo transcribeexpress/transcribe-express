@@ -45,7 +45,12 @@ export default function Admin() {
   const limit = 50;
 
   // Synchroniser la session Clerk → Manus OAuth (cookie) avant tout appel tRPC
-  const { isSessionReady, isSyncing } = useClerkSync();
+  const {
+    isSessionReady,
+    isSyncing,
+    error: sessionSyncError,
+    retry: retrySessionSync,
+  } = useClerkSync();
 
   // Vérifier le rôle admin via trpc.auth.me — uniquement quand la session est prête
   const { data: currentUser, isLoading: authLoading } = trpc.auth.me.useQuery(
@@ -89,6 +94,29 @@ export default function Admin() {
             <p className="text-muted-foreground text-sm">Vérification des droits d'accès…</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (sessionSyncError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="w-full max-w-md border-destructive/30 bg-card">
+          <CardContent className="p-8 text-center space-y-5">
+            <div className="w-14 h-14 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-7 h-7 text-destructive" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Session non synchronisée</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Votre connexion Clerk est active, mais la session sécurisée Transcribe Express n’a pas pu être créée.
+              </p>
+            </div>
+            <Button onClick={retrySessionSync} className="w-full">
+              Réessayer la synchronisation
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

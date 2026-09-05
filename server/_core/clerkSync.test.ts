@@ -142,6 +142,9 @@ describe("Clerk session sync", () => {
       identityStatus: "active",
       identityDisabledAt: null,
     }));
+    expect(mocks.upsertUser).not.toHaveBeenCalledWith(expect.objectContaining({
+      openId: "user_expected",
+    }));
     expect(cookies).toHaveLength(1);
   });
 });

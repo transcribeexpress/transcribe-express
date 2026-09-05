@@ -18,6 +18,7 @@ export function useClerkSync() {
   const { getToken } = useClerkAuth();
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const syncAttemptedRef = useRef(false);
   const lastSyncedUserIdRef = useRef<string | null>(null);
 
@@ -51,7 +52,7 @@ export function useClerkSync() {
 
     const syncSession = async () => {
       try {
-        const sessionToken = await getToken();
+        const sessionToken = await getToken({ skipCache: retryNonce > 0 });
         if (!sessionToken) {
           throw new Error("Clerk session token unavailable");
         }
@@ -92,7 +93,7 @@ export function useClerkSync() {
     };
 
     syncSession();
-  }, [getToken, isLoaded, isSignedIn, user]);
+  }, [getToken, isLoaded, isSignedIn, retryNonce, user]);
 
   return {
     /** L'état actuel de la synchronisation */
@@ -111,6 +112,7 @@ export function useClerkSync() {
       lastSyncedUserIdRef.current = null;
       setSyncState("idle");
       setError(null);
+      setRetryNonce(value => value + 1);
     },
   };
 }

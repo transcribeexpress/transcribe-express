@@ -17,7 +17,7 @@
 | **Design & UX** | ✅ Terminé | 98% (mix-blend-mode:screen à supprimer) |
 | **Auth Email/MDP** | ✅ Terminé | 100% |
 
-**État global : MVP en production — 388 tests passent, 0 erreur TypeScript**
+**État global : MVP en production — 397 tests passent, 0 erreur TypeScript**
 
 **Items restants ouverts :**
 
@@ -47,7 +47,36 @@
 - [x] Vérifier les routes de connexion, redirections Clerk, session vérifiée et contrôle de rôle administrateur
 - [x] Contrôler anonymement que l’identité administrateur locale est active et possède le rôle requis — 1 compte admin actif confirmé
 - [x] Corriger le parcours d’accès avec la modification minimale et ajouter les tests de non-régression — redirection 308 des domaines Manus historiques vers le domaine Clerk canonique
-- [ ] Publier puis valider la redirection `/admin` du domaine Manus vers le domaine principal avant toute opération de nettoyage
+- [x] Publier puis valider la redirection `/admin` du domaine Manus vers le domaine principal avant toute opération de nettoyage — redirection réelle confirmée vers `https://transcribeexpress.fr/admin`
+
+## 🔐 Incident de connexion Google
+
+- [x] Reproduire le clic Google sur `/login` et relever les erreurs navigateur sans authentifier de compte — redirection vers Google reproduite sans erreur console
+- [x] Analyser l’enregistrement Safari iOS en navigation privée afin d’isoler le blocage du clic Google — OAuth aboutit puis le contrôle de rôle refuse l’accès
+- [x] Vérifier le composant de connexion, l’initialisation Clerk et les domaines de redirection Google — redirection Google Production confirmée
+- [x] Confirmer par reproduction Safari et navigateur de contrôle que le bouton Google déclenche le fournisseur, et que le blocage provenait exclusivement du rôle absent
+- [x] Documenter qu’aucune correction du déclenchement Google n’était nécessaire : OAuth atteint Google puis revient au contrôle de rôle applicatif
+- [x] Valider le départ vers le fournisseur Google puis guider la connexion administrateur — OAuth Google aboutit avant contrôle de rôle
+
+## 👤 Restauration ciblée du rôle administrateur Clerk
+
+- [x] Confirmer explicitement quel compte Clerk Production doit recevoir le rôle `admin`
+- [x] Promouvoir uniquement cette identité Clerk active, sans toucher aux rôles historiques ni aux données métier — 1 ligne Clerk active promue
+- [x] Corriger les tests afin de distinguer les identifiants Clerk `user_…` des préfixes historiques `clerk_user_…` — 4 tests de synchronisation réussis
+- [ ] Vérifier l’accès administrateur après connexion Google, sans effectuer de nettoyage de base
+
+## 🧹 Alignement contrôlé de la base utilisateurs sur Clerk Production
+
+- [x] Analyser le second enregistrement vidéo et localiser la perte du rôle après le parcours complet — item consolidé par le diagnostic détaillé ci-dessous
+- [x] Analyser le second enregistrement vidéo et localiser la perte du rôle après le parcours complet — échec silencieux de `/api/clerk/sync`, rôle conservé en base
+- [x] Vérifier que l’upsert Clerk conserve le rôle `admin` de l’identité locale active
+- [x] Implémenter le correctif de synchronisation administrateur et couvrir la régression par tests — vérification JWT explicite, nouveau jeton au retry, écran d’erreur dédié, 397 tests réussis
+- [ ] Vérifier en production le parcours Google → `/sso-callback` → `/api/clerk/sync` → `/admin` avec le compte admin confirmé
+- [ ] Inventorier anonymement chaque compte historique et ses dépendances : transcriptions, abonnements, recharges, préférences, tickets et demandes RGPD
+- [ ] Créer une sauvegarde/export vérifiable et définir un plan de retour arrière avant toute purge
+- [ ] Présenter la liste des catégories supprimables et obtenir une confirmation explicite du périmètre
+- [ ] Purger uniquement les comptes confirmés via la procédure applicative sécurisée, jamais par `DELETE` global
+- [ ] Vérifier après purge l’alignement avec Clerk Production et l’intégrité des comptes conservés
 - [x] Sauvegarder le jalon Clerk dans un checkpoint avant publication — version `6ede6b8c`
 - [x] Synchroniser le checkpoint Clerk avec GitHub avant publication — `main` alignée sur `608920ce19d628c99e0bf7c76216e859b0b5c1b9`
 
