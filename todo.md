@@ -72,6 +72,11 @@
 - [x] Vérifier que l’upsert Clerk conserve le rôle `admin` de l’identité locale active
 - [x] Implémenter le correctif de synchronisation administrateur et couvrir la régression par tests — vérification JWT explicite, nouveau jeton au retry, écran d’erreur dédié, 397 tests réussis
 - [ ] Vérifier en production le parcours Google → `/sso-callback` → `/api/clerk/sync` → `/admin` avec le compte admin confirmé
+- [ ] Relever dans les journaux Production le code exact du refus affiché par la carte « Session non synchronisée »
+- [ ] Corriger la cause confirmée du refus `/api/clerk/sync` sans assouplir la signature, le sujet ni l’allowlist d’origine
+- [ ] Journaliser uniquement la raison Clerk normalisée (`expired`, `signature`, `JWKS`, `horloge`) sans jeton, identifiant ni donnée personnelle
+- [ ] Confirmer que l’échec persiste avec un jeton renouvelé puis corriger la cause cryptographique observée
+- [ ] Rejouer le parcours Safari complet après republication et obtenir l’accès réel au panneau Admin
 - [ ] Inventorier anonymement chaque compte historique et ses dépendances : transcriptions, abonnements, recharges, préférences, tickets et demandes RGPD
 - [ ] Créer une sauvegarde/export vérifiable et définir un plan de retour arrière avant toute purge
 - [ ] Présenter la liste des catégories supprimables et obtenir une confirmation explicite du périmètre

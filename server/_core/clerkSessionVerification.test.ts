@@ -57,6 +57,19 @@ describe("verifyClerkSession", () => {
     await expect(verifyClerkSession(baseParams, verify)).resolves.toEqual({
       ok: false,
       code: "invalid_token",
+      reason: "unknown",
+    });
+  });
+
+  it("ne restitue qu’une raison Clerk normalisée", async () => {
+    const verify = vi.fn().mockResolvedValue({
+      errors: [{ reason: "token-invalid-signature", message: "sensitive details" }],
+    });
+
+    await expect(verifyClerkSession(baseParams, verify)).resolves.toEqual({
+      ok: false,
+      code: "invalid_token",
+      reason: "token-invalid-signature",
     });
   });
 });

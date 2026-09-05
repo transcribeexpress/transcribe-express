@@ -11,7 +11,34 @@ export type ClerkSessionVerification =
   | {
       ok: false;
       code: "invalid_token" | "subject_mismatch" | "unauthorized_party";
+      reason?: string;
     };
+
+const SAFE_VERIFICATION_REASONS = new Set([
+  "token-expired",
+  "token-invalid",
+  "token-invalid-algorithm",
+  "token-invalid-authorized-parties",
+  "token-invalid-signature",
+  "token-not-active-yet",
+  "token-iat-in-the-future",
+  "token-verification-failed",
+  "secret-key-invalid",
+  "local-jwk-missing",
+  "remote-jwk-failed-to-load",
+  "remote-jwk-invalid",
+  "remote-jwk-missing",
+  "jwk-failed-to-resolve",
+  "jwk-kid-mismatch",
+]);
+
+function getSafeVerificationReason(error: unknown): string {
+  if (!error || typeof error !== "object" || !("reason" in error)) return "unknown";
+  const reason = (error as { reason?: unknown }).reason;
+  return typeof reason === "string" && SAFE_VERIFICATION_REASONS.has(reason)
+    ? reason
+    : "unknown";
+}
 
 /**
  * Vérifie d'abord la signature et les dates du jeton Clerk, puis contrôle
@@ -29,7 +56,12 @@ export async function verifyClerkSession(
   try {
     const result = await verify(params.token, { secretKey: params.secretKey });
     if (!result.data) {
-      return { ok: false, code: "invalid_token" };
+      const verificationErrors = (result as { errors?: unknown[] }).errors;
+      return {
+        ok: false,
+        code: "invalid_token",
+        reason: getSafeVerificationReason(verificationErrors?.[0]),
+      };
     }
 
     const claims = result.data as { sub?: unknown; azp?: unknown };
@@ -45,6 +77,6 @@ export async function verifyClerkSession(
 
     return { ok: true, subject };
   } catch {
-    return { ok: false, code: "invalid_token" };
+    return { ok: false, code: "invalid_token", reason: "unexpected_exception" };
   }
 }

@@ -70,7 +70,10 @@ export function registerClerkSyncRoutes(app: Express) {
         authorizedParties,
       });
       if (!verification.ok) {
-        console.warn(`[ClerkSync] Session verification rejected: ${verification.code}`);
+        const normalizedReason = verification.reason ? `:${verification.reason}` : "";
+        console.warn(
+          `[ClerkSync] Session verification rejected: ${verification.code}${normalizedReason}`
+        );
         res.status(401).json({
           error: "Clerk session could not be verified",
           code: verification.code,
